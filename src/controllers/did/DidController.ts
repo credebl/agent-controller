@@ -110,7 +110,7 @@ export class DidController extends Controller {
       throw Error('keyType is required')
     }
 
-    const didRouting = await agent.mediationRecipient.getRouting({})
+    const didRouting = await agent.modules.mediationRecipient.getRouting({})
     const didDocument = createPeerDidDocumentFromServices([
       {
         id: 'didcomm',

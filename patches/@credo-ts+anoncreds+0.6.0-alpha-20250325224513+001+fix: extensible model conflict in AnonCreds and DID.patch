@@ -1,16 +1,16 @@
 diff --git a/node_modules/@credo-ts/anoncreds/build/AnonCredsApi.d.ts b/node_modules/@credo-ts/anoncreds/build/AnonCredsApi.d.ts
-index e9d0a20..479b157 100644
+index 9cbc1d8..ac26d6b 100644
 --- a/node_modules/@credo-ts/anoncreds/build/AnonCredsApi.d.ts
 +++ b/node_modules/@credo-ts/anoncreds/build/AnonCredsApi.d.ts
-@@ -1,7 +1,7 @@
+@@ -2,7 +2,7 @@ import type { SimpleQuery } from '@credo-ts/core';
  import type { AnonCredsCreateLinkSecretOptions, AnonCredsRegisterCredentialDefinitionOptions, AnonCredsRegisterRevocationRegistryDefinitionOptions, AnonCredsRegisterRevocationStatusListOptions, AnonCredsUpdateRevocationStatusListOptions } from './AnonCredsApiOptions';
  import type { AnonCredsSchema } from './models';
- import type { GetCredentialDefinitionReturn, GetCredentialsOptions, GetRevocationRegistryDefinitionReturn, GetRevocationStatusListReturn, GetSchemaReturn, RegisterCredentialDefinitionReturn, RegisterSchemaReturn, RegisterRevocationRegistryDefinitionReturn, RegisterRevocationStatusListReturn } from './services';
+ import type { GetCredentialDefinitionReturn, GetCredentialsOptions, GetRevocationRegistryDefinitionReturn, GetRevocationStatusListReturn, GetSchemaReturn, RegisterCredentialDefinitionReturn, RegisterRevocationRegistryDefinitionReturn, RegisterRevocationStatusListReturn, RegisterSchemaReturn } from './services';
 -import type { Extensible } from './services/registry/base';
 +import type { CredoExtensible } from './services/registry/base';
- import type { SimpleQuery } from '@credo-ts/core';
  import { AgentContext } from '@credo-ts/core';
  import { AnonCredsModuleConfig } from './AnonCredsModuleConfig';
+ import { AnonCredsCredentialDefinitionPrivateRepository, AnonCredsKeyCorrectnessProofRepository, AnonCredsLinkSecretRepository, AnonCredsRevocationRegistryDefinitionPrivateRepository, AnonCredsRevocationRegistryDefinitionRepository } from './repository';
 @@ -41,28 +41,28 @@ export declare class AnonCredsApi {
       * with the {@link schemaId}
       */
@@ -126,13 +126,13 @@ index 452ec04..f66058d 100644
 +    [AnonCredsSchemaRecordMetadataKeys.SchemaMetadata]: CredoExtensible;
  };
 diff --git a/node_modules/@credo-ts/anoncreds/build/services/registry/CredentialDefinitionOptions.d.ts b/node_modules/@credo-ts/anoncreds/build/services/registry/CredentialDefinitionOptions.d.ts
-index 95c0949..aa82d57 100644
+index 0cedde3..169337b 100644
 --- a/node_modules/@credo-ts/anoncreds/build/services/registry/CredentialDefinitionOptions.d.ts
 +++ b/node_modules/@credo-ts/anoncreds/build/services/registry/CredentialDefinitionOptions.d.ts
 @@ -1,14 +1,14 @@
+ import type { AnonCredsCredentialDefinition } from '../../models/registry';
 -import type { AnonCredsOperationStateAction, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsOperationStateWait, AnonCredsResolutionMetadata, Extensible } from './base';
 +import type { AnonCredsOperationStateAction, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsOperationStateWait, AnonCredsResolutionMetadata, CredoExtensible } from './base';
- import type { AnonCredsCredentialDefinition } from '../../models/registry';
  export interface GetCredentialDefinitionReturn {
      credentialDefinition?: AnonCredsCredentialDefinition;
      credentialDefinitionId: string;
@@ -157,13 +157,13 @@ index 95c0949..aa82d57 100644
 +    registrationMetadata: CredoExtensible;
  }
 diff --git a/node_modules/@credo-ts/anoncreds/build/services/registry/RevocationRegistryDefinitionOptions.d.ts b/node_modules/@credo-ts/anoncreds/build/services/registry/RevocationRegistryDefinitionOptions.d.ts
-index e911d79..df4fa0b 100644
+index 7b9ffde..a3c9a53 100644
 --- a/node_modules/@credo-ts/anoncreds/build/services/registry/RevocationRegistryDefinitionOptions.d.ts
 +++ b/node_modules/@credo-ts/anoncreds/build/services/registry/RevocationRegistryDefinitionOptions.d.ts
 @@ -1,14 +1,14 @@
--import type { AnonCredsOperationStateWait, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsResolutionMetadata, Extensible, AnonCredsOperationStateAction } from './base';
-+import type { AnonCredsOperationStateWait, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsResolutionMetadata, CredoExtensible, AnonCredsOperationStateAction } from './base';
  import type { AnonCredsRevocationRegistryDefinition } from '../../models/registry';
+-import type { AnonCredsOperationStateAction, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsOperationStateWait, AnonCredsResolutionMetadata, Extensible } from './base';
++import type { AnonCredsOperationStateAction, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsOperationStateWait, AnonCredsResolutionMetadata, CredoExtensible } from './base';
  export interface GetRevocationRegistryDefinitionReturn {
      revocationRegistryDefinition?: AnonCredsRevocationRegistryDefinition;
      revocationRegistryDefinitionId: string;
@@ -188,14 +188,14 @@ index e911d79..df4fa0b 100644
 +    registrationMetadata: CredoExtensible;
  }
 diff --git a/node_modules/@credo-ts/anoncreds/build/services/registry/RevocationStatusListOptions.d.ts b/node_modules/@credo-ts/anoncreds/build/services/registry/RevocationStatusListOptions.d.ts
-index b5ee11d..01b38dd 100644
+index c28d20c..eca15ca 100644
 --- a/node_modules/@credo-ts/anoncreds/build/services/registry/RevocationStatusListOptions.d.ts
 +++ b/node_modules/@credo-ts/anoncreds/build/services/registry/RevocationStatusListOptions.d.ts
 @@ -1,16 +1,16 @@
--import type { AnonCredsOperationStateWait, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsResolutionMetadata, Extensible, AnonCredsOperationStateAction } from './base';
-+import type { AnonCredsOperationStateWait, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsResolutionMetadata, CredoExtensible, AnonCredsOperationStateAction } from './base';
- import type { AnonCredsRevocationStatusList } from '../../models/registry';
  import type { Optional } from '@credo-ts/core';
+ import type { AnonCredsRevocationStatusList } from '../../models/registry';
+-import type { AnonCredsOperationStateAction, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsOperationStateWait, AnonCredsResolutionMetadata, Extensible } from './base';
++import type { AnonCredsOperationStateAction, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsOperationStateWait, AnonCredsResolutionMetadata, CredoExtensible } from './base';
  export interface GetRevocationStatusListReturn {
      revocationStatusList?: AnonCredsRevocationStatusList;
      resolutionMetadata: AnonCredsResolutionMetadata;
@@ -221,13 +221,13 @@ index b5ee11d..01b38dd 100644
 +    registrationMetadata: CredoExtensible;
  }
 diff --git a/node_modules/@credo-ts/anoncreds/build/services/registry/SchemaOptions.d.ts b/node_modules/@credo-ts/anoncreds/build/services/registry/SchemaOptions.d.ts
-index 2743b39..6aee13e 100644
+index fcafaa3..c894be4 100644
 --- a/node_modules/@credo-ts/anoncreds/build/services/registry/SchemaOptions.d.ts
 +++ b/node_modules/@credo-ts/anoncreds/build/services/registry/SchemaOptions.d.ts
 @@ -1,14 +1,14 @@
+ import type { AnonCredsSchema } from '../../models/registry';
 -import type { AnonCredsOperationStateAction, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsOperationStateWait, AnonCredsResolutionMetadata, Extensible } from './base';
 +import type { AnonCredsOperationStateAction, AnonCredsOperationStateFailed, AnonCredsOperationStateFinished, AnonCredsOperationStateWait, AnonCredsResolutionMetadata, CredoExtensible } from './base';
- import type { AnonCredsSchema } from '../../models/registry';
  export interface GetSchemaReturn {
      schema?: AnonCredsSchema;
      schemaId: string;

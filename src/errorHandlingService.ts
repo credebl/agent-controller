@@ -5,9 +5,9 @@ import {
   CredoError,
   RecordNotFoundError,
   RecordDuplicateError,
-  ClassValidationError,
-  MessageSendingError,
+  ClassValidationError
 } from '@credo-ts/core'
+import { MessageSendingError } from '@credo-ts/didcomm'
 import { IndyVdrError } from '@hyperledger/indy-vdr-nodejs'
 
 import { RecordDuplicateError as CustomRecordDuplicateError, NotFoundError, InternalServerError } from './errors/errors'

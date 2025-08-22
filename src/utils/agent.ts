@@ -12,27 +12,34 @@ import {
 } from '@credo-ts/anoncreds'
 import { AskarModule } from '@credo-ts/askar'
 import {
-  AutoAcceptCredential,
-  CredentialsModule,
   DidsModule,
-  JsonLdCredentialFormatService,
   KeyDidRegistrar,
   KeyDidResolver,
-  DifPresentationExchangeProofFormatService,
-  ProofsModule,
-  V2CredentialProtocol,
-  V2ProofProtocol,
   WebDidResolver,
   Agent,
-  ConnectionInvitationMessage,
-  HttpOutboundTransport,
   LogLevel,
 } from '@credo-ts/core'
+
+import {
+  HttpOutboundTransport,
+  JsonLdCredentialFormatService,
+  DifPresentationExchangeProofFormatService,
+  ProofsModule,
+  AutoAcceptCredential,
+  V2ProofProtocol,
+  CredentialsModule,
+  V2CredentialProtocol,
+  DidCommModule,
+  OutOfBandModule,
+  MediationRecipientModule,
+  BasicMessagesModule,
+  ConnectionInvitationMessage
+} from '@credo-ts/didcomm'
 import { IndyVdrAnonCredsRegistry, IndyVdrModule } from '@credo-ts/indy-vdr'
 import { agentDependencies, HttpInboundTransport } from '@credo-ts/node'
 import { TenantsModule } from '@credo-ts/tenants'
 import { anoncreds } from '@hyperledger/anoncreds-nodejs'
-import { ariesAskar } from '@hyperledger/aries-askar-nodejs'
+import { askar } from '@openwallet-foundation/askar-nodejs'
 import { indyVdr } from '@hyperledger/indy-vdr-nodejs'
 
 import { TsLogger } from './logger'
@@ -42,7 +49,7 @@ export const setupAgent = async ({ name, endpoints, port }: { name: string; endp
 
   const config: InitConfig = {
     label: name,
-    endpoints: endpoints,
+    // endpoints: endpoints,
     walletConfig: {
       id: name,
       key: name,
@@ -67,7 +74,7 @@ export const setupAgent = async ({ name, endpoints, port }: { name: string; endp
         ],
       }),
       askar: new AskarModule({
-        ariesAskar,
+        askar,
       }),
 
       anoncreds: new AnonCredsModule({
@@ -109,6 +116,12 @@ export const setupAgent = async ({ name, endpoints, port }: { name: string; endp
         ],
       }),
       tenants: new TenantsModule(),
+      didcomm: new DidCommModule({
+        processDidCommMessagesConcurrently: true,
+      }),
+      oob: new OutOfBandModule(),
+      mediationRecipient: new MediationRecipientModule(),
+      basicMessages: new BasicMessagesModule(),
       polygon: new PolygonModule({
         didContractAddress: '',
         schemaManagerContractAddress: '',
@@ -124,9 +137,9 @@ export const setupAgent = async ({ name, endpoints, port }: { name: string; endp
     port: port,
   })
 
-  agent.registerInboundTransport(httpInbound)
+  agent.modules.didcomm.registerInboundTransport(httpInbound)
 
-  agent.registerOutboundTransport(new HttpOutboundTransport())
+  agent.modules.didcomm.registerOutboundTransport(new HttpOutboundTransport())
 
   httpInbound.app.get('/invitation', async (req, res) => {
     if (typeof req.query.d_m === 'string') {
@@ -137,7 +150,7 @@ export const setupAgent = async ({ name, endpoints, port }: { name: string; endp
       const invitation = await ConnectionInvitationMessage.fromUrl(req.url)
       res.send(invitation.toJSON())
     } else {
-      const { outOfBandInvitation } = await agent.oob.createInvitation()
+      const { outOfBandInvitation } = await agent.modules.oob.createInvitation()
 
       res.send(outOfBandInvitation.toUrl({ domain: endpoints + '/invitation' }))
     }

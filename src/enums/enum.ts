@@ -93,3 +93,8 @@ export enum SCOPES {
   TENANT_AGENT = 'tenant',
   DEDICATED_AGENT = 'dedicated',
 }
+
+export enum SignerMethod {
+  Did = 'did',
+  X5c = 'x5c',
+}

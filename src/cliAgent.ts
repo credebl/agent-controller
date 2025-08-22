@@ -14,27 +14,35 @@ import {
 } from '@credo-ts/anoncreds'
 import { AskarModule, AskarMultiWalletDatabaseScheme } from '@credo-ts/askar'
 import {
-  AutoAcceptCredential,
-  AutoAcceptProof,
   DidsModule,
-  ProofsModule,
-  V2ProofProtocol,
-  CredentialsModule,
-  V2CredentialProtocol,
-  ConnectionsModule,
   W3cCredentialsModule,
   KeyDidRegistrar,
   KeyDidResolver,
   CacheModule,
   InMemoryLruCache,
   WebDidResolver,
+  LogLevel,
+  Agent
+} from '@credo-ts/core'
+import {
   HttpOutboundTransport,
   WsOutboundTransport,
-  LogLevel,
-  Agent,
   JsonLdCredentialFormatService,
   DifPresentationExchangeProofFormatService,
-} from '@credo-ts/core'
+  ConnectionsModule,
+  ProofsModule,
+  AutoAcceptCredential,
+  AutoAcceptProof,
+  V2ProofProtocol,
+  CredentialsModule,
+  V2CredentialProtocol,
+  DidCommModule,
+  OutOfBandModule,
+  MediationRecipientModule,
+  BasicMessagesModule,
+  MessagePickupModule,
+  DiscoverFeaturesModule,
+} from '@credo-ts/didcomm'
 import {
   IndyVdrAnonCredsRegistry,
   IndyVdrIndyDidResolver,
@@ -45,7 +53,7 @@ import { agentDependencies, HttpInboundTransport, WsInboundTransport } from '@cr
 import { QuestionAnswerModule } from '@credo-ts/question-answer'
 import { TenantsModule } from '@credo-ts/tenants'
 import { anoncreds } from '@hyperledger/anoncreds-nodejs'
-import { ariesAskar } from '@hyperledger/aries-askar-nodejs'
+import { askar} from '@openwallet-foundation/askar-nodejs'
 import { indyVdr } from '@hyperledger/indy-vdr-nodejs'
 import axios from 'axios'
 import { readFile } from 'fs/promises'
@@ -56,6 +64,12 @@ import { isCustomDocumentLoaderEnabled } from './utils/config'
 import { CustomDocumentLoader } from './utils/customDocumentLoader'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
+import { OpenId4VcHolderModule, OpenId4VcIssuerModule, OpenId4VcVerifierModule } from '@credo-ts/openid4vc'
+import { Router } from 'express'
+import { getCredentialRequestToCredentialMapper } from './utils/oid4vc-agent'
+
+const openId4VciRouter = Router()
+const openId4VpRouter = Router()
 
 export type Transports = 'ws' | 'http'
 export type InboundTransport = {
@@ -137,7 +151,7 @@ const getModules = (
   const presentationExchangeProofFormatService = new DifPresentationExchangeProofFormatService()
   return {
     askar: new AskarModule({
-      ariesAskar,
+      askar,
       multiWalletDatabaseScheme: walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
     }),
 
@@ -190,6 +204,14 @@ const getModules = (
           documentLoader: CustomDocumentLoader,
         })
       : new W3cCredentialsModule(),
+    didcomm: new DidCommModule({
+      processDidCommMessagesConcurrently: true   
+    }),
+    oob: new OutOfBandModule(),
+    mediationRecipient: new MediationRecipientModule(),
+    discovery: new DiscoverFeaturesModule(),
+    messagePickup: new MessagePickupModule(),
+    basicMessages: new BasicMessagesModule(),
     cache: new CacheModule({
       cache: new InMemoryLruCache({ limit: Number(process.env.INMEMORY_LRU_CACHE_LIMIT) || Infinity }),
     }),
@@ -205,6 +227,21 @@ const getModules = (
       rpcUrl: rpcUrl ? rpcUrl : (process.env.RPC_URL as string),
       serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
     }),
+    openId4VcVerifier: new OpenId4VcVerifierModule({
+      baseUrl: `http://${process.env.APP_URL}/oid4vp`,
+      router: openId4VpRouter,
+    }),
+    openId4VcIssuer: new OpenId4VcIssuerModule({
+      baseUrl: `http://${process.env.APP_URL}/oid4vci`,
+      router: openId4VciRouter,
+      statefulCredentialOfferExpirationInSeconds: Number(process.env.OPENID_CRED_OFFER_EXPIRY) || 3600,
+      accessTokenExpiresInSeconds: Number(process.env.OPENID_ACCESS_TOKEN_EXPIRY) || 3600,
+      authorizationCodeExpiresInSeconds: Number(process.env.OPENID_AUTH_CODE_EXPIRY) || 3600,
+      cNonceExpiresInSeconds: Number(process.env.OPENID_CNONCE_EXPIRY) || 3600,
+      dpopRequired: false,
+      credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
+    }),
+    openId4VcHolderModule: new OpenId4VcHolderModule(),
   }
 }
 
@@ -299,8 +336,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     backupBeforeStorageUpdate: false,
     // Ideally for testing connection between tenant agent we need to set this to 'true'. Default is 'false'
     // TODO: triage: not sure if we want it to be 'true', as it would mean parallel requests on BW
-    // Setting it for now
-    processDidCommMessagesConcurrently: true,
+    // Setting it for now //TODO: check if this is needed
   }
 
   async function fetchLedgerData(ledgerConfig: {
@@ -387,8 +423,8 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     modules: {
       ...(afjConfig.tenancy
         ? {
-            ...tenantModule,
-          }
+          ...tenantModule,
+        }
         : {}),
       ...modules,
     },
@@ -398,13 +434,26 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
   // Register outbound transports
   for (const outboundTransport of outboundTransports) {
     const OutboundTransport = outboundTransportMapping[outboundTransport]
-    agent.registerOutboundTransport(new OutboundTransport())
+    agent.modules.didcomm.registerOutboundTransport(new OutboundTransport())
   }
+
+  // Register inbound transports
+  // for (const inboundTransport of inboundTransports) {
+  //   const InboundTransport = inboundTransportMapping[inboundTransport.transport]
+  //   agent.modules.didcomm.registerInboundTransport(new InboundTransport({ port: inboundTransport.port }))
+  // }
 
   // Register inbound transports
   for (const inboundTransport of inboundTransports) {
     const InboundTransport = inboundTransportMapping[inboundTransport.transport]
-    agent.registerInboundTransport(new InboundTransport({ port: inboundTransport.port }))
+    const transport = new InboundTransport({ port: inboundTransport.port })
+    agent.modules.didcomm.registerInboundTransport(transport)
+
+    // Configure the oid4vc routers on the http inbound transport
+    if (transport instanceof HttpInboundTransport) {
+      transport.app.use('/oid4vci', modules.openId4VcIssuer.config.router as any)
+      transport.app.use('/oid4vp', modules.openId4VcVerifier.config.router as any)
+    }
   }
 
   await agent.initialize()

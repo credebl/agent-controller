@@ -40,7 +40,7 @@ export class AgentController extends Controller {
     try {
       return {
         label: request.agent.config.label,
-        endpoints: request.agent.config.endpoints,
+        endpoints: request.agent.modules.didcomm.config.endpoints,
         isInitialized: request.agent.isInitialized,
         publicDid: undefined,
       }

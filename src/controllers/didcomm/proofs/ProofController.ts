@@ -1,10 +1,13 @@
 import type {
-  AcceptProofRequestOptions,
   PeerDidNumAlgo2CreateOptions,
+} from '@credo-ts/core'
+
+import {
+  AcceptProofRequestOptions,
   ProofExchangeRecordProps,
   ProofsProtocolVersionType,
   Routing,
-} from '@credo-ts/core'
+} from '@credo-ts/didcomm'
 
 import { PeerDidNumAlgo, createPeerDidDocumentFromServices } from '@credo-ts/core'
 import { Request as Req } from 'express'
@@ -37,7 +40,7 @@ export class ProofController extends Controller {
   public async getAllProofs(@Request() request: Req, @Query('threadId') threadId?: string) {
     try {
       const query = threadId ? { threadId } : {}
-      const proofs = await request.agent.proofs.findAllByQuery(query)
+      const proofs = await request.agent.modules.proofs.findAllByQuery(query)
 
       return proofs.map((proof) => proof.toJSON())
     } catch (error) {
@@ -55,7 +58,7 @@ export class ProofController extends Controller {
   @Example<ProofExchangeRecordProps>(ProofRecordExample)
   public async getProofById(@Request() request: Req, @Path('proofRecordId') proofRecordId: RecordId) {
     try {
-      const proof = await request.agent.proofs.getById(proofRecordId)
+      const proof = await request.agent.modules.proofs.getById(proofRecordId)
 
       return proof.toJSON()
     } catch (error) {
@@ -74,7 +77,7 @@ export class ProofController extends Controller {
   @Example<ProofExchangeRecordProps>(ProofRecordExample)
   public async proposeProof(@Request() request: Req, @Body() requestProofProposalOptions: RequestProofProposalOptions) {
     try {
-      const proof = await request.agent.proofs.proposeProof({
+      const proof = await request.agent.modules.proofs.proposeProof({
         connectionId: requestProofProposalOptions.connectionId,
         protocolVersion: 'v1' as ProofsProtocolVersionType<[]>,
         proofFormats: requestProofProposalOptions.proofFormats,
@@ -102,7 +105,7 @@ export class ProofController extends Controller {
   @Example<ProofExchangeRecordProps>(ProofRecordExample)
   public async acceptProposal(@Request() request: Req, @Body() acceptProposal: AcceptProofProposal) {
     try {
-      const proof = await request.agent.proofs.acceptProposal(acceptProposal)
+      const proof = await request.agent.modules.proofs.acceptProposal(acceptProposal)
 
       return proof
     } catch (error) {
@@ -127,7 +130,7 @@ export class ProofController extends Controller {
         parentThreadId: requestProofOptions.parentThreadId,
         willConfirm: requestProofOptions.willConfirm,
       }
-      const proof = await request.agent.proofs.requestProof(requestProofPayload)
+      const proof = await request.agent.modules.proofs.requestProof(requestProofPayload)
 
       return proof
     } catch (error) {
@@ -148,7 +151,7 @@ export class ProofController extends Controller {
       if (createRequestOptions?.invitationDid) {
         invitationDid = createRequestOptions?.invitationDid
       } else {
-        routing = await request.agent.mediationRecipient.getRouting({})
+        routing = await request.agent.modules.mediationRecipient.getRouting({})
         const didDocument = createPeerDidDocumentFromServices([
           {
             id: 'didcomm',
@@ -167,7 +170,7 @@ export class ProofController extends Controller {
         invitationDid = did.didState.did
       }
 
-      const proof = await request.agent.proofs.createRequest({
+      const proof = await request.agent.modules.proofs.createRequest({
         protocolVersion: createRequestOptions.protocolVersion as ProofsProtocolVersionType<[]>,
         proofFormats: createRequestOptions.proofFormats,
         goalCode: createRequestOptions.goalCode,
@@ -177,7 +180,7 @@ export class ProofController extends Controller {
         comment: createRequestOptions.comment,
       })
       const proofMessage = proof.message
-      const outOfBandRecord = await request.agent.oob.createInvitation({
+      const outOfBandRecord = await request.agent.modules.oob.createInvitation({
         label: createRequestOptions.label,
         messages: [proofMessage],
         autoAcceptConnection: true,
@@ -188,10 +191,10 @@ export class ProofController extends Controller {
 
       return {
         invitationUrl: outOfBandRecord.outOfBandInvitation.toUrl({
-          domain: request.agent.config.endpoints[0],
+          domain: request.agent.modules.didcomm.config.endpoints[0],
         }),
         invitation: outOfBandRecord.outOfBandInvitation.toJSON({
-          useDidSovPrefixWhereAllowed: request.agent.config.useDidSovPrefixWhereAllowed,
+          useDidSovPrefixWhereAllowed: request.agent.modules.didcomm.config.useDidSovPrefixWhereAllowed,
         }),
         outOfBandRecord: outOfBandRecord.toJSON(),
         invitationDid: createRequestOptions?.invitationDid ? '' : invitationDid,
@@ -224,7 +227,7 @@ export class ProofController extends Controller {
     },
   ) {
     try {
-      const requestedCredentials = await request.agent.proofs.selectCredentialsForRequest({
+      const requestedCredentials = await request.agent.modules.proofs.selectCredentialsForRequest({
         proofRecordId,
       })
 
@@ -234,7 +237,7 @@ export class ProofController extends Controller {
         proofFormats: requestedCredentials.proofFormats,
       }
 
-      const proof = await request.agent.proofs.acceptRequest(acceptProofRequest)
+      const proof = await request.agent.modules.proofs.acceptRequest(acceptProofRequest)
 
       return proof.toJSON()
     } catch (error) {
@@ -253,7 +256,7 @@ export class ProofController extends Controller {
   @Example<ProofExchangeRecordProps>(ProofRecordExample)
   public async acceptPresentation(@Request() request: Req, @Path('proofRecordId') proofRecordId: string) {
     try {
-      const proof = await request.agent.proofs.acceptPresentation({ proofRecordId })
+      const proof = await request.agent.modules.proofs.acceptPresentation({ proofRecordId })
       return proof
     } catch (error) {
       throw ErrorHandlingService.handle(error)
@@ -271,7 +274,7 @@ export class ProofController extends Controller {
   // TODO: Add return type
   public async proofFormData(@Request() request: Req, @Path('proofRecordId') proofRecordId: string) {
     try {
-      const proof = await request.agent.proofs.getFormatData(proofRecordId)
+      const proof = await request.agent.modules.proofs.getFormatData(proofRecordId)
       return proof
     } catch (error) {
       throw ErrorHandlingService.handle(error)

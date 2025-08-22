@@ -1,0 +1,31 @@
+diff --git a/node_modules/@credo-ts/didcomm/build/EnvelopeService.js b/node_modules/@credo-ts/didcomm/build/EnvelopeService.js
+index c0c84d4..0752b11 100644
+--- a/node_modules/@credo-ts/didcomm/build/EnvelopeService.js
++++ b/node_modules/@credo-ts/didcomm/build/EnvelopeService.js
+@@ -38,6 +38,7 @@ let EnvelopeService = class EnvelopeService {
+                 message: encryptedMessage,
+             });
+             recipientKeysBase58 = [routingKeyBase58];
++            forwardMessage["messageType"] = message['@type'];
+             this.logger.debug('Forward message created', forwardMessage);
+             const forwardJson = forwardMessage.toJSON({
+                 useDidSovPrefixWhereAllowed: didcommConfig.useDidSovPrefixWhereAllowed,
+diff --git a/node_modules/@credo-ts/didcomm/build/modules/routing/messages/ForwardMessage.d.ts b/node_modules/@credo-ts/didcomm/build/modules/routing/messages/ForwardMessage.d.ts
+index 108b477..d307051 100644
+--- a/node_modules/@credo-ts/didcomm/build/modules/routing/messages/ForwardMessage.d.ts
++++ b/node_modules/@credo-ts/didcomm/build/modules/routing/messages/ForwardMessage.d.ts
+@@ -3,6 +3,7 @@ import { EncryptedMessage } from '../../../types';
+ export interface ForwardMessageOptions {
+     id?: string;
+     to: string;
++    messageType: string;
+     message: EncryptedMessage;
+ }
+ /**
+@@ -19,5 +20,6 @@ export declare class ForwardMessage extends AgentMessage {
+     readonly type: string;
+     static readonly type: import("../../../util/messageType").ParsedMessageType;
+     to: string;
++    messageType: string;
+     message: EncryptedMessage;
+ }

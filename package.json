@@ -40,16 +40,17 @@
   },
   "dependencies": {
     "@ayanworks/credo-polygon-w3c-module": "1.0.1-alpha.1",
-    "@credo-ts/anoncreds": "0.5.15",
-    "@credo-ts/askar": "0.5.15",
-    "@credo-ts/core": "0.5.15",
-    "@credo-ts/indy-vdr": "0.5.15",
-    "@credo-ts/node": "^0.5.15",
+    "@credo-ts/anoncreds": "0.6.0-alpha-20250325224513",
+    "@credo-ts/askar": "0.6.0-alpha-20250325224513",
+    "@credo-ts/core": "0.6.0-alpha-20250325224513",
+    "@credo-ts/indy-vdr": "0.6.0-alpha-20250325224513",
+    "@credo-ts/node": "^0.6.0-alpha-20250325224513",
+    "@credo-ts/openid4vc": "0.6.0-alpha-20250325224513",
     "@credo-ts/push-notifications": "^0.7.1",
-    "@credo-ts/question-answer": "0.5.15",
-    "@credo-ts/tenants": "0.5.15",
+    "@credo-ts/question-answer": "0.6.0-alpha-20250325224513",
+    "@credo-ts/tenants": "0.6.0-alpha-20250325224513",
     "@hyperledger/anoncreds-nodejs": "0.3.1",
-    "@hyperledger/aries-askar-nodejs": "0.2.3",
+    "@openwallet-foundation/askar-nodejs": "^0.3.2",
     "@hyperledger/indy-vdr-nodejs": "0.2.2",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-logs-otlp-http": "^0.202.0",
@@ -115,7 +116,7 @@
     "typescript": "^5.8.3"
   },
   "resolutions": {
-    "@credo-ts/core": "0.5.15",
-    "@credo-ts/askar": "0.5.15"
+    "@credo-ts/core": "0.6.0-alpha-20250325224513",
+    "@credo-ts/askar": "0.6.0-alpha-20250325224513"
   }
 }

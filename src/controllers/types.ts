@@ -2,29 +2,15 @@ import type { RecordId } from './examples'
 import type { CustomHandshakeProtocol } from '../enums'
 import type { AnonCredsCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
 import type {
-  AutoAcceptCredential,
-  AutoAcceptProof,
-  CredentialFormatPayload,
-  HandshakeProtocol,
-  ReceiveOutOfBandInvitationConfig,
-  OutOfBandDidCommService,
   DidResolutionMetadata,
   DidDocumentMetadata,
-  ProofExchangeRecord,
-  ProofFormat,
   DidRegistrationExtraOptions,
   DidDocument,
   DidRegistrationSecretOptions,
   InitConfig,
   WalletConfig,
-  CredentialExchangeRecord,
   DidResolutionOptions,
-  JsonCredential,
-  AgentMessage,
-  Routing,
-  Attachment,
   KeyType,
-  JsonLdCredentialFormat,
   JsonObject,
   W3cJsonLdVerifyCredentialOptions,
   DataIntegrityProofOptions,
@@ -32,11 +18,29 @@ import type {
   W3cCredential,
   W3cCredentialSubject,
 } from '@credo-ts/core'
+
+import type {
+  AutoAcceptCredential,
+  AutoAcceptProof,
+  JsonLdCredentialFormat,
+  JsonCredential,
+  AgentMessage,
+  Routing,
+  Attachment,
+  CredentialExchangeRecord,
+  ProofExchangeRecord,
+  ProofFormat,
+  CredentialFormatPayload,
+  HandshakeProtocol,
+  ReceiveOutOfBandInvitationConfig,
+  OutOfBandDidCommService,
+} from '@credo-ts/didcomm'
 import type { LinkedDataProofOptions } from '@credo-ts/core/build/modules/vc/data-integrity/models/LinkedDataProof'
 import type { SingleOrArray } from '@credo-ts/core/build/utils'
 import type { DIDDocument } from 'did-resolver'
 
-export type CustomTenantConfig = Pick<InitConfig, 'label' | 'connectionImageUrl'> & {
+export type CustomTenantConfig = Pick<InitConfig, 'label'> & {
+  connectionImageUrl?: string
   walletConfig: Pick<WalletConfig, 'id' | 'key' | 'keyDerivationMethod'>
 }
 
@@ -436,4 +440,8 @@ export type ExtensibleW3cCredential = W3cCredential & {
 
 export type CustomW3cJsonLdSignCredentialOptions = Omit<W3cJsonLdSignCredentialOptions, 'format'> & {
   [key: string]: unknown
+}
+
+export type DisclosureFrame = {
+  [key: string]: boolean | DisclosureFrame
 }

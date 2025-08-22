@@ -12,7 +12,7 @@ import type {
   OutOfBandRole,
   OutOfBandState,
   CredentialRole,
-} from '@credo-ts/core'
+} from '@credo-ts/didcomm'
 
 /**
  * @example "821f9b26-ad04-4f56-89b6-e2ef9c72b36e"

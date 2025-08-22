@@ -1809,15 +1809,11 @@
 							}
 						},
 						"type": "object"
-					},
-					"messageType": {
-						"type": "string"
 					}
 				},
 				"required": [
 					"@type",
-					"@id",
-					"messageType"
+					"@id"
 				],
 				"type": "object",
 				"additionalProperties": {}
@@ -1903,11 +1899,16 @@
 			"AgentMessage": {
 				"$ref": "#/components/schemas/PlaintextMessage"
 			},
+			"Uint8Array": {
+				"description": "A typed array of 8-bit unsigned integer values. The contents are initialized to 0. If the\nrequested number of bytes could not be allocated an exception is raised.",
+				"properties": {},
+				"type": "object",
+				"additionalProperties": false
+			},
 			"Key": {
 				"properties": {
 					"publicKey": {
-						"type": "string",
-						"format": "byte"
+						"$ref": "#/components/schemas/Uint8Array"
 					},
 					"keyType": {
 						"$ref": "#/components/schemas/KeyType"
@@ -2160,22 +2161,6 @@
 			},
 			"OutOfBandRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
-			},
-			"AgentMessageType": {
-				"properties": {
-					"@id": {
-						"type": "string"
-					},
-					"@type": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"@id",
-					"@type"
-				],
-				"type": "object",
-				"additionalProperties": {}
 			},
 			"CustomHandshakeProtocol": {
 				"enum": [
@@ -2624,8 +2609,7 @@
 					},
 					"credentialSubject": {
 						"$ref": "#/components/schemas/SingleOrArray_JsonObject_"
-					},
-					"prettyVc": {}
+					}
 				},
 				"required": [
 					"@context",
@@ -3143,6 +3127,9 @@
 				],
 				"type": "string"
 			},
+			"ConnectionRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
 			"BasicMessageRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
@@ -3158,13 +3145,11 @@
 				"type": "object",
 				"description": "Construct a type with a set of properties K of type T"
 			},
-			"Pick_InitConfig.label-or-connectionImageUrl_": {
+			"Pick_InitConfig.label_": {
 				"properties": {
 					"label": {
-						"type": "string"
-					},
-					"connectionImageUrl": {
-						"type": "string"
+						"type": "string",
+						"description": "Agent public endpoints, sorted by priority (higher priority first)"
 					}
 				},
 				"required": [
@@ -3203,7 +3188,7 @@
 			"TenantConfig": {
 				"allOf": [
 					{
-						"$ref": "#/components/schemas/Pick_InitConfig.label-or-connectionImageUrl_"
+						"$ref": "#/components/schemas/Pick_InitConfig.label_"
 					},
 					{
 						"properties": {
@@ -3244,7 +3229,8 @@
 			"Pick_CustomTenantConfig.Exclude_keyofCustomTenantConfig.walletConfig__": {
 				"properties": {
 					"label": {
-						"type": "string"
+						"type": "string",
+						"description": "Agent public endpoints, sorted by priority (higher priority first)"
 					},
 					"connectionImageUrl": {
 						"type": "string"
@@ -3271,6 +3257,445 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"OpenId4VcIssuanceSessionRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"SignerMethod": {
+				"enum": [
+					"did",
+					"x5c"
+				],
+				"type": "string"
+			},
+			"Record_string.boolean_": {
+				"properties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"Record_string.boolean-or-Record_string.boolean__": {
+				"properties": {},
+				"additionalProperties": {
+					"anyOf": [
+						{
+							"type": "boolean"
+						},
+						{
+							"$ref": "#/components/schemas/Record_string.boolean_"
+						}
+					]
+				},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions": {
+				"properties": {
+					"credentialSupportedId": {
+						"type": "string"
+					},
+					"format": {
+						"type": "string"
+					},
+					"payload": {
+						"properties": {
+							"vct": {
+								"type": "string"
+							}
+						},
+						"additionalProperties": {},
+						"type": "object"
+					},
+					"disclosureFrame": {
+						"$ref": "#/components/schemas/Record_string.boolean-or-Record_string.boolean__"
+					}
+				},
+				"required": [
+					"credentialSupportedId",
+					"format",
+					"payload"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OpenId4VcIssuanceSessionsCreateOffer": {
+				"properties": {
+					"publicIssuerId": {
+						"type": "string"
+					},
+					"signerOption": {
+						"properties": {
+							"x5c": {
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							},
+							"did": {
+								"type": "string"
+							},
+							"method": {
+								"$ref": "#/components/schemas/SignerMethod"
+							}
+						},
+						"required": [
+							"method"
+						],
+						"type": "object"
+					},
+					"credentials": {
+						"items": {
+							"$ref": "#/components/schemas/OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions"
+						},
+						"type": "array"
+					},
+					"authorizationCodeFlowConfig": {
+						"properties": {
+							"issuerState": {
+								"type": "string"
+							},
+							"requirePresentationDuringIssuance": {
+								"type": "boolean"
+							},
+							"authorizationServerUrl": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"authorizationServerUrl"
+						],
+						"type": "object"
+					},
+					"preAuthorizedCodeFlowConfig": {
+						"properties": {
+							"authorizationServerUrl": {
+								"type": "string"
+							},
+							"txCode": {
+								"properties": {
+									"input_mode": {
+										"type": "string",
+										"enum": [
+											"numeric",
+											"text"
+										]
+									},
+									"length": {
+										"type": "number",
+										"format": "double"
+									},
+									"description": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"preAuthorizedCode": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"authorizationServerUrl"
+						],
+						"type": "object"
+					},
+					"issuanceMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					}
+				},
+				"required": [
+					"publicIssuerId",
+					"signerOption",
+					"credentials"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OpenId4VcIssuanceSessionState": {
+				"enum": [
+					"OfferCreated",
+					"OfferUriRetrieved",
+					"AuthorizationInitiated",
+					"AuthorizationGranted",
+					"AccessTokenRequested",
+					"AccessTokenCreated",
+					"CredentialRequestReceived",
+					"CredentialsPartiallyIssued",
+					"Completed",
+					"Error"
+				],
+				"type": "string"
+			},
+			"SdJwtVcRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"MdocRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"AuthorizeRequestCredentialOffer": {
+				"properties": {
+					"credentialOfferUri": {
+						"type": "string"
+					},
+					"credentialsToRequest": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"credentialOfferUri",
+					"credentialsToRequest"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RequestCredentialBody": {
+				"properties": {
+					"credentialOfferUri": {
+						"type": "string"
+					},
+					"credentialsToRequest": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"authorizationCode": {
+						"type": "string"
+					},
+					"codeVerifier": {
+						"type": "string"
+					},
+					"txCode": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"credentialOfferUri",
+					"credentialsToRequest"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ResolveProofRequest": {
+				"properties": {
+					"proofRequestUri": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"proofRequestUri"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OpenId4VcIssuerRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_",
+				"description": "For OID4VC you need to expose metadata files. Each issuer needs to host this metadata. This is not the case for DIDComm where we can just have one /didcomm endpoint.\nSo we create a record per openid issuer/verifier that you want, and each tenant can create multiple issuers/verifiers which have different endpoints\nand metadata files"
+			},
+			"Logo": {
+				"properties": {
+					"uri": {
+						"type": "string"
+					},
+					"alt_text": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"CredentialDisplay": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"locale": {
+						"type": "string"
+					},
+					"logo": {
+						"$ref": "#/components/schemas/Logo"
+					}
+				},
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"ProofTypeConfig": {
+				"properties": {
+					"proof_signing_alg_values_supported": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"proof_signing_alg_values_supported"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Record_string.ProofTypeConfig_": {
+				"properties": {},
+				"additionalProperties": {
+					"$ref": "#/components/schemas/ProofTypeConfig"
+				},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"CredentialDefinition": {
+				"properties": {
+					"type": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"CredentialConfigurationDisplay": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"locale": {
+						"type": "string"
+					},
+					"logo": {
+						"$ref": "#/components/schemas/Logo"
+					},
+					"description": {
+						"type": "string"
+					},
+					"background_color": {
+						"type": "string"
+					},
+					"background_image": {
+						"$ref": "#/components/schemas/Logo"
+					},
+					"text_color": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CredentialConfigurationSupportedWithFormats": {
+				"properties": {
+					"format": {
+						"type": "string",
+						"enum": [
+							"jwt_vc_json"
+						],
+						"nullable": false
+					},
+					"scope": {
+						"type": "string"
+					},
+					"cryptographic_binding_methods_supported": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"credential_signing_alg_values_supported": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"proof_types_supported": {
+						"$ref": "#/components/schemas/Record_string.ProofTypeConfig_"
+					},
+					"credential_definition": {
+						"$ref": "#/components/schemas/CredentialDefinition"
+					},
+					"display": {
+						"items": {
+							"$ref": "#/components/schemas/CredentialConfigurationDisplay"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"format",
+					"credential_definition"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Record_string.CredentialConfigurationSupportedWithFormats_": {
+				"properties": {},
+				"additionalProperties": {
+					"$ref": "#/components/schemas/CredentialConfigurationSupportedWithFormats"
+				},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"BatchCredentialIssuanceOptions": {
+				"properties": {
+					"batchSize": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"batchSize"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"UpdateIssuerRecordOptions": {
+				"properties": {
+					"display": {
+						"items": {
+							"$ref": "#/components/schemas/CredentialDisplay"
+						},
+						"type": "array"
+					},
+					"dpopSigningAlgValuesSupported": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"credentialConfigurationsSupported": {
+						"$ref": "#/components/schemas/Record_string.CredentialConfigurationSupportedWithFormats_"
+					},
+					"batchCredentialIssuance": {
+						"$ref": "#/components/schemas/BatchCredentialIssuanceOptions"
+					}
+				},
+				"required": [
+					"credentialConfigurationsSupported"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OpenId4VcVerificationSessionRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"OpenId4VcVerificationSessionState": {
+				"enum": [
+					"RequestCreated",
+					"RequestUriRetrieved",
+					"ResponseVerified",
+					"Error"
+				],
+				"type": "string"
+			},
+			"OpenId4VcVerifierRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_",
+				"description": "For OID4VC you need to expos metadata files. Each issuer needs to host this metadata. This is not the case for DIDComm where we can just have one /didcomm endpoint.\nSo we create a record per openid issuer/verifier that you want, and each tenant can create multiple issuers/verifiers which have different endpoints\nand metadata files"
 			}
 		},
 		"securitySchemes": {
@@ -5647,11 +6072,14 @@
 						"application/json": {
 							"schema": {
 								"properties": {
+									"routing": {
+										"$ref": "#/components/schemas/Routing"
+									},
 									"domain": {
 										"type": "string"
 									},
 									"message": {
-										"$ref": "#/components/schemas/AgentMessageType"
+										"$ref": "#/components/schemas/Record_string.unknown_"
 									},
 									"recordId": {
 										"type": "string"
@@ -7060,7 +7488,10 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/PlaintextMessage"
+									"items": {
+										"$ref": "#/components/schemas/ConnectionRecord"
+									},
+									"type": "array"
 								}
 							}
 						}
@@ -7487,6 +7918,971 @@
 					{
 						"in": "path",
 						"name": "tenantId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/issuance-sessions/create-credential-offer": {
+			"post": {
+				"operationId": "CreateCredentialOffer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"issuanceSession": {
+											"$ref": "#/components/schemas/OpenId4VcIssuanceSessionRecord"
+										},
+										"credentialOffer": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"issuanceSession",
+										"credentialOffer"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Creates a credential offer with the specified credential configurations and authorization type.",
+				"tags": [
+					"oid4vc issuance sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/OpenId4VcIssuanceSessionsCreateOffer"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/openid4vc/issuance-sessions/{issuanceSessionId}": {
+			"get": {
+				"operationId": "GetIssuanceSessionsById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcIssuanceSessionRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get issuance details by issuance SessionId",
+				"tags": [
+					"oid4vc issuance sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "issuanceSessionId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			},
+			"put": {
+				"operationId": "UpdateSessionById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcIssuanceSessionRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Update issuance session metadata by session ID",
+				"tags": [
+					"oid4vc issuance sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "issuanceSessionId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/Record_string.unknown_"
+							}
+						}
+					}
+				}
+			},
+			"delete": {
+				"operationId": "DeleteIssuanceSessionById",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Delete issuance session by session ID",
+				"tags": [
+					"oid4vc issuance sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "issuanceSessionId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/issuance-sessions": {
+			"get": {
+				"operationId": "GetIssuanceSessionsByQuery",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/OpenId4VcIssuanceSessionRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch all issuance sessions by query",
+				"tags": [
+					"oid4vc issuance sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "cNonce",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "publicIssuerId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "preAuthorizedCode",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "state",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/OpenId4VcIssuanceSessionState"
+						}
+					},
+					{
+						"in": "query",
+						"name": "credentialOfferUri",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "authorizationCode",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/holder/sd-jwt-vcs": {
+			"get": {
+				"operationId": "GetSdJwtCredentials",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/SdJwtVcRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get SdJwt type of credentials",
+				"tags": [
+					"oid4vc holders"
+				],
+				"security": [
+					{
+						"apiKey": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/openid4vc/holder/mdoc-vcs": {
+			"get": {
+				"operationId": "GetMdocCredentials",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/MdocRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch all mso mdoc credentials in wallet",
+				"tags": [
+					"oid4vc holders"
+				],
+				"security": [
+					{
+						"apiKey": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/openid4vc/holder/authorization-request": {
+			"post": {
+				"operationId": "RequestAuthorizationForCredential",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"codeVerifier": {
+											"type": "string"
+										},
+										"authorizationRequestUrl": {
+											"type": "string"
+										},
+										"actionToTake": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"codeVerifier",
+										"authorizationRequestUrl",
+										"actionToTake"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Resolve a credential offer",
+				"tags": [
+					"oid4vc holders"
+				],
+				"security": [
+					{
+						"apiKey": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AuthorizeRequestCredentialOffer"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/openid4vc/holder/request-credential": {
+			"post": {
+				"operationId": "RequestCredential",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Initiates a token request, then requests credentials from issuer",
+				"tags": [
+					"oid4vc holders"
+				],
+				"security": [
+					{
+						"apiKey": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RequestCredentialBody"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/openid4vc/holder/resolve-proof-request": {
+			"post": {
+				"operationId": "ResolveProofRequest",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {}
+							}
+						}
+					}
+				},
+				"description": "Resolve a proof request",
+				"tags": [
+					"oid4vc holders"
+				],
+				"security": [
+					{
+						"apiKey": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ResolveProofRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/openid4vc/holder/accept-proof-request": {
+			"post": {
+				"operationId": "AcceptProofRequest",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {}
+							}
+						}
+					}
+				},
+				"description": "Accept a proof request",
+				"tags": [
+					"oid4vc holders"
+				],
+				"security": [
+					{
+						"apiKey": []
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ResolveProofRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/openid4vc/issuer": {
+			"post": {
+				"operationId": "CreateIssuer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcIssuerRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Creates an issuer with issuer metadata.",
+				"tags": [
+					"oid4vc issuers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetIssuersByQuery",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/OpenId4VcIssuerRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Query issuers by optional publicIssuerId.",
+				"tags": [
+					"oid4vc issuers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "publicIssuerId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/issuer/{publicIssuerId}": {
+			"put": {
+				"operationId": "UpdateIssuerMetadata",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcIssuerRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Updates issuer metadata for a given publicIssuerId.",
+				"tags": [
+					"oid4vc issuers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "publicIssuerId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateIssuerRecordOptions"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetIssuer",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcIssuerRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Returns a specific issuer by publicIssuerId.",
+				"tags": [
+					"oid4vc issuers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "publicIssuerId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/issuer/{issuerId}/metadata": {
+			"get": {
+				"operationId": "GetIssuerAgentMetaData",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "number",
+									"format": "double"
+								}
+							}
+						}
+					}
+				},
+				"description": "Returns metadata for a specific issuer.",
+				"tags": [
+					"oid4vc issuers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "issuerId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/issuer/{id}": {
+			"delete": {
+				"operationId": "DeleteIssuer",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Deletes a specific issuer by record id.",
+				"tags": [
+					"oid4vc issuers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verification-sessions": {
+			"get": {
+				"operationId": "GetAllVerificationSessions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/OpenId4VcVerificationSessionRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create an authorization request, acting as a Relying Party (RP)",
+				"tags": [
+					"oid4vc verification sessions"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "publicVerifierId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "payloadState",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "state",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/OpenId4VcVerificationSessionState"
+						}
+					},
+					{
+						"in": "query",
+						"name": "authorizationRequestUri",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "nonce",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verification-sessions/{verificationSessionId}": {
+			"get": {
+				"operationId": "GetVerificationSessionsById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcVerificationSessionRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get verification session by ID",
+				"tags": [
+					"oid4vc verification sessions"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "verificationSessionId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verifier": {
+			"post": {
+				"operationId": "CreateVerifier",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create a new verifier and store the verifier record",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetVerifiersByQuery",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get verifiers by query",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "publicVerifierId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verifier/{publicVerifierId}": {
+			"put": {
+				"operationId": "UpdateVerifierMetadata",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Update verifier metadata",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "publicVerifierId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetVerifier",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get single verifier by ID",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "publicVerifierId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verifier/{verifierId}": {
+			"delete": {
+				"operationId": "DeleteVerifier",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"description": "Delete verifier by ID",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "verifierId",
 						"required": true,
 						"schema": {
 							"type": "string"

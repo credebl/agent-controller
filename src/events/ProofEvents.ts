@@ -1,7 +1,6 @@
 import type { ServerConfig } from '../utils/ServerConfig'
-import type { Agent, ProofStateChangedEvent } from '@credo-ts/core'
-
-import { ProofEventTypes } from '@credo-ts/core'
+import type { Agent,  } from '@credo-ts/core'
+import { ProofStateChangedEvent, ProofEventTypes } from '@credo-ts/didcomm'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
@@ -20,7 +19,7 @@ export const proofEvents = async (agent: Agent, config: ServerConfig) => {
 
     //Emit webhook for dedicated agent
     if (event.metadata.contextCorrelationId === 'default') {
-      const data = await agent.proofs.getFormatData(record.id)
+      const data = await agent.modules.proofs.getFormatData(record.id)
       body.proofData = data
     }
 

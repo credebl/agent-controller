@@ -1,0 +1,12 @@
+diff --git a/node_modules/@credo-ts/core/build/types.d.ts b/node_modules/@credo-ts/core/build/types.d.ts
+index 964f309..4447f64 100644
+--- a/node_modules/@credo-ts/core/build/types.d.ts
++++ b/node_modules/@credo-ts/core/build/types.d.ts
+@@ -88,6 +88,7 @@ export interface PlaintextMessage {
+         thid?: string;
+         pthid?: string;
+     };
++    messageType?: string;
+     [key: string]: unknown;
+ }
+ export type EncryptedMessage = {

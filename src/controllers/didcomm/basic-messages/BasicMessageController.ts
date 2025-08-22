@@ -1,4 +1,4 @@
-import type { BasicMessageRecord, BasicMessageStorageProps } from '@credo-ts/core'
+import type { BasicMessageRecord, BasicMessageStorageProps } from '@credo-ts/didcomm'
 
 import { Request as Req } from 'express'
 import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
@@ -26,7 +26,7 @@ export class BasicMessageController extends Controller {
     @Path('connectionId') connectionId: RecordId,
   ): Promise<BasicMessageRecord[]> {
     try {
-      const basicMessageRecords = await request.agent.basicMessages.findAllByQuery({ connectionId })
+      const basicMessageRecords = await request.agent.modules.basicMessages.findAllByQuery({ connectionId })
       this.setStatus(200)
       return basicMessageRecords
     } catch (error) {
@@ -48,7 +48,7 @@ export class BasicMessageController extends Controller {
     @Body() body: Record<'content', string>,
   ) {
     try {
-      const basicMessageRecord = await request.agent.basicMessages.sendMessage(connectionId, body.content)
+      const basicMessageRecord = await request.agent.modules.basicMessages.sendMessage(connectionId, body.content)
       this.setStatus(201)
       return basicMessageRecord
     } catch (error) {
