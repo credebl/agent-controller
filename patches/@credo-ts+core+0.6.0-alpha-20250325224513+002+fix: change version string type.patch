@@ -1,0 +1,13 @@
+diff --git a/node_modules/@credo-ts/core/build/utils/version.d.ts b/node_modules/@credo-ts/core/build/utils/version.d.ts
+index 0ad7e14..e0588dc 100644
+--- a/node_modules/@credo-ts/core/build/utils/version.d.ts
++++ b/node_modules/@credo-ts/core/build/utils/version.d.ts
+@@ -1,7 +1,7 @@
+ export declare function parseVersionString(version: VersionString): Version;
+ export declare function isFirstVersionHigherThanSecond(first: Version, second: Version): boolean;
+ export declare function isFirstVersionEqualToSecond(first: Version, second: Version): boolean;
+-export type VersionString = `${number}.${number}` | `${number}.${number}.${number}`;
++export type VersionString = string;
+ export type MajorVersion = number;
+ export type MinorVersion = number;
+ export type PatchVersion = number;

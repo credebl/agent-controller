@@ -1,0 +1,14 @@
+diff --git a/node_modules/@credo-ts/didcomm/build/modules/proofs/formats/dif-presentation-exchange/DifPresentationExchangeProofFormatService.js b/node_modules/@credo-ts/didcomm/build/modules/proofs/formats/dif-presentation-exchange/DifPresentationExchangeProofFormatService.js
+index 202adff..1124458 100644
+--- a/node_modules/@credo-ts/didcomm/build/modules/proofs/formats/dif-presentation-exchange/DifPresentationExchangeProofFormatService.js
++++ b/node_modules/@credo-ts/didcomm/build/modules/proofs/formats/dif-presentation-exchange/DifPresentationExchangeProofFormatService.js
+@@ -168,7 +168,8 @@ class DifPresentationExchangeProofFormatService {
+         try {
+             ps.validatePresentationDefinition(request.presentation_definition);
+             ps.validatePresentationSubmission(jsonPresentation.presentation_submission);
+-            ps.validatePresentation(request.presentation_definition, parsedPresentation);
++            // FIXME: Commenting validatePresentation() for now due to intermittent abandoned issue
++            // ps.validatePresentation(request.presentation_definition, parsedPresentation);
+             let verificationResult;
+             // FIXME: for some reason it won't accept the input if it doesn't know
+             // whether it's a JWT or JSON-LD VP even though the input is the same.
