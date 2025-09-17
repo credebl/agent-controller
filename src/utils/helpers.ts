@@ -24,3 +24,45 @@ export async function generateSecretKey(length: number = 32): Promise<string> {
 
   return secretKey
 }
+
+
+export function getCertificateValidityForSystem(IsRootCA = false) {
+  let options: { validityYears?: number, startFromCurrentMonth?: boolean };
+  if (IsRootCA) {
+    options = {
+      validityYears:  parseInt(process.env.ROOT_CA_VALIDITY_YEARS ?? '3'),
+      startFromCurrentMonth: (process.env.ROOT_CA_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false
+    }
+
+  } else {
+    options = {
+      validityYears:  parseInt(process.env.DCS_VALIDITY_YEARS ?? '3'),
+      startFromCurrentMonth: (process.env.DCS_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false
+    }
+
+  }
+
+  return getCertificateValidity(options);
+
+}
+
+export function getCertificateValidity(options?: {
+  validityYears?: number
+  startFromCurrentMonth?: boolean
+}) {
+  const {
+    validityYears = 3,
+    startFromCurrentMonth = false,
+  } = options || {}
+
+  const now = new Date()
+
+  const startYear = now.getUTCFullYear()
+  const startMonth = startFromCurrentMonth ? now.getUTCMonth() : 0 // 0 = January
+  const startDay = now.getUTCDate()
+
+  const notBefore = new Date(Date.UTC(startYear, startMonth, startDay, 0, 0, 0))
+  const notAfter = new Date(Date.UTC(startYear + validityYears, startMonth, startDay, 0, 0, 0))
+
+  return { notBefore, notAfter }
+}

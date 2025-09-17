@@ -17,6 +17,8 @@ import type {
   W3cJsonLdSignCredentialOptions,
   W3cCredential,
   W3cCredentialSubject,
+  X509CertificateIssuerAndSubjectOptions,
+  X509CreateCertificateOptions,
 } from '@credo-ts/core'
 
 import type {
@@ -444,4 +446,26 @@ export type CustomW3cJsonLdSignCredentialOptions = Omit<W3cJsonLdSignCredentialO
 
 export type DisclosureFrame = {
   [key: string]: boolean | DisclosureFrame
+}
+
+
+export interface BasicX509CreateCertificateConfig extends X509CertificateIssuerAndSubjectOptions {
+         
+    keyType: KeyType;
+    issuerAlternativeNameURL: string;
+}
+
+export interface X509ImportCertificateOptionsDto {
+
+    /*
+        X.509 certificate in base64 string format
+    */
+    certificate: string;
+
+   /*
+   Private key in base64 string format
+   */
+    privateKey?: string;
+  
+    keyType: KeyType;
 }

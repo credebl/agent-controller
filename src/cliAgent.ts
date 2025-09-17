@@ -22,7 +22,8 @@ import {
   InMemoryLruCache,
   WebDidResolver,
   LogLevel,
-  Agent
+  Agent,
+  X509Module
 } from '@credo-ts/core'
 import {
   HttpOutboundTransport,
@@ -206,7 +207,7 @@ const getModules = (
       : new W3cCredentialsModule(),
     didcomm: new DidCommModule({
       processDidCommMessagesConcurrently: true   
-    }),
+    }),   
     oob: new OutOfBandModule(),
     mediationRecipient: new MediationRecipientModule(),
     discovery: new DiscoverFeaturesModule(),
@@ -228,11 +229,16 @@ const getModules = (
       serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
     }),
     openId4VcVerifier: new OpenId4VcVerifierModule({
-      baseUrl: `http://${process.env.APP_URL}/oid4vp`,
+      
+      baseUrl: process.env.NODE_ENV === 'PROD' ?
+      `https://${process.env.APP_URL}/oid4vp`: 
+        `${process.env.AGENT_HTTP_URL}/oid4vp`,
       router: openId4VpRouter,
     }),
     openId4VcIssuer: new OpenId4VcIssuerModule({
-      baseUrl: `http://${process.env.APP_URL}/oid4vci`,
+      baseUrl: process.env.NODE_ENV === 'PROD' ?
+        `https://${process.env.APP_URL}/oid4vci` :
+        `${process.env.AGENT_HTTP_URL}/oid4vci`,
       router: openId4VciRouter,
       statefulCredentialOfferExpirationInSeconds: Number(process.env.OPENID_CRED_OFFER_EXPIRY) || 3600,
       accessTokenExpiresInSeconds: Number(process.env.OPENID_ACCESS_TOKEN_EXPIRY) || 3600,
@@ -337,7 +343,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     // Ideally for testing connection between tenant agent we need to set this to 'true'. Default is 'false'
     // TODO: triage: not sure if we want it to be 'true', as it would mean parallel requests on BW
     // Setting it for now //TODO: check if this is needed
-    allowInsecureHttpUrls: true
+    allowInsecureHttpUrls: process.env.ALLOW_INSECURE_HTTP_URLS === 'true'
   }
 
   async function fetchLedgerData(ledgerConfig: {

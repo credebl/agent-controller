@@ -55,6 +55,7 @@ export const setupAgent = async ({ name, endpoints, port }: { name: string; endp
       key: name,
     },
     logger: logger,
+    allowInsecureHttpUrls: process.env.ALLOW_INSECURE_HTTP_URLS === 'true'
   }
 
   const legacyIndyCredentialFormat = new LegacyIndyCredentialFormatService()
