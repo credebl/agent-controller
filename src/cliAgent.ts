@@ -248,6 +248,24 @@ const getModules = (
       credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
     }),
     openId4VcHolderModule: new OpenId4VcHolderModule(),
+     x509: new X509Module({
+      // getTrustedCertificatesForVerification: (_agentContext, { certificateChain, verification }) => {
+      //   //TODO: We need to trust the certificate tenant wise, for that we need to fetch those details from platform 
+      //   const firstCertificate = certificateChain[0]
+      //   console.log(
+      //         `dyncamically trusting certificate ${firstCertificate?.getIssuerNameField('C')?.toString()} for verification of ${
+      //           verification.type
+      //     }`,
+      //     true
+      //   )
+      
+      //   const trustedCertificates = _agentContext.dependencyManager.resolve(X509ModuleConfig).trustedCertificates?.map((cert) =>
+      //     X509Certificate.fromEncodedCertificate(cert).toString('pem')
+      //   ) as [string, ...string[]]
+
+      //   return [...trustedCertificates]
+      // }
+    }),
   }
 }
 
