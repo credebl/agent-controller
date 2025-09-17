@@ -71,7 +71,6 @@ class x509Service {
     , options: X509ImportCertificateOptionsDto
   ) {
     const agent = agentReq.agent
-    // const privateKey = TypedArrayEncoder.fromBase64(options.privateKey ?? '')
     const secretHexKey = await pemToRawEd25519PrivateKey(options.privateKey ?? '')
     const privateKey = TypedArrayEncoder.fromHex(secretHexKey)
 

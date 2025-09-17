@@ -14,7 +14,6 @@ import { x509ServiceT } from './x509.service'
 
 
 @Tags('x509')
-// @Security('jwt', [SCOPES.MULTITENANT_BASE_AGENT])
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
 @Route('/x509')
 @injectable()
@@ -35,7 +34,7 @@ export class X509Controller extends Controller {
   public async ImportX509Certficates(@Request() request: Req, @Body() importX509Options: X509ImportCertificateOptionsDto) {
 
     try {
-console.log('importX509Options', JSON.stringify(importX509Options));
+
       return await x509ServiceT.ImportX509Certficates(request, importX509Options);
     } catch (error) {
       throw ErrorHandlingService.handle(error)
