@@ -3269,6 +3269,16 @@
 				],
 				"type": "string"
 			},
+			"OpenId4VciCredentialFormatProfile": {
+				"enum": [
+					"jwt_vc_json",
+					"jwt_vc_json-ld",
+					"ldp_vc",
+					"vc+sd-jwt",
+					"mso_mdoc"
+				],
+				"type": "string"
+			},
 			"Record_string.boolean_": {
 				"properties": {},
 				"type": "object",
@@ -3289,41 +3299,12 @@
 				"type": "object",
 				"description": "Construct a type with a set of properties K of type T"
 			},
-			"OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions": {
+			"OpenId4VcIssuanceSessionCredentialOptions": {
 				"properties": {
 					"credentialSupportedId": {
 						"type": "string"
 					},
-					"format": {
-						"type": "string"
-					},
-					"payload": {
-						"properties": {
-							"vct": {
-								"type": "string"
-							}
-						},
-						"additionalProperties": {},
-						"type": "object"
-					},
-					"disclosureFrame": {
-						"$ref": "#/components/schemas/Record_string.boolean-or-Record_string.boolean__"
-					}
-				},
-				"required": [
-					"credentialSupportedId",
-					"format",
-					"payload"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"OpenId4VcIssuanceSessionsCreateOffer": {
-				"properties": {
-					"publicIssuerId": {
-						"type": "string"
-					},
-					"signerOption": {
+					"signerOptions": {
 						"properties": {
 							"x5c": {
 								"items": {
@@ -3343,9 +3324,39 @@
 						],
 						"type": "object"
 					},
+					"format": {
+						"$ref": "#/components/schemas/OpenId4VciCredentialFormatProfile"
+					},
+					"payload": {
+						"properties": {
+							"vct": {
+								"type": "string"
+							}
+						},
+						"additionalProperties": {},
+						"type": "object"
+					},
+					"disclosureFrame": {
+						"$ref": "#/components/schemas/Record_string.boolean-or-Record_string.boolean__"
+					}
+				},
+				"required": [
+					"credentialSupportedId",
+					"signerOptions",
+					"format",
+					"payload"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OpenId4VcIssuanceSessionsCreateOffer": {
+				"properties": {
+					"publicIssuerId": {
+						"type": "string"
+					},
 					"credentials": {
 						"items": {
-							"$ref": "#/components/schemas/OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions"
+							"$ref": "#/components/schemas/OpenId4VcIssuanceSessionCredentialOptions"
 						},
 						"type": "array"
 					},
@@ -3405,7 +3416,6 @@
 				},
 				"required": [
 					"publicIssuerId",
-					"signerOption",
 					"credentials"
 				],
 				"type": "object",
@@ -3783,6 +3793,68 @@
 			"OpenId4VcVerifierRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_",
 				"description": "For OID4VC you need to expos metadata files. Each issuer needs to host this metadata. This is not the case for DIDComm where we can just have one /didcomm endpoint.\nSo we create a record per openid issuer/verifier that you want, and each tenant can create multiple issuers/verifiers which have different endpoints\nand metadata files"
+			},
+			"BasicX509CreateCertificateConfig": {
+				"properties": {
+					"countryName": {
+						"type": "string"
+					},
+					"stateOrProvinceName": {
+						"type": "string"
+					},
+					"organizationalUnit": {
+						"type": "string"
+					},
+					"commonName": {
+						"type": "string"
+					},
+					"keyType": {
+						"$ref": "#/components/schemas/KeyType"
+					},
+					"issuerAlternativeNameURL": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"keyType",
+					"issuerAlternativeNameURL"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"X509ImportCertificateOptionsDto": {
+				"properties": {
+					"certificate": {
+						"type": "string"
+					},
+					"privateKey": {
+						"type": "string"
+					},
+					"keyType": {
+						"$ref": "#/components/schemas/KeyType"
+					}
+				},
+				"required": [
+					"certificate",
+					"keyType"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"X509Certificate": {
+				"properties": {
+					"publicKey": {
+						"$ref": "#/components/schemas/Key"
+					},
+					"privateKey": {
+						"$ref": "#/components/schemas/Uint8Array"
+					}
+				},
+				"required": [
+					"publicKey"
+				],
+				"type": "object",
+				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {
@@ -8960,10 +9032,7 @@
 						"description": "Ok",
 						"content": {
 							"application/json": {
-								"schema": {
-									"type": "number",
-									"format": "double"
-								}
+								"schema": {}
 							}
 						}
 					}
@@ -9329,6 +9398,217 @@
 						}
 					}
 				]
+			}
+		},
+		"/x509": {
+			"post": {
+				"operationId": "CreateSelfSignedDCS",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"selfSignedx509certificateBase64": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"selfSignedx509certificateBase64"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/BasicX509CreateCertificateConfig"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/x509/import": {
+			"post": {
+				"operationId": "ImportX509Certficates",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"issuerCertficicate": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"issuerCertficicate"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/X509ImportCertificateOptionsDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/x509/trusted": {
+			"post": {
+				"operationId": "AddTrustedCertificate",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"certificate": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"certificate"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetTrustedCertificates",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/x509/decode": {
+			"post": {
+				"operationId": "DecodeCertificate",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/X509Certificate"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"certificate": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"certificate"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
 			}
 		}
 	},

@@ -15,16 +15,16 @@ class IssuanceSessionsService {
     options: OpenId4VcIssuanceSessionsCreateOffer,
     agentReq: Req
   ) {
-    const { credentials, signerOption, publicIssuerId } = options
+    const { credentials, publicIssuerId } = options
 
     const issuer = await agentReq.agent.modules.openId4VcIssuer.getIssuerByIssuerId(publicIssuerId)
 
-    if (!signerOption || !signerOption.method) {
-      throw new BadRequestError(`signerOption must be provided with one of: ${Object.values(SignerMethod).join(', ')}`)
-    }
-    if (signerOption.method === SignerMethod.Did && !signerOption.did) {
-      throw new BadRequestError(`'did' must be provided when signer method is 'did'`)
-    }
+    // if (!signerOption || !signerOption.method) {
+    //   throw new BadRequestError(`signerOption must be provided with one of: ${Object.values(SignerMethod).join(', ')}`)
+    // }
+    // if (signerOption.method === SignerMethod.Did && !signerOption.did) {
+    //   throw new BadRequestError(`'did' must be provided when signer method is 'did'`)
+    // }
 
     const mappedCredentials = credentials.map((c) => {
       const supported = issuer.credentialConfigurationsSupported[c.credentialSupportedId]
@@ -36,6 +36,20 @@ class IssuanceSessionsService {
           `Format mismatch for '${c.credentialSupportedId}': expected '${supported.format}', got '${c.format}'`,
         )
       }
+
+      // must have signing options
+      if (!c.signerOptions || !c.signerOptions.method) {
+        throw new BadRequestError(`signerOptions must be provided and allowed methods are ${Object.values(SignerMethod).join(', ')}`);
+      }
+
+      if (c.signerOptions.method == SignerMethod.Did && !c.signerOptions.did) {
+        throw new BadRequestError(`For ${c.credentialSupportedId} : did must be present inside signerOptions if SignerMethod is 'did' `);
+      }
+
+      if (c.signerOptions.method === SignerMethod.X5c && !c.signerOptions.x5c){
+        throw new BadRequestError(`For ${c.credentialSupportedId} : x5c must be present inside signerOptions if SignerMethod is 'x5c' `);
+      }
+
       return {
         ...c,
         payload: {
@@ -46,22 +60,7 @@ class IssuanceSessionsService {
       // format: c.format as OpenId4VciCredentialFormatProfile, TODO: fix this type
     })
 
-    options.issuanceMetadata ||= {}
-
-    if (signerOption.method === SignerMethod.Did) {
-      options.issuanceMetadata.issuerDid = signerOption.did
-    } else if (signerOption.method === SignerMethod.X5c) {
-      const record = (await agentReq.agent.genericRecords.findById(X509_CERTIFICATE_RECORD)) as X509GenericRecord
-      if (!signerOption.x5c && !record) {
-        throw new Error('x5c certificate is required')
-      }
-      const cert = record?.content?.dcs
-      const certArray = Array.isArray(cert) ? cert : typeof cert === 'string' ? [cert] : []
-      if (!certArray.length) {
-        throw new Error('x509 certificate must be non-empty')
-      }
-      options.issuanceMetadata.issuerx509certificate = signerOption.x5c ?? [...certArray]
-    }
+    options.issuanceMetadata ||= {}    
 
     options.issuanceMetadata.credentials = mappedCredentials
 

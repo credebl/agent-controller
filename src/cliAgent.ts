@@ -67,7 +67,7 @@ import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
 import { OpenId4VcHolderModule, OpenId4VcIssuerModule, OpenId4VcVerifierModule } from '@credo-ts/openid4vc'
 import { Router } from 'express'
-import { getCredentialRequestToCredentialMapper } from './utils/oid4vc-agent'
+import { getCredentialRequestToCredentialMapper, getMixedCredentialRequestToCredentialMapper } from './utils/oid4vc-agent'
 
 const openId4VciRouter = Router()
 const openId4VpRouter = Router()
@@ -245,7 +245,7 @@ const getModules = (
       authorizationCodeExpiresInSeconds: Number(process.env.OPENID_AUTH_CODE_EXPIRY) || 3600,
       cNonceExpiresInSeconds: Number(process.env.OPENID_CNONCE_EXPIRY) || 3600,
       dpopRequired: false,
-      credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
+      credentialRequestToCredentialMapper: (...args) => getMixedCredentialRequestToCredentialMapper()(...args),
     }),
     openId4VcHolderModule: new OpenId4VcHolderModule(),
      x509: new X509Module({

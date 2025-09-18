@@ -1,11 +1,18 @@
+import { OpenId4VciCredentialFormatProfile } from "@credo-ts/openid4vc"
+
 export enum SignerMethod {
   Did = 'did',
   X5c = 'x5c',
 }
 
-export interface OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions {
+export interface OpenId4VcIssuanceSessionCredentialOptions {
   credentialSupportedId: string
-  format: string
+  signerOptions: {
+    method: SignerMethod
+    did?: string
+    x5c?: string[]
+  }
+  format: OpenId4VciCredentialFormatProfile
   payload: {
     vct?: string
     [key: string]: unknown
@@ -15,12 +22,7 @@ export interface OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions {
 
 export interface OpenId4VcIssuanceSessionsCreateOffer {
   publicIssuerId: string
-  signerOption: {
-    method: SignerMethod
-    did?: string
-    x5c?: string[]
-  }
-  credentials: Array<OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions>
+  credentials: Array<OpenId4VcIssuanceSessionCredentialOptions>
   authorizationCodeFlowConfig?: {
     authorizationServerUrl: string
     requirePresentationDuringIssuance?: boolean

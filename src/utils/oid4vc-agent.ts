@@ -185,7 +185,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
   }) => {
 
     const issuanceMetadata = issuanceSession.issuanceMetadata;
-    const issuerx509certificate = issuanceMetadata?.["issuerx509certificate"] as string[] | undefined;
+    
 
     if (!issuanceMetadata?.["credentials"])
       throw new Error('credential payload is not provided')
@@ -205,6 +205,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     const credential = credentialPayload[0]
 
     let issuerDidVerificationMethod: string | undefined = '';
+    let issuerx509certificate: string[] | undefined;
 
     if (credential.signerOptions.method === SignerMethod.Did) {
       if (credential.signerOptions.did) {
@@ -218,6 +219,14 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
 
         if (!issuerDidVerificationMethod) {
           throw new Error("No matching verification method found");
+        }
+      }
+    } else if (credential.signerOptions.method === SignerMethod.X5c) {
+      if (credential.signerOptions.x5c) {
+        issuerx509certificate = credential.signerOptions.x5c // as string[] | undefined;
+
+        if (!issuerx509certificate) {
+          throw new Error("x509certificate must be provided when using x5c as signer method");
         }
       }
     }
@@ -250,7 +259,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
 
     if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.MsoMdoc) {
       if (!issuerx509certificate)
-        throw new Error(`issuerx509certificate is mot provided for credential type ${OpenId4VciCredentialFormatProfile.MsoMdoc}`)
+        throw new Error(`issuerx509certificate is not provided for credential type ${OpenId4VciCredentialFormatProfile.MsoMdoc}`)
 
       if (!credentialConfiguration.doctype) {
         throw new Error(`'doctype' not found in credential configuration, ${JSON.stringify(credentialConfiguration, null, 2)}`)
