@@ -275,17 +275,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
         credentials: holderBindings.map((holderBinding) => ({
           issuerCertificate: issuerx509certificate[0],
           holderKey: holderBinding.key,
-          namespaces: {
-            [namespace]: {
-              ...credential.payload,
-            },
-          },
-          // TODO - add validity info
-          /*validityInfo: {
-            expectedUpdate: true,
-            validFrom: '',
-            validUntil: ''
-          },*/
+          ...credential.payload,         
           docType: credentialConfiguration.doctype,
         })),
       } satisfies OpenId4VciSignMdocCredentials
@@ -327,14 +317,10 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     }
 
     if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.SdJwtVc) {
-      let sdArray: unknown[] = []
-      if (credential.disclosureFrame && Array.isArray(credential.disclosureFrame._sd)) {
-        sdArray = credential.disclosureFrame._sd
-      }
-
-      const disclosureFramePayload: any = {
-        _sd: sdArray,
-      }
+     const disclosureFramePayload =
+        credentialPayload[0].disclosureFrame && Object.keys(credentialPayload[0].disclosureFrame).length > 0
+          ? credentialPayload[0].disclosureFrame
+          : {}
 
       return {
         credentialConfigurationId,

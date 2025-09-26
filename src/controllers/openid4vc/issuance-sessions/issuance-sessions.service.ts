@@ -46,11 +46,14 @@ class IssuanceSessionsService {
       return {
         ...cred,
         payload: {
-          ...cred.payload,
-          vct: cred.payload?.vct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
+          ...cred?.payload,
+          ...("vct" in (cred?.payload ?? {}) && {
+            vct: (cred?.payload as any).vct ??
+              (typeof supported.vct === "string" ? supported.vct : undefined),
+          }),
         },
-      }
-      // format: c.format as OpenId4VciCredentialFormatProfile, TODO: fix this type
+      };
+
     })
 
     options.issuanceMetadata ||= {}

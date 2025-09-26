@@ -40,6 +40,16 @@ export class HolderController {
     return await this.holderService.getMdocCredentials(this.agent)
   }
 
+    /**
+   * Decode mso mdoc credential in wallet
+   */
+  @Post('/mdoc-vcs/decode')
+  public async decodeMdocCredential(@Body() body:{
+      base64Url: string
+    }) {
+    return await this.holderService.decodeMdocCredential(this.agent, body)
+  }
+
   /**
    * Resolve a credential offer
    */

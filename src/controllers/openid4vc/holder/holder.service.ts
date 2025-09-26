@@ -58,6 +58,19 @@ export class HolderService {
     return await agent.mdoc.getAll()
   }
 
+  public async decodeMdocCredential(agent: Agent, options: {
+    base64Url: string
+  }) {
+
+    const credential = Mdoc.fromBase64Url(options.base64Url)
+    return {
+      namespace: credential.issuerSignedNamespaces,
+      docType: credential.docType,
+      validityInfo: credential.validityInfo,
+      issuerSignedCertificateChain: credential.issuerSignedCertificateChain
+    } as any
+  }
+
   // public async resolveCredentialOffer(agent: Agent, body: ResolveCredentialOfferBody) {
   //   return await agent.modules.openId4VcHolderModule.resolveCredentialOffer(body.credentialOfferUri)
   // }

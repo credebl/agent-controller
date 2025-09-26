@@ -1,28 +1,55 @@
-import { OpenId4VciCredentialFormatProfile } from "@credo-ts/openid4vc"
+import { MdocNameSpaces, W3cCredential } from "@credo-ts/core"
+import { OpenId4VciCreateCredentialOfferOptions, OpenId4VciCredentialFormatProfile, OpenId4VciSignCredentials } from "@credo-ts/openid4vc"
 
 export enum SignerMethod {
   Did = 'did',
   X5c = 'x5c',
 }
 
-export interface OpenId4VcIssuanceSessionCredentialOptions {
-  credentialSupportedId: string
+export interface OpenId4VciOfferCredentials {
+  credentialSupportedId: string  
+  format: OpenId4VciCredentialFormatProfile,
   signerOptions: {
     method: SignerMethod
     did?: string
     x5c?: string[]
   }
-  format: OpenId4VciCredentialFormatProfile
+}
+
+export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentials {
+  
   payload: {
     vct?: string
     [key: string]: unknown
   }
   disclosureFrame?: Record<string, boolean | Record<string, boolean>>
 }
+export interface ValidityInfo {
+    signed: Date;
+    validFrom: Date;
+    validUntil: Date;
+    expectedUpdate?: Date;
+}
 
-export interface OpenId4VcIssuanceSessionsCreateOffer {
+export interface OpenId4VciOfferMdocCredential extends OpenId4VciOfferCredentials {     
+  payload: {
+    docType: 'org.iso.18013.5.1.mDL' | (string & {})
+    validityInfo?: Partial<ValidityInfo>,
+    namespaces: MdocNameSpaces    
+  }
+}
+
+export interface OpenId4VciOfferW3cCredential extends OpenId4VciOfferCredentials {     
+  payload: {
+  verificationMethod: string;
+   credential: W3cCredential;
+  }
+}
+
+
+export interface OpenId4VcIssuanceSessionsCreateOffer {//extends OpenId4VciCreateCredentialOfferOptions {
   publicIssuerId: string
-  credentials: Array<OpenId4VcIssuanceSessionCredentialOptions>
+  credentials: Array<OpenId4VciOfferSdJwtCredential | OpenId4VciOfferMdocCredential | OpenId4VciOfferW3cCredential> 
   authorizationCodeFlowConfig?: {
     authorizationServerUrl: string
     requirePresentationDuringIssuance?: boolean
