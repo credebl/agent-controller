@@ -8,7 +8,7 @@ import type {
   OpenId4VciSignW3cCredentials,
 } from '@credo-ts/openid4vc'
 
-import { DidsApi } from '@credo-ts/core'
+import { DidsApi, X509Service } from '@credo-ts/core'
 import {
   ClaimFormat,
   CredoError,
@@ -322,6 +322,11 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
           ? credentialPayload[0].disclosureFrame
           : {}
 
+          //Taking leaf certifcate from chain as issuer certificate, if not provided explicitly taking AGENT_HTTP_URL as issuer 
+    const parsedCertificate = X509Service.parseCertificate(agentContext, {
+          encodedCertificate: (issuerx509certificate ?? [`${process.env.AGENT_HTTP_URL}`])[0],
+        })
+
       return {
         credentialConfigurationId,
         format: ClaimFormat.SdJwtVc,
@@ -335,8 +340,8 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
               }
             : {
                 method: 'x5c',
-                x5c: issuerx509certificate ?? [], //[issuerx509certificate??""],
-                issuer: `${process.env.AGENT_HTTP_URL}`,
+                x5c: issuerx509certificate ?? [],
+                issuer: parsedCertificate.sanUriNames[0],
               },
           disclosureFrame: disclosureFramePayload,
         })),

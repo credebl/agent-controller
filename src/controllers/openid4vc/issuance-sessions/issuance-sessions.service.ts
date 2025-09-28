@@ -1,5 +1,5 @@
 import type { OpenId4VcIssuanceSessionsCreateOffer } from '../types/issuer.types'
-import type { OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
+import { OpenId4VciCredentialFormatProfile, type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
 import type { Request as Req } from 'express'
 
 import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc/build/openid4vc-issuer/repository'
@@ -43,16 +43,34 @@ class IssuanceSessionsService {
         )
       }
 
+      const currentVct = cred.payload && 'vct' in cred.payload ? cred.payload.vct : undefined;
       return {
-        ...cred,
-        payload: {
-          ...cred?.payload,
-          ...("vct" in (cred?.payload ?? {}) && {
-            vct: (cred?.payload as any).vct ??
-              (typeof supported.vct === "string" ? supported.vct : undefined),
-          }),
-        },
-      };
+    ...cred,
+    payload: {
+      ...cred.payload,
+      vct: currentVct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
+    },
+  }
+
+      // if (cred.format === OpenId4VciCredentialFormatProfile.SdJwtVc) {
+      //   return {
+      //     ...cred,
+      //     payload: {
+      //       ...cred.payload,
+      //       vct: cred.payload?.vct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
+      //     },
+      //   }
+      // }
+      // else {
+      //   return {
+      //     ...cred,
+      //     payload: {
+      //       ...cred.payload            
+      //     },
+      //   }
+      // }
+
+      // format: c.format as OpenId4VciCredentialFormatProfile, TODO: fix this type    
 
     })
 
