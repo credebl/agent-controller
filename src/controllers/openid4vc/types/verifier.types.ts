@@ -57,16 +57,26 @@ export interface DcqlDefinition {
 /* -------------------------------------------------------------------------- */
 /*                       AUTHORIZATION REQUEST MODEL                          */
 /* -------------------------------------------------------------------------- */
+export interface OpenId4VcJwtIssuerDid {
+  method: 'did'
+  didUrl: string
+}
+
+export interface OpenId4VcIssuerX5c {
+  method: 'x5c'
+  issuer: string
+  x5c: string[]
+  alg: string
+}
 
 export interface CreateAuthorizationRequest {
   verifierId: string
-  verifierDid: string
-
-  // Either DIF Presentation Exchange or DCQL-based query
   presentationExchange?: PresentationDefinition
   dcql?: string | DcqlDefinition
 
   responseMode?: ResponseModeEnum
+
+  requestSigner: OpenId4VcJwtIssuerDid
 }
 
 /* -------------------------------------------------------------------------- */

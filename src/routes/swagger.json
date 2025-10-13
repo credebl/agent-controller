@@ -3966,71 +3966,6 @@
 				],
 				"type": "string"
 			},
-			"SdJwtVcRecord": {
-				"$ref": "#/components/schemas/Record_string.unknown_"
-			},
-			"MdocRecord": {
-				"$ref": "#/components/schemas/Record_string.unknown_"
-			},
-			"AuthorizeRequestCredentialOffer": {
-				"properties": {
-					"credentialOfferUri": {
-						"type": "string"
-					},
-					"credentialsToRequest": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"credentialOfferUri",
-					"credentialsToRequest"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"RequestCredentialBody": {
-				"properties": {
-					"credentialOfferUri": {
-						"type": "string"
-					},
-					"credentialsToRequest": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"authorizationCode": {
-						"type": "string"
-					},
-					"codeVerifier": {
-						"type": "string"
-					},
-					"txCode": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"credentialOfferUri",
-					"credentialsToRequest"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"ResolveProofRequest": {
-				"properties": {
-					"proofRequestUri": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"proofRequestUri"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"OpenId4VcIssuerRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_",
 				"description": "For OID4VC you need to expose metadata files. Each issuer needs to host this metadata. This is not the case for DIDComm where we can just have one /didcomm endpoint.\nSo we create a record per openid issuer/verifier that you want, and each tenant can create multiple issuers/verifiers which have different endpoints\nand metadata files"
@@ -5040,12 +4975,29 @@
 				],
 				"type": "string"
 			},
+			"OpenId4VcJwtIssuerDid": {
+				"properties": {
+					"method": {
+						"type": "string",
+						"enum": [
+							"did"
+						],
+						"nullable": false
+					},
+					"didUrl": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"method",
+					"didUrl"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"CreateAuthorizationRequest": {
 				"properties": {
 					"verifierId": {
-						"type": "string"
-					},
-					"verifierDid": {
 						"type": "string"
 					},
 					"presentationExchange": {
@@ -5063,11 +5015,14 @@
 					},
 					"responseMode": {
 						"$ref": "#/components/schemas/ResponseModeEnum"
+					},
+					"requestSigner": {
+						"$ref": "#/components/schemas/OpenId4VcJwtIssuerDid"
 					}
 				},
 				"required": [
 					"verifierId",
-					"verifierDid"
+					"requestSigner"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -9880,280 +9835,6 @@
 						}
 					}
 				]
-			}
-		},
-		"/openid4vc/holder/sd-jwt-vcs": {
-			"get": {
-				"operationId": "GetSdJwtCredentials",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/SdJwtVcRecord"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get SdJwt type of credentials",
-				"tags": [
-					"oid4vc holders"
-				],
-				"security": [],
-				"parameters": []
-			}
-		},
-		"/openid4vc/holder/mdoc-vcs": {
-			"get": {
-				"operationId": "GetMdocCredentials",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/MdocRecord"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Fetch all mso mdoc credentials in wallet",
-				"tags": [
-					"oid4vc holders"
-				],
-				"security": [],
-				"parameters": []
-			}
-		},
-		"/openid4vc/holder/mdoc-vcs/decode": {
-			"post": {
-				"operationId": "DecodeMdocCredential",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {}
-							}
-						}
-					}
-				},
-				"description": "Decode mso mdoc credential in wallet",
-				"tags": [
-					"oid4vc holders"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"base64Url": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"base64Url"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/openid4vc/holder/authorization-request": {
-			"post": {
-				"operationId": "RequestAuthorizationForCredential",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"codeVerifier": {
-											"type": "string"
-										},
-										"authorizationRequestUrl": {
-											"type": "string"
-										},
-										"actionToTake": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"codeVerifier",
-										"authorizationRequestUrl",
-										"actionToTake"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"description": "Resolve a credential offer",
-				"tags": [
-					"oid4vc holders"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/AuthorizeRequestCredentialOffer"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/openid4vc/holder/request-credential": {
-			"post": {
-				"operationId": "RequestCredential",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Initiates a token request, then requests credentials from issuer",
-				"tags": [
-					"oid4vc holders"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/RequestCredentialBody"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/openid4vc/holder/resolve-proof-request": {
-			"post": {
-				"operationId": "ResolveProofRequest",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {}
-							}
-						}
-					}
-				},
-				"description": "Resolve a proof request",
-				"tags": [
-					"oid4vc holders"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/ResolveProofRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/openid4vc/holder/accept-proof-request": {
-			"post": {
-				"operationId": "AcceptProofRequest",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {}
-							}
-						}
-					}
-				},
-				"description": "Accept a proof request",
-				"tags": [
-					"oid4vc holders"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/ResolveProofRequest"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/openid4vc/holder/decode-sdjwt": {
-			"post": {
-				"operationId": "DecodeSdJwt",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {}
-							}
-						}
-					}
-				},
-				"tags": [
-					"oid4vc holders"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"jwt": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"jwt"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
 			}
 		},
 		"/openid4vc/issuer": {
