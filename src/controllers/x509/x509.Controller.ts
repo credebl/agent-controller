@@ -1,17 +1,12 @@
-import type { RestMultiTenantAgentModules } from '../../cliAgent'
-import type { TenantRecord } from '@credo-ts/tenants'
-
-import { Agent, JsonTransformer, injectable, RecordNotFoundError, X509CreateCertificateOptions, X509Service, X509KeyUsage, KeyType, TypedArrayEncoder, CredoError, X509ExtendedKeyUsage, Key } from '@credo-ts/core'
+import { injectable } from '@credo-ts/core'
 import { Request as Req } from 'express'
-import jwt from 'jsonwebtoken'
-import { Body, Controller, Delete, Post, Route, Tags, Path, Security, Request, Res, TsoaResponse, Get } from 'tsoa'
+import { Body, Controller, Post, Route, Tags, Security, Request, Get } from 'tsoa'
 
-import { AgentRole, SCOPES } from '../../enums'
+import { SCOPES } from '../../enums'
 import ErrorHandlingService from '../../errorHandlingService'
-import { BasicX509CreateCertificateConfig, CreateTenantOptions, X509ImportCertificateOptionsDto } from '../types'
-import { generateSecretKey, getCertificateValidityForSystem } from '../../utils/helpers'
+import { X509ImportCertificateOptionsDto } from '../types'
 import { x509ServiceT } from './x509.service'
-
+import { X509CreateCertificateOptionsDto } from './x509.types'
 
 @Tags('x509')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
@@ -19,35 +14,39 @@ import { x509ServiceT } from './x509.service'
 @injectable()
 export class X509Controller extends Controller {
   @Post('/')
-  public async createSelfSignedDCS(@Request() request: Req, @Body() createX509Options: BasicX509CreateCertificateConfig) {
-
+  public async createX509Certificate(
+    @Request() request: Req,
+    @Body() createX509Options: X509CreateCertificateOptionsDto,
+  ) {
     try {
-
-      return await x509ServiceT.createSelfSignedDCS(createX509Options, request);
+      return await x509ServiceT.createCertificate(request, createX509Options)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
   }
 
-
   @Post('/import')
-  public async ImportX509Certficates(@Request() request: Req, @Body() importX509Options: X509ImportCertificateOptionsDto) {
-
+  public async ImportX509Certificates(
+    @Request() request: Req,
+    @Body() importX509Options: X509ImportCertificateOptionsDto,
+  ) {
     try {
-
-      return await x509ServiceT.ImportX509Certficates(request, importX509Options);
+      return await x509ServiceT.ImportX509Certificates(request, importX509Options)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
   }
 
   @Post('/trusted')
-  public async addTrustedCertificate(@Request() request: Req, @Body() options: {
-    certificate: string
-  }) {
+  public async addTrustedCertificate(
+    @Request() request: Req,
+    @Body()
+    options: {
+      certificate: string
+    },
+  ) {
     try {
-
-      return await x509ServiceT.addTrustedCertificate(request, options);
+      return await x509ServiceT.addTrustedCertificate(request, options)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
@@ -55,26 +54,25 @@ export class X509Controller extends Controller {
 
   @Get('/trusted')
   public async getTrustedCertificates(@Request() request: Req) {
-
     try {
-      return await x509ServiceT.getTrustedCertificates(request);
+      return await x509ServiceT.getTrustedCertificates(request)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
   }
-
 
   @Post('/decode')
-  public async decodeCertificate(@Request() request: Req, @Body() options: {
-    certificate: string
-  }) {
+  public async decodeCertificate(
+    @Request() request: Req,
+    @Body()
+    options: {
+      certificate: string
+    },
+  ) {
     try {
-
-      return await x509ServiceT.decodeCertificate(request, options);
+      return await x509ServiceT.decodeCertificate(request, options)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
   }
-
-
 }

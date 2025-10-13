@@ -4,6 +4,8 @@
 import type { TsoaRoute } from '@tsoa/runtime';
 import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { X509Controller } from './../controllers/x509/x509.Controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { Polygon } from './../controllers/polygon/PolygonController';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { EndorserTransactionController } from './../controllers/anoncreds/endorser-transaction/EndorserTransactionController';
@@ -39,8 +41,6 @@ import { IssuerController } from './../controllers/openid4vc/issuers/issuer.Cont
 import { VerificationSessionsController } from './../controllers/openid4vc/verifier-sessions/verification-sessions.Controller';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { VerifierController } from './../controllers/openid4vc/verifiers/verifier.Controller';
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import { X509Controller } from './../controllers/x509/x509.Controller';
 import { expressAuthentication } from './../authentication';
 // @ts-ignore - no great way to install types from subpackage
 import { iocContainer } from './../utils/tsyringeTsoaIocContainer';
@@ -53,6 +53,184 @@ const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "KeyType": {
+        "dataType": "refEnum",
+        "enums": ["ed25519","bls12381g1g2","bls12381g1","bls12381g2","x25519","p256","p384","p521","k256"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthorityAndSubjectKeyDto": {
+        "dataType": "refObject",
+        "properties": {
+            "seed": {"dataType":"string"},
+            "publicKeyBase58": {"dataType":"string"},
+            "keyType": {"ref":"KeyType"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "X509CertificateIssuerAndSubjectOptionsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "countryName": {"dataType":"string"},
+            "stateOrProvinceName": {"dataType":"string"},
+            "organizationalUnit": {"dataType":"string"},
+            "commonName": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ValidityDto": {
+        "dataType": "refObject",
+        "properties": {
+            "notBefore": {"dataType":"datetime"},
+            "notAfter": {"dataType":"datetime"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "X509KeyUsage": {
+        "dataType": "refEnum",
+        "enums": [1,2,4,8,16,32,64,128,256],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "KeyUsageDto": {
+        "dataType": "refObject",
+        "properties": {
+            "usages": {"dataType":"array","array":{"dataType":"refEnum","ref":"X509KeyUsage"},"required":true},
+            "markAsCritical": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "X509ExtendedKeyUsage": {
+        "dataType": "refEnum",
+        "enums": ["1.3.6.1.5.5.7.3.1","1.3.6.1.5.5.7.3.2","1.3.6.1.5.5.7.3.3","1.3.6.1.5.5.7.3.4","1.3.6.1.5.5.7.3.8","1.3.6.1.5.5.7.3.9","1.0.18013.5.1.2"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ExtendedKeyUsageDto": {
+        "dataType": "refObject",
+        "properties": {
+            "usages": {"dataType":"array","array":{"dataType":"refEnum","ref":"X509ExtendedKeyUsage"},"required":true},
+            "markAsCritical": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AuthorityAndSubjectKeyIdentifierDto": {
+        "dataType": "refObject",
+        "properties": {
+            "include": {"dataType":"boolean","required":true},
+            "markAsCritical": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "GeneralNameType": {
+        "dataType": "refEnum",
+        "enums": ["dns","dn","email","guid","ip","url","upn","id"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "NameDto": {
+        "dataType": "refObject",
+        "properties": {
+            "type": {"ref":"GeneralNameType","required":true},
+            "value": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "NameListDto": {
+        "dataType": "refObject",
+        "properties": {
+            "name": {"dataType":"array","array":{"dataType":"refObject","ref":"NameDto"},"required":true},
+            "markAsCritical": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "BasicConstraintsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "ca": {"dataType":"boolean","required":true},
+            "pathLenConstraint": {"dataType":"double"},
+            "markAsCritical": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CrlDistributionPointsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "urls": {"dataType":"array","array":{"dataType":"string"},"required":true},
+            "markAsCritical": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "X509CertificateExtensionsOptionsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "keyUsage": {"ref":"KeyUsageDto"},
+            "extendedKeyUsage": {"ref":"ExtendedKeyUsageDto"},
+            "authorityKeyIdentifier": {"ref":"AuthorityAndSubjectKeyIdentifierDto"},
+            "subjectKeyIdentifier": {"ref":"AuthorityAndSubjectKeyIdentifierDto"},
+            "issuerAlternativeName": {"ref":"NameListDto"},
+            "subjectAlternativeName": {"ref":"NameListDto"},
+            "basicConstraints": {"ref":"BasicConstraintsDto"},
+            "crlDistributionPoints": {"ref":"CrlDistributionPointsDto"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "X509CreateCertificateOptionsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "authorityKey": {"ref":"AuthorityAndSubjectKeyDto"},
+            "subjectPublicKey": {"ref":"AuthorityAndSubjectKeyDto"},
+            "serialNumber": {"dataType":"string"},
+            "issuer": {"dataType":"union","subSchemas":[{"ref":"X509CertificateIssuerAndSubjectOptionsDto"},{"dataType":"string"}],"required":true},
+            "subject": {"dataType":"union","subSchemas":[{"ref":"X509CertificateIssuerAndSubjectOptionsDto"},{"dataType":"string"}]},
+            "validity": {"ref":"ValidityDto"},
+            "extensions": {"ref":"X509CertificateExtensionsOptionsDto"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "X509ImportCertificateOptionsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "certificate": {"dataType":"string","required":true},
+            "privateKey": {"dataType":"string"},
+            "keyType": {"ref":"KeyType","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Uint8Array": {
+        "dataType": "refObject",
+        "properties": {
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Key": {
+        "dataType": "refObject",
+        "properties": {
+            "publicKey": {"ref":"Uint8Array","required":true},
+            "keyType": {"ref":"KeyType","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "X509Certificate": {
+        "dataType": "refObject",
+        "properties": {
+            "publicKey": {"ref":"Key","required":true},
+            "privateKey": {"ref":"Uint8Array"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Record_string.unknown_": {
         "dataType": "refAlias",
         "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"any"},"validators":{}},
@@ -346,11 +524,6 @@ const models: TsoaRoute.Models = {
     "Did": {
         "dataType": "refAlias",
         "type": {"dataType":"string","validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "KeyType": {
-        "dataType": "refEnum",
-        "enums": ["ed25519","bls12381g1g2","bls12381g1","bls12381g2","x25519","p256","p384","p521","k256"],
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "DidCreate": {
@@ -854,22 +1027,6 @@ const models: TsoaRoute.Models = {
     "AgentMessage": {
         "dataType": "refAlias",
         "type": {"ref":"PlaintextMessage","validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Uint8Array": {
-        "dataType": "refObject",
-        "properties": {
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Key": {
-        "dataType": "refObject",
-        "properties": {
-            "publicKey": {"ref":"Uint8Array","required":true},
-            "keyType": {"ref":"KeyType","required":true},
-        },
-        "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Routing": {
@@ -1735,38 +1892,6 @@ const models: TsoaRoute.Models = {
         "type": {"ref":"Record_string.unknown_","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "BasicX509CreateCertificateConfig": {
-        "dataType": "refObject",
-        "properties": {
-            "countryName": {"dataType":"string"},
-            "stateOrProvinceName": {"dataType":"string"},
-            "organizationalUnit": {"dataType":"string"},
-            "commonName": {"dataType":"string"},
-            "keyType": {"ref":"KeyType","required":true},
-            "issuerAlternativeNameURL": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "X509ImportCertificateOptionsDto": {
-        "dataType": "refObject",
-        "properties": {
-            "certificate": {"dataType":"string","required":true},
-            "privateKey": {"dataType":"string"},
-            "keyType": {"ref":"KeyType","required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "X509Certificate": {
-        "dataType": "refObject",
-        "properties": {
-            "publicKey": {"ref":"Key","required":true},
-            "privateKey": {"ref":"Uint8Array"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 };
 const templateService = new ExpressTemplateService(models, {"noImplicitAdditionalProperties":"throw-on-extras","bodyCoercion":true});
 
@@ -1784,6 +1909,190 @@ export function RegisterRoutes(app: Router) {
 
 
     
+        const argsX509Controller_createX509Certificate: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                createX509Options: {"in":"body","name":"createX509Options","required":true,"ref":"X509CreateCertificateOptionsDto"},
+        };
+        app.post('/x509',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.createX509Certificate)),
+
+            async function X509Controller_createX509Certificate(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_createX509Certificate, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<X509Controller>(X509Controller);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'createX509Certificate',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsX509Controller_ImportX509Certificates: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                importX509Options: {"in":"body","name":"importX509Options","required":true,"ref":"X509ImportCertificateOptionsDto"},
+        };
+        app.post('/x509/import',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.ImportX509Certificates)),
+
+            async function X509Controller_ImportX509Certificates(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_ImportX509Certificates, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<X509Controller>(X509Controller);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'ImportX509Certificates',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsX509Controller_addTrustedCertificate: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                options: {"in":"body","name":"options","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"certificate":{"dataType":"string","required":true}}},
+        };
+        app.post('/x509/trusted',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.addTrustedCertificate)),
+
+            async function X509Controller_addTrustedCertificate(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_addTrustedCertificate, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<X509Controller>(X509Controller);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'addTrustedCertificate',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsX509Controller_getTrustedCertificates: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+        };
+        app.get('/x509/trusted',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.getTrustedCertificates)),
+
+            async function X509Controller_getTrustedCertificates(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_getTrustedCertificates, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<X509Controller>(X509Controller);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getTrustedCertificates',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsX509Controller_decodeCertificate: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                options: {"in":"body","name":"options","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"certificate":{"dataType":"string","required":true}}},
+        };
+        app.post('/x509/decode',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
+            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.decodeCertificate)),
+
+            async function X509Controller_decodeCertificate(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_decodeCertificate, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<X509Controller>(X509Controller);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'decodeCertificate',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsPolygon_createKeyPair: Record<string, TsoaRoute.ParameterSchema> = {
         };
         app.post('/polygon/create-keys',
@@ -5199,190 +5508,6 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'deleteVerifier',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsX509Controller_createSelfSignedDCS: Record<string, TsoaRoute.ParameterSchema> = {
-                request: {"in":"request","name":"request","required":true,"dataType":"object"},
-                createX509Options: {"in":"body","name":"createX509Options","required":true,"ref":"BasicX509CreateCertificateConfig"},
-        };
-        app.post('/x509',
-            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.createSelfSignedDCS)),
-
-            async function X509Controller_createSelfSignedDCS(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_createSelfSignedDCS, request, response });
-
-                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
-
-                const controller: any = await container.get<X509Controller>(X509Controller);
-                if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-                }
-
-              await templateService.apiHandler({
-                methodName: 'createSelfSignedDCS',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsX509Controller_ImportX509Certficates: Record<string, TsoaRoute.ParameterSchema> = {
-                request: {"in":"request","name":"request","required":true,"dataType":"object"},
-                importX509Options: {"in":"body","name":"importX509Options","required":true,"ref":"X509ImportCertificateOptionsDto"},
-        };
-        app.post('/x509/import',
-            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.ImportX509Certficates)),
-
-            async function X509Controller_ImportX509Certficates(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_ImportX509Certficates, request, response });
-
-                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
-
-                const controller: any = await container.get<X509Controller>(X509Controller);
-                if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-                }
-
-              await templateService.apiHandler({
-                methodName: 'ImportX509Certficates',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsX509Controller_addTrustedCertificate: Record<string, TsoaRoute.ParameterSchema> = {
-                request: {"in":"request","name":"request","required":true,"dataType":"object"},
-                options: {"in":"body","name":"options","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"certificate":{"dataType":"string","required":true}}},
-        };
-        app.post('/x509/trusted',
-            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.addTrustedCertificate)),
-
-            async function X509Controller_addTrustedCertificate(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_addTrustedCertificate, request, response });
-
-                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
-
-                const controller: any = await container.get<X509Controller>(X509Controller);
-                if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-                }
-
-              await templateService.apiHandler({
-                methodName: 'addTrustedCertificate',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsX509Controller_getTrustedCertificates: Record<string, TsoaRoute.ParameterSchema> = {
-                request: {"in":"request","name":"request","required":true,"dataType":"object"},
-        };
-        app.get('/x509/trusted',
-            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.getTrustedCertificates)),
-
-            async function X509Controller_getTrustedCertificates(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_getTrustedCertificates, request, response });
-
-                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
-
-                const controller: any = await container.get<X509Controller>(X509Controller);
-                if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-                }
-
-              await templateService.apiHandler({
-                methodName: 'getTrustedCertificates',
-                controller,
-                response,
-                next,
-                validatedArgs,
-                successStatus: undefined,
-              });
-            } catch (err) {
-                return next(err);
-            }
-        });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsX509Controller_decodeCertificate: Record<string, TsoaRoute.ParameterSchema> = {
-                request: {"in":"request","name":"request","required":true,"dataType":"object"},
-                options: {"in":"body","name":"options","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"certificate":{"dataType":"string","required":true}}},
-        };
-        app.post('/x509/decode',
-            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller)),
-            ...(fetchMiddlewares<RequestHandler>(X509Controller.prototype.decodeCertificate)),
-
-            async function X509Controller_decodeCertificate(request: ExRequest, response: ExResponse, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
-            let validatedArgs: any[] = [];
-            try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsX509Controller_decodeCertificate, request, response });
-
-                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
-
-                const controller: any = await container.get<X509Controller>(X509Controller);
-                if (typeof controller['setStatus'] === 'function') {
-                controller.setStatus(undefined);
-                }
-
-              await templateService.apiHandler({
-                methodName: 'decodeCertificate',
                 controller,
                 response,
                 next,
