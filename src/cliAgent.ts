@@ -206,10 +206,10 @@ const getModules = (
       anoncreds,
     }),
     w3cCredentials: isCustomDocumentLoaderEnabled()
-      ? new W3cCredentialsModule()
-      : new W3cCredentialsModule({
+      ? new W3cCredentialsModule({
           documentLoader: CustomDocumentLoader,
-        }),
+        })
+      : new W3cCredentialsModule(),
     didcomm: new DidCommModule({
       processDidCommMessagesConcurrently: true,
       mediationRecipient: true,
