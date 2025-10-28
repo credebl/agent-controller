@@ -128,7 +128,7 @@ export interface CredentialConfigurationSupportedWithFormats {
   vct?: string,
   doctype?: string,
   scope?: string
-  claims?: Record<string, unknown>
+  claims?: any
   cryptographic_binding_methods_supported?: string[]
   credential_signing_alg_values_supported?: string[]
   proof_types_supported?: Record<string, ProofTypeConfig>
