@@ -94,6 +94,6 @@ export class OpenId4VcSiopCreateVerifierOptions {
 }
 
 export class OpenId4VcUpdateVerifierRecordOptions {
-  verifierId!: string
+  verifierId?: string
   clientMetadata?: OpenId4VcSiopVerifierClientMetadata
 }

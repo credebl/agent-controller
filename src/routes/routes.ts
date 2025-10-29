@@ -2263,7 +2263,7 @@ const models: TsoaRoute.Models = {
     "OpenId4VcUpdateVerifierRecordOptions": {
         "dataType": "refObject",
         "properties": {
-            "verifierId": {"dataType":"string","required":true},
+            "verifierId": {"dataType":"string"},
             "clientMetadata": {"ref":"OpenId4VcSiopVerifierClientMetadata"},
         },
         "additionalProperties": false,
