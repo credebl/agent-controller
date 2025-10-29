@@ -4122,9 +4122,7 @@
 					"scope": {
 						"type": "string"
 					},
-					"claims": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
-					},
+					"claims": {},
 					"cryptographic_binding_methods_supported": {
 						"items": {
 							"type": "string"

@@ -29,6 +29,7 @@ import { questionAnswerEvents } from './events/QuestionAnswerEvents'
 import { reuseConnectionEvents } from './events/ReuseConnectionEvents'
 import { RegisterRoutes } from './routes/routes'
 import { SecurityMiddleware } from './securityMiddleware'
+import { openId4VcIssuanceSessionEvents } from './events/openId4VcIssuanceSessionEvents'
 
 dotenv.config()
 
@@ -50,6 +51,7 @@ export const setupServer = async (
     basicMessageEvents(agent, config)
     connectionEvents(agent, config)
     credentialEvents(agent, config)
+    openId4VcIssuanceSessionEvents(agent, config)
     proofEvents(agent, config)
     reuseConnectionEvents(agent, config)
   }

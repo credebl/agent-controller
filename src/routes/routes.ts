@@ -1790,7 +1790,7 @@ const models: TsoaRoute.Models = {
             "vct": {"dataType":"string"},
             "doctype": {"dataType":"string"},
             "scope": {"dataType":"string"},
-            "claims": {"ref":"Record_string.unknown_"},
+            "claims": {"dataType":"any"},
             "cryptographic_binding_methods_supported": {"dataType":"array","array":{"dataType":"string"}},
             "credential_signing_alg_values_supported": {"dataType":"array","array":{"dataType":"string"}},
             "proof_types_supported": {"ref":"Record_string.ProofTypeConfig_"},
