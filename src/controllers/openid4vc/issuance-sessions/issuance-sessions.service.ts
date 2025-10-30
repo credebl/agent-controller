@@ -1,7 +1,7 @@
 import type { OpenId4VcIssuanceSessionsCreateOffer } from '../types/issuer.types'
-import { OpenId4VciCredentialFormatProfile, type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
 import type { Request as Req } from 'express'
 
+import { type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
 import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc/build/openid4vc-issuer/repository'
 
 import { SignerMethod } from '../../../enums/enum'
@@ -43,14 +43,14 @@ class IssuanceSessionsService {
         )
       }
 
-      const currentVct = cred.payload && 'vct' in cred.payload ? cred.payload.vct : undefined;
+      const currentVct = cred.payload && 'vct' in cred.payload ? cred.payload.vct : undefined
       return {
-    ...cred,
-    payload: {
-      ...cred.payload,
-      vct: currentVct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
-    },
-  }
+        ...cred,
+        payload: {
+          ...cred.payload,
+          vct: currentVct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
+        },
+      }
     })
 
     options.issuanceMetadata ||= {}

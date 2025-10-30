@@ -1,8 +1,8 @@
-import { Agent } from '@credo-ts/core'
+import { Request as Req } from 'express'
 import { Body, Controller, Get, Post, Route, Security, Tags, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
-import { Request as Req } from 'express'
 
+import { SCOPES } from '../../../enums/enum'
 import {
   AuthorizeRequestCredentialOffer,
   RequestCredentialBody,
@@ -11,14 +11,12 @@ import {
 } from '../types/holder.types'
 
 import { holderService } from './holder.service'
-import { SCOPES } from '../../../enums/enum'
 
 @Tags('oid4vc holders')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
 @Route('openid4vc/holder')
 @injectable()
 export class HolderController extends Controller {
- 
   /**
    * Get SdJwt type of credentials
    */
@@ -27,7 +25,7 @@ export class HolderController extends Controller {
     return await holderService.getSdJwtCredentials(request)
   }
 
-  /** 
+  /**
    * Fetch all mso mdoc credentials in wallet
    */
   @Get('/mdoc-vcs')
@@ -35,13 +33,17 @@ export class HolderController extends Controller {
     return await holderService.getMdocCredentials(request)
   }
 
-    /**
+  /**
    * Decode mso mdoc credential in wallet
    */
   @Post('/mdoc-vcs/decode')
-  public async decodeMdocCredential(@Request() request: Req, @Body() body:{
+  public async decodeMdocCredential(
+    @Request() request: Req,
+    @Body()
+    body: {
       base64Url: string
-    }) {
+    },
+  ) {
     return await holderService.decodeMdocCredential(request, body)
   }
 
@@ -53,11 +55,14 @@ export class HolderController extends Controller {
     return await holderService.resolveCredentialOffer(request, body)
   }
 
-//   /**
-//    * Initiate an OID4VCI authorization request
-//    */
+  //   /**
+  //    * Initiate an OID4VCI authorization request
+  //    */
   @Post('authorization-request')
-  public async requestAuthorizationForCredential(@Request() request: Req, @Body() body: AuthorizeRequestCredentialOffer) {
+  public async requestAuthorizationForCredential(
+    @Request() request: Req,
+    @Body() body: AuthorizeRequestCredentialOffer,
+  ) {
     return await holderService.requestAuthorizationForCredential(request, body)
   }
 

@@ -39,20 +39,23 @@ export class HolderService {
     return await agentReq.agent.mdoc.getAll()
   }
 
-  public async decodeMdocCredential(agentReq : Req, options: {
-    base64Url: string
-  }) {
+  public async decodeMdocCredential(
+    agentReq: Req,
+    options: {
+      base64Url: string
+    },
+  ) {
     const credential = Mdoc.fromBase64Url(options.base64Url)
     return {
       namespace: credential.issuerSignedNamespaces,
       docType: credential.docType,
       validityInfo: credential.validityInfo,
-      issuerSignedCertificateChain: credential.issuerSignedCertificateChain
+      issuerSignedCertificateChain: credential.issuerSignedCertificateChain,
     } as any
   }
 
   public async resolveCredentialOffer(agentReq: Req, body: ResolveCredentialOfferBody) {
-    return await agentReq.agent.modules.openId4VcHolderModule.resolveCredentialOffer(body.credentialOfferUri) as any
+    return (await agentReq.agent.modules.openId4VcHolderModule.resolveCredentialOffer(body.credentialOfferUri)) as any
   }
 
   public async requestAuthorizationForCredential(agentReq: Req, body: AuthorizeRequestCredentialOffer) {
@@ -113,7 +116,7 @@ export class HolderService {
       } as OpenId4VcAuthorizationCodeTokenRequestOptions
     }
 
-    return await this.requestAndStoreCredentials(agentReq, resolvedCredentialOffer, options) as any
+    return (await this.requestAndStoreCredentials(agentReq, resolvedCredentialOffer, options)) as any
   }
 
   private async requestAndStoreCredentials(
@@ -169,8 +172,6 @@ export class HolderService {
     resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
     credentialsToRequest: string[],
   ) {
-    console.log("agent::::::::::::::", Object.keys(agentReq.agent.modules.openId4VcHolderModule))
-
     console.log('Initiating authorization with resolvedCredentialOffer:', resolvedCredentialOffer)
     console.log('Credentials to request:', credentialsToRequest)
 
@@ -222,7 +223,9 @@ export class HolderService {
   }
 
   public async resolveProofRequest(agentReq: Req, body: ResolveProofRequest) {
-    return await agentReq.agent.modules.openId4VcHolderModule.resolveOpenId4VpAuthorizationRequest(body.proofRequestUri) as any
+    return (await agentReq.agent.modules.openId4VcHolderModule.resolveOpenId4VpAuthorizationRequest(
+      body.proofRequestUri,
+    )) as any
   }
 
   public async acceptPresentationRequest(agentReq: Req, body: ResolveProofRequest) {
@@ -244,7 +247,7 @@ export class HolderService {
     let dcqlCredentials
     try {
       dcqlCredentials = await agentReq.agent.modules.openId4VcHolderModule.selectCredentialsForDcqlRequest(
-        resolved.dcql.queryResult
+        resolved.dcql.queryResult,
       )
       console.log('Selected credentials for DCQL request:', dcqlCredentials)
     } catch (error) {
@@ -268,13 +271,15 @@ export class HolderService {
 
   public async getSelectedCredentialsForRequest(
     dcqlQueryResult: DcqlQueryResult,
-    selectedCredentials: { [credentialQueryId: string]: string }
+    selectedCredentials: { [credentialQueryId: string]: string },
   ) {
     if (!dcqlQueryResult.canBeSatisfied) {
-      throw new Error('Cannot select the credentials for the dcql query presentation if the request cannot be satisfied')
+      throw new Error(
+        'Cannot select the credentials for the dcql query presentation if the request cannot be satisfied',
+      )
     }
     // TODO: Implement logic to select credentials based on selectedCredentials
-    return {} as any; // Placeholder return to avoid errors
-  } 
+    return {} as any // Placeholder return to avoid errors
+  }
 }
 export const holderService = new HolderService()
