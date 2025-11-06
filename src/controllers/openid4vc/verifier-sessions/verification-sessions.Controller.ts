@@ -23,6 +23,7 @@ export class VerificationSessionsController extends Controller {
     @Body() createAuthorizationRequest: CreateAuthorizationRequest,
   ) {
     try {
+      console.log(`IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII`, JSON.stringify(createAuthorizationRequest))
       return await verificationSessionService.createProofRequest(request, createAuthorizationRequest)
     } catch (error) {
       throw ErrorHandlingService.handle(error)

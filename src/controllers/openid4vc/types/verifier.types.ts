@@ -57,16 +57,16 @@ export interface DcqlDefinition {
 /* -------------------------------------------------------------------------- */
 /*                       AUTHORIZATION REQUEST MODEL                          */
 /* -------------------------------------------------------------------------- */
-export interface OpenId4VcJwtIssuerDid {
+export type OpenId4VcJwtIssuerDid = {
   method: 'did'
   didUrl: string
 }
 
-export interface OpenId4VcIssuerX5c {
+export type OpenId4VcIssuerX5c = {
   method: 'x5c'
-  issuer: string
+  issuer?: string
   x5c: string[]
-  alg: string
+  alg?: string
 }
 
 export interface CreateAuthorizationRequest {
@@ -76,7 +76,7 @@ export interface CreateAuthorizationRequest {
 
   responseMode?: ResponseModeEnum
 
-  requestSigner: OpenId4VcJwtIssuerDid
+  requestSigner: OpenId4VcJwtIssuerDid | OpenId4VcIssuerX5c
 }
 
 /* -------------------------------------------------------------------------- */

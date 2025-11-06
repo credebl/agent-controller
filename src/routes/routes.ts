@@ -2160,12 +2160,13 @@ const models: TsoaRoute.Models = {
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "OpenId4VcJwtIssuerDid": {
-        "dataType": "refObject",
-        "properties": {
-            "method": {"dataType":"enum","enums":["did"],"required":true},
-            "didUrl": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"didUrl":{"dataType":"string","required":true},"method":{"dataType":"enum","enums":["did"],"required":true}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "OpenId4VcIssuerX5c": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"alg":{"dataType":"string"},"x5c":{"dataType":"array","array":{"dataType":"string"},"required":true},"issuer":{"dataType":"string"},"method":{"dataType":"enum","enums":["x5c"],"required":true}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "CreateAuthorizationRequest": {
@@ -2175,7 +2176,7 @@ const models: TsoaRoute.Models = {
             "presentationExchange": {"ref":"PresentationDefinition"},
             "dcql": {"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"DcqlDefinition"}]},
             "responseMode": {"ref":"ResponseModeEnum"},
-            "requestSigner": {"ref":"OpenId4VcJwtIssuerDid","required":true},
+            "requestSigner": {"dataType":"union","subSchemas":[{"ref":"OpenId4VcJwtIssuerDid"},{"ref":"OpenId4VcIssuerX5c"}],"required":true},
         },
         "additionalProperties": false,
     },

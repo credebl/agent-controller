@@ -4954,23 +4954,50 @@
 			},
 			"OpenId4VcJwtIssuerDid": {
 				"properties": {
+					"didUrl": {
+						"type": "string"
+					},
 					"method": {
 						"type": "string",
 						"enum": [
 							"did"
 						],
 						"nullable": false
-					},
-					"didUrl": {
-						"type": "string"
 					}
 				},
 				"required": [
-					"method",
-					"didUrl"
+					"didUrl",
+					"method"
 				],
-				"type": "object",
-				"additionalProperties": false
+				"type": "object"
+			},
+			"OpenId4VcIssuerX5c": {
+				"properties": {
+					"alg": {
+						"type": "string"
+					},
+					"x5c": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"issuer": {
+						"type": "string"
+					},
+					"method": {
+						"type": "string",
+						"enum": [
+							"x5c"
+						],
+						"nullable": false
+					}
+				},
+				"required": [
+					"x5c",
+					"method"
+				],
+				"type": "object"
 			},
 			"CreateAuthorizationRequest": {
 				"properties": {
@@ -4994,7 +5021,14 @@
 						"$ref": "#/components/schemas/ResponseModeEnum"
 					},
 					"requestSigner": {
-						"$ref": "#/components/schemas/OpenId4VcJwtIssuerDid"
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/OpenId4VcJwtIssuerDid"
+							},
+							{
+								"$ref": "#/components/schemas/OpenId4VcIssuerX5c"
+							}
+						]
 					}
 				},
 				"required": [

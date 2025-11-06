@@ -12,10 +12,12 @@ import {
   TypedArrayEncoder,
   W3cJsonLdVerifiablePresentation,
   W3cJwtVerifiablePresentation,
+  X509Service,
 } from '@credo-ts/core'
-import { OpenId4VcVerificationSessionState } from '@credo-ts/openid4vc'
+import { OpenId4VcIssuerX5c, OpenId4VcJwtIssuerDid, OpenId4VcVerificationSessionState } from '@credo-ts/openid4vc'
 import { injectable } from 'tsyringe'
 import { Request as Req } from 'express'
+import { SignerMethod } from '../../../enums'
 import { CreateAuthorizationRequest } from '../types/verifier.types'
 
 // import { CreateAuthorizationRequest } from '../types/verifier.types'
@@ -24,28 +26,42 @@ import { CreateAuthorizationRequest } from '../types/verifier.types'
 class VerificationSessionsService {
   public async createProofRequest(agentReq: Req, dto: CreateAuthorizationRequest) {
     try {
-      const didToResolve = dto.requestSigner?.didUrl
-      if (!didToResolve) {
-        throw new Error('No DID provided to resolve (neither requestSigner.didUrl nor verifierDid present)')
-      }
+      let requestSigner
+      if (dto.requestSigner.method === SignerMethod.Did) {
+        requestSigner = dto.requestSigner as OpenId4VcJwtIssuerDid
 
-      const didDocument = await agentReq.agent.dids.resolveDidDocument(didToResolve)
+        const didToResolve = dto.requestSigner?.didUrl
+        if (!didToResolve) {
+          throw new Error('No DID provided to resolve (neither requestSigner.didUrl nor verifierDid present)')
+        }
 
-      let verifierDidUrl: string | undefined = undefined
-      if (didDocument.verificationMethod?.[0]?.id) {
-        verifierDidUrl = didDocument.verificationMethod[0].id
-      }
+        const didDocument = await agentReq.agent.dids.resolveDidDocument(didToResolve)
 
-      if (!verifierDidUrl) {
-        throw new Error('No matching verification method found on verifier DID document')
-      }
-      let requestSigner = dto.requestSigner
-      if (!requestSigner) {
-        requestSigner = { method: 'did', didUrl: verifierDidUrl } as any
-      } else if (requestSigner.method === 'did') {
+        let verifierDidUrl: string | undefined = undefined
+        if (didDocument.verificationMethod?.[0]?.id) {
+          verifierDidUrl = didDocument.verificationMethod[0].id
+        }
+
+        if (!verifierDidUrl) {
+          throw new Error('No matching verification method found on verifier DID document')
+        }
+
         if (!requestSigner.didUrl || !String(requestSigner.didUrl).includes('#')) {
           requestSigner.didUrl = verifierDidUrl
         }
+
+        requestSigner = { method: 'did', didUrl: verifierDidUrl } as any
+      } else {
+        requestSigner = dto.requestSigner as OpenId4VcIssuerX5c
+
+        const parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
+          encodedCertificate: requestSigner.x5c[0],
+        })
+        requestSigner.issuer = parsedCertificate.sanUriNames[0]
+      }
+
+      if (!requestSigner) {
+      } else if (requestSigner.method === 'did') {
       }
       const options: any = {
         requestSigner,
