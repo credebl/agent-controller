@@ -73,7 +73,7 @@ export class HolderService {
     let actionToTake = ''
     let authorizationRequestUrl: string | undefined = undefined
     let codeVerifier: string | undefined = undefined
-    console.log('Resolved authorization:::::::::::::', resolvedAuthorization)
+    console.log('Resolved authorization', resolvedAuthorization)
 
     switch (resolvedAuthorization.authorizationFlow) {
       case 'Oauth2Redirect':
@@ -234,12 +234,6 @@ export class HolderService {
     )
     console.log('Resolved proof request:', resolved)
     // const presentationExchangeService = agent.dependencyManager.resolve(DifPresentationExchangeService)
-
-    const dcqlService = agentReq.agent.dependencyManager.resolve(DifPresentationExchangeService)
-
-    // console.log('Resolved proof request:', resolved)
-
-    // console.log('Presentation exchange service:', presentationExchangeService)
 
     if (!resolved.dcql) throw new Error('Missing DCQL on request')
     console.log('DCQL query result:', resolved.dcql.queryResult)
