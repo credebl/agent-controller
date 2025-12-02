@@ -18,7 +18,7 @@ import { OpenId4VcIssuerX5c, OpenId4VcJwtIssuerDid, OpenId4VcVerificationSession
 import { injectable } from 'tsyringe'
 import { Request as Req } from 'express'
 import { SignerMethod } from '../../../enums'
-import { CreateAuthorizationRequest } from '../types/verifier.types'
+import { CreateAuthorizationRequest, ResponseModeEnum } from '../types/verifier.types'
 
 // import { CreateAuthorizationRequest } from '../types/verifier.types'
 
@@ -66,6 +66,10 @@ class VerificationSessionsService {
       const options: any = {
         requestSigner,
         verifierId: dto.verifierId,
+      }
+
+      if(dto.responseMode === ResponseModeEnum.DC_API || ResponseModeEnum.DC_API_JWT){
+        options.expectedOrigins = dto.expectedOrigins
       }
 
       if (dto.responseMode) options.responseMode = dto.responseMode

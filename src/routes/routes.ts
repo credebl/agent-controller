@@ -2156,7 +2156,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "ResponseModeEnum": {
         "dataType": "refEnum",
-        "enums": ["direct_post","direct_post.jwt"],
+        "enums": ["direct_post","direct_post.jwt","dc_api","dc_api.jwt"],
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "OpenId4VcJwtIssuerDid": {
@@ -2177,6 +2177,7 @@ const models: TsoaRoute.Models = {
             "dcql": {"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"DcqlDefinition"}]},
             "responseMode": {"ref":"ResponseModeEnum"},
             "requestSigner": {"dataType":"union","subSchemas":[{"ref":"OpenId4VcJwtIssuerDid"},{"ref":"OpenId4VcIssuerX5c"}],"required":true},
+            "expectedOrigins": {"dataType":"array","array":{"dataType":"string"}},
         },
         "additionalProperties": false,
     },
