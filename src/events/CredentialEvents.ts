@@ -4,7 +4,6 @@ import type { Agent, CredentialStateChangedEvent } from '@credo-ts/core'
 
 import { CredentialEventTypes } from '@credo-ts/core'
 
-
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
 
@@ -21,22 +20,21 @@ export const credentialEvents = async (agent: Agent, config: ServerConfig) => {
 
     if (record?.connectionId) {
       let connectionRecord
-      if (event.metadata.contextCorrelationId !== 'default') {
+      if (event.metadata.contextCorrelationId && event.metadata.contextCorrelationId !== 'default') {
         await (agent as Agent<RestMultiTenantAgentModules>).modules.tenants.withTenantAgent(
           { tenantId: body.contextCorrelationId as string },
           async (tenantAgent) => {
-            connectionRecord = await tenantAgent.connections.findById(record.connectionId!)
+            connectionRecord = await tenantAgent.connections.findById(record.connectionId ? record.connectionId : '')
           },
         )
       } else {
-        connectionRecord = await agent.connections.getById(record.connectionId!)
+        connectionRecord = await agent.connections.getById(record.connectionId)
       }
       body.outOfBandId = connectionRecord?.outOfBandId
     }
 
-
     let formatData = null
-    if (event.metadata.contextCorrelationId !== 'default') {
+    if (event.metadata.contextCorrelationId && event.metadata.contextCorrelationId !== 'default') {
       await (agent as Agent<RestMultiTenantAgentModules>).modules.tenants.withTenantAgent(
         { tenantId: body.contextCorrelationId as string },
         async (tenantAgent) => {
