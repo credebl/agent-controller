@@ -1,6 +1,6 @@
 import type { RecordId } from './examples'
 import type { CustomHandshakeProtocol } from '../enums'
-import type { AnonCredsCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
+import type { AnonCredsCredentialDefinitionRecord, AnonCredsDidCommCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
 import type {
   DidResolutionMetadata,
   DidDocumentMetadata,
@@ -8,9 +8,7 @@ import type {
   DidDocument,
   DidRegistrationSecretOptions,
   InitConfig,
-  WalletConfig,
   DidResolutionOptions,
-  KeyType,
   JsonObject,
   W3cJsonLdVerifyCredentialOptions,
   DataIntegrityProofOptions,
@@ -19,31 +17,30 @@ import type {
   W3cCredentialSubject,
   X509CertificateIssuerAndSubjectOptions,
   X509CreateCertificateOptions,
+  SingleOrArray,
 } from '@credo-ts/core'
 
 import type {
-  AutoAcceptCredential,
-  AutoAcceptProof,
-  JsonLdCredentialFormat,
   JsonCredential,
-  AgentMessage,
-  Routing,
-  Attachment,
-  CredentialExchangeRecord,
-  ProofExchangeRecord,
-  ProofFormat,
-  CredentialFormatPayload,
-  HandshakeProtocol,
   ReceiveOutOfBandInvitationConfig,
   OutOfBandDidCommService,
+  DidCommCredentialFormatPayload,
+  DidCommAutoAcceptCredential,
+  DidCommProofExchangeRecord,
+  DidCommJsonLdCredentialFormat,
+  DidCommCredentialExchangeRecord,
+  DidCommAutoAcceptProof,
+  DidCommHandshakeProtocol,
+  DidCommMessage,
+  DidCommRouting,
+  DidCommAttachment,
 } from '@credo-ts/didcomm'
-import type { LinkedDataProofOptions } from '@credo-ts/core/build/modules/vc/data-integrity/models/LinkedDataProof'
-import type { SingleOrArray } from '@credo-ts/core/build/utils'
 import type { DIDDocument } from 'did-resolver'
+import { KeyType } from '@credo-ts/core/build/crypto/webcrypto/types.mjs'
+import { LinkedDataProofOptions } from '@credo-ts/core/build/modules/vc/data-integrity/models/LinkedDataProof.mjs'
 
-export type CustomTenantConfig = Pick<InitConfig, 'label'> & {
+export type CustomTenantConfig = {label: string} & {
   connectionImageUrl?: string
-  walletConfig: Pick<WalletConfig, 'id' | 'key' | 'keyDerivationMethod'>
 }
 
 export interface AgentInfo {
@@ -71,11 +68,11 @@ export interface DidResolutionResultProps {
 
 export interface ProofRequestMessageResponse {
   message: string
-  proofRecord: ProofExchangeRecord
+  proofRecord: DidCommProofExchangeRecord
 }
 
 // type CredentialFormats = [CredentialFormat]
-type CredentialFormats = [LegacyIndyCredentialFormat, AnonCredsCredentialFormat, JsonLdCredentialFormat]
+type CredentialFormats = [LegacyIndyCredentialFormat, AnonCredsDidCommCredentialFormat, DidCommJsonLdCredentialFormat]
 
 enum ProtocolVersion {
   v1 = 'v1',
@@ -83,8 +80,8 @@ enum ProtocolVersion {
 }
 export interface ProposeCredentialOptions {
   protocolVersion: ProtocolVersion
-  credentialFormats: CredentialFormatPayload<CredentialFormatType[], 'createProposal'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats: DidCommCredentialFormatPayload<CredentialFormatType[], 'createProposal'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
   connectionId: RecordId
 }
@@ -92,32 +89,32 @@ export interface ProposeCredentialOptions {
 // export interface ProposeCredentialOptions<CPs extends CredentialProtocol[] = CredentialProtocol[]> extends BaseOptions {
 //   connectionId: string
 //   protocolVersion: CredentialProtocolVersionType<CPs>
-//   credentialFormats: CredentialFormatPayload<CredentialFormatsFromProtocols<CPs>, 'createProposal'>
+//   credentialFormats: DidCommCredentialFormatPayload<CredentialFormatsFromProtocols<CPs>, 'createProposal'>
 // }
 
 export interface AcceptCredentialProposalOptions {
   credentialRecordId: string
-  credentialFormats?: CredentialFormatPayload<CredentialFormats, 'acceptProposal'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats?: DidCommCredentialFormatPayload<CredentialFormats, 'acceptProposal'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
 }
 
 export interface CreateOfferOptions {
   protocolVersion: ProtocolVersion
   connectionId: RecordId
-  credentialFormats: CredentialFormatPayload<CredentialFormats, 'createOffer'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats: DidCommCredentialFormatPayload<CredentialFormats, 'createOffer'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
   goalCode?: string
   goal?: string
 }
 
-type CredentialFormatType = LegacyIndyCredentialFormat | JsonLdCredentialFormat | AnonCredsCredentialFormat
+type CredentialFormatType = LegacyIndyCredentialFormat | DidCommJsonLdCredentialFormat | AnonCredsDidCommCredentialFormat
 
 export interface CreateOfferOobOptions {
   protocolVersion: string
-  credentialFormats: CredentialFormatPayload<CredentialFormatType[], 'createOffer'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats: DidCommCredentialFormatPayload<CredentialFormatType[], 'createOffer'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
   goalCode?: string
   parentThreadId?: string
@@ -128,7 +125,7 @@ export interface CreateOfferOobOptions {
   invitationDid?: string
 }
 export interface CredentialCreateOfferOptions {
-  credentialRecord: CredentialExchangeRecord
+  credentialRecord: DidCommCredentialExchangeRecord
   credentialFormats: JsonCredential
   options: any
   attachmentId?: string
@@ -140,7 +137,7 @@ export interface CreateProofRequestOobOptions {
   goalCode?: string
   parentThreadId?: string
   willConfirm?: boolean
-  autoAcceptProof?: AutoAcceptProof
+  autoAcceptProof?: DidCommAutoAcceptProof
   comment?: string
   label?: string
   imageUrl?: string
@@ -158,7 +155,7 @@ export interface OfferCredentialOptions {
       }[]
     }
   }
-  autoAcceptCredential?: AutoAcceptCredential
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
   connectionId: string
 }
@@ -184,15 +181,15 @@ export interface AcceptCredential {
 
 export interface CredentialOfferOptions {
   credentialRecordId: RecordId
-  credentialFormats?: CredentialFormatPayload<CredentialFormats, 'acceptOffer'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats?: DidCommCredentialFormatPayload<CredentialFormats, 'acceptOffer'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
 }
 
 export interface AcceptCredentialRequestOptions {
   credentialRecordId: RecordId
-  credentialFormats?: CredentialFormatPayload<CredentialFormats, 'acceptRequest'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats?: DidCommCredentialFormatPayload<CredentialFormats, 'acceptRequest'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
 }
 
@@ -245,7 +242,7 @@ export interface ConnectionInvitationSchema {
 //   // TODO: added indy proof formate
 //   proofFormats: ProofFormatPayload<[IndyProofFormat], 'createRequest'>
 //   comment: string
-//   autoAcceptProof?: AutoAcceptProof
+//   autoAcceptProof?: DidCommAutoAcceptProof
 //   parentThreadId?: string
 // }
 
@@ -254,7 +251,7 @@ export interface RequestProofOptions {
   protocolVersion: string
   proofFormats: any
   comment: string
-  autoAcceptProof: AutoAcceptProof
+  autoAcceptProof: DidCommAutoAcceptProof
   goalCode?: string
   parentThreadId?: string
   willConfirm?: boolean
@@ -266,7 +263,7 @@ export interface RequestProofProposalOptions {
   proofFormats: any
   goalCode?: string
   parentThreadId?: string
-  autoAcceptProof?: AutoAcceptProof
+  autoAcceptProof?: DidCommAutoAcceptProof
   comment?: string
 }
 
@@ -274,7 +271,7 @@ export interface AcceptProofProposal {
   proofRecordId: string
   proofFormats: any
   comment?: string
-  autoAcceptProof?: AutoAcceptProof
+  autoAcceptProof?: DidCommAutoAcceptProof
   goalCode?: string
   willConfirm?: boolean
 }
@@ -337,12 +334,12 @@ export interface CreateInvitationOptions {
   goalCode?: string
   goal?: string
   handshake?: boolean
-  handshakeProtocols?: HandshakeProtocol[]
-  messages?: AgentMessage[]
+  handshakeProtocols?: DidCommHandshakeProtocol[]
+  messages?: DidCommMessage[]
   multiUseInvitation?: boolean
   autoAcceptConnection?: boolean
-  routing?: Routing
-  appendedAttachments?: Attachment[]
+  routing?: DidCommRouting
+  appendedAttachments?: DidCommAttachment[]
   invitationDid?: string
 }
 
