@@ -5,6 +5,8 @@ import type { SubmissionRequirement, Format, Issuance, InputDescriptorV2 } from 
 export enum ResponseModeEnum {
   DIRECT_POST = 'direct_post',
   DIRECT_POST_JWT = 'direct_post.jwt',
+  DC_API = 'dc_api',
+  DC_API_JWT = 'dc_api.jwt'
 }
 
 /* -------------------------------------------------------------------------- */
@@ -77,6 +79,7 @@ export interface CreateAuthorizationRequest {
   responseMode?: ResponseModeEnum
 
   requestSigner: OpenId4VcJwtIssuerDid | OpenId4VcIssuerX5c
+  expectedOrigins?: string []
 }
 
 /* -------------------------------------------------------------------------- */

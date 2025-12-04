@@ -4948,7 +4948,9 @@
 			"ResponseModeEnum": {
 				"enum": [
 					"direct_post",
-					"direct_post.jwt"
+					"direct_post.jwt",
+					"dc_api",
+					"dc_api.jwt"
 				],
 				"type": "string"
 			},
@@ -5029,6 +5031,12 @@
 								"$ref": "#/components/schemas/OpenId4VcIssuerX5c"
 							}
 						]
+					},
+					"expectedOrigins": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
 					}
 				},
 				"required": [
