@@ -1,0 +1,21 @@
+diff --git a/node_modules/@credo-ts/core/build/utils/version.d.mts b/node_modules/@credo-ts/core/build/utils/version.d.mts
+index a71659d..8ed88e2 100644
+--- a/node_modules/@credo-ts/core/build/utils/version.d.mts
++++ b/node_modules/@credo-ts/core/build/utils/version.d.mts
+@@ -1,5 +1,5 @@
+ //#region src/utils/version.d.ts
+-type VersionString = `${number}.${number}` | `${number}.${number}.${number}`;
++type VersionString = string;
+ //#endregion
+ export { VersionString };
+ //# sourceMappingURL=version.d.mts.map
+\ No newline at end of file
+diff --git a/node_modules/@credo-ts/core/build/utils/version.mjs.map b/node_modules/@credo-ts/core/build/utils/version.mjs.map
+index 19457ed..5fb595f 100644
+--- a/node_modules/@credo-ts/core/build/utils/version.mjs.map
++++ b/node_modules/@credo-ts/core/build/utils/version.mjs.map
+@@ -1 +1 @@
+-{"version":3,"file":"version.mjs","names":[],"sources":["../../src/utils/version.ts"],"sourcesContent":["export function parseVersionString(version: VersionString): Version {\n  const [major, minor, patch] = version.split('.')\n\n  return [Number(major), Number(minor), Number(patch ?? '0')]\n}\n\nexport function isFirstVersionHigherThanSecond(first: Version, second: Version) {\n  return (\n    first[0] > second[0] ||\n    (first[0] === second[0] && first[1] > second[1]) ||\n    (first[0] === second[0] && first[1] === second[1] && first[2] > second[2])\n  )\n}\n\nexport function isFirstVersionEqualToSecond(first: Version, second: Version) {\n  return first[0] === second[0] && first[1] === second[1] && first[2] === second[2]\n}\n\nexport type VersionString = `${number}.${number}` | `${number}.${number}.${number}`\nexport type MajorVersion = number\nexport type MinorVersion = number\nexport type PatchVersion = number\nexport type Version = [MajorVersion, MinorVersion, PatchVersion]\n"],"mappings":";;;AAAA,SAAgB,mBAAmB,SAAiC;CAClE,MAAM,CAAC,OAAO,OAAO,SAAS,QAAQ,MAAM,IAAI;AAEhD,QAAO;EAAC,OAAO,MAAM;EAAE,OAAO,MAAM;EAAE,OAAO,SAAS,IAAI;EAAC;;AAG7D,SAAgB,+BAA+B,OAAgB,QAAiB;AAC9E,QACE,MAAM,KAAK,OAAO,MACjB,MAAM,OAAO,OAAO,MAAM,MAAM,KAAK,OAAO,MAC5C,MAAM,OAAO,OAAO,MAAM,MAAM,OAAO,OAAO,MAAM,MAAM,KAAK,OAAO;;AAI3E,SAAgB,4BAA4B,OAAgB,QAAiB;AAC3E,QAAO,MAAM,OAAO,OAAO,MAAM,MAAM,OAAO,OAAO,MAAM,MAAM,OAAO,OAAO"}
+\ No newline at end of file
++{"version":3,"file":"version.mjs","names":[],"sources":["../../src/utils/version.ts"],"sourcesContent":["export function parseVersionString(version: VersionString): Version {\n  const [major, minor, patch] = version.split('.')\n\n  return [Number(major), Number(minor), Number(patch ?? '0')]\n}\n\nexport function isFirstVersionHigherThanSecond(first: Version, second: Version) {\n  return (\n    first[0] > second[0] ||\n    (first[0] === second[0] && first[1] > second[1]) ||\n    (first[0] === second[0] && first[1] === second[1] && first[2] > second[2])\n  )\n}\n\nexport function isFirstVersionEqualToSecond(first: Version, second: Version) {\n  return first[0] === second[0] && first[1] === second[1] && first[2] === second[2]\n}\n\nexport type VersionString = string\nexport type MajorVersion = number\nexport type MinorVersion = number\nexport type PatchVersion = number\nexport type Version = [MajorVersion, MinorVersion, PatchVersion]\n"],"mappings":";;;AAAA,SAAgB,mBAAmB,SAAiC;CAClE,MAAM,CAAC,OAAO,OAAO,SAAS,QAAQ,MAAM,IAAI;AAEhD,QAAO;EAAC,OAAO,MAAM;EAAE,OAAO,MAAM;EAAE,OAAO,SAAS,IAAI;EAAC;;AAG7D,SAAgB,+BAA+B,OAAgB,QAAiB;AAC9E,QACE,MAAM,KAAK,OAAO,MACjB,MAAM,OAAO,OAAO,MAAM,MAAM,KAAK,OAAO,MAC5C,MAAM,OAAO,OAAO,MAAM,MAAM,OAAO,OAAO,MAAM,MAAM,KAAK,OAAO;;AAI3E,SAAgB,4BAA4B,OAAgB,QAAiB;AAC3E,QAAO,MAAM,OAAO,OAAO,MAAM,MAAM,OAAO,OAAO,MAAM,MAAM,OAAO,OAAO"}
+\ No newline at end of file
