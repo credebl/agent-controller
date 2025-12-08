@@ -1,13 +1,13 @@
 import type { ServerConfig } from '../utils/ServerConfig'
 import type { Agent } from '@credo-ts/core'
 
-import { ConnectionEventTypes, ConnectionStateChangedEvent } from '@credo-ts/didcomm'
+import { DidCommConnectionEventTypes, DidCommConnectionStateChangedEvent } from '@credo-ts/didcomm'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
 
 export const connectionEvents = async (agent: Agent, config: ServerConfig) => {
-  agent.events.on(ConnectionEventTypes.ConnectionStateChanged, async (event: ConnectionStateChangedEvent) => {
+  agent.events.on(DidCommConnectionEventTypes.DidCommConnectionStateChanged, async (event: DidCommConnectionStateChangedEvent) => {
     const record = event.payload.connectionRecord
     const body = { ...record.toJSON(), ...event.metadata }
 

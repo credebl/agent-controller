@@ -1,12 +1,12 @@
 import type { ServerConfig } from '../utils/ServerConfig'
 import type { Agent,  } from '@credo-ts/core'
-import { ProofStateChangedEvent, ProofEventTypes } from '@credo-ts/didcomm'
+import { DidCommProofStateChangedEvent, DidCommProofEventTypes } from '@credo-ts/didcomm'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
 
 export const proofEvents = async (agent: Agent, config: ServerConfig) => {
-  agent.events.on(ProofEventTypes.ProofStateChanged, async (event: ProofStateChangedEvent) => {
+  agent.events.on(DidCommProofEventTypes.ProofStateChanged, async (event: DidCommProofStateChangedEvent) => {
     const record = event.payload.proofRecord
     const body = { ...record.toJSON(), ...event.metadata } as { proofData?: any }
     if (event.metadata.contextCorrelationId !== 'default') {
