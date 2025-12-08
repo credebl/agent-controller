@@ -1,17 +1,17 @@
 import type {
-  ProofRole,
-  AutoAcceptProof,
-  BasicMessageRole,
-  CredentialState,
-  DidExchangeRole,
-  DidExchangeState,
-  OutOfBandInvitationOptions,
-  OutOfBandRecordProps,
-  ProofExchangeRecordProps,
-  ProofState,
-  OutOfBandRole,
-  OutOfBandState,
-  CredentialRole,
+  DidCommProofRole,
+  DidCommBasicMessageRole,
+  DidCommCredentialState,
+  DidCommDidExchangeRole,
+  DidCommDidExchangeState,
+  DidCommOutOfBandInvitationOptions,
+  DidCommOutOfBandRecordProps,
+  DidCommProofExchangeRecordProps,
+  DidCommProofState,
+  DidCommOutOfBandRole,
+  DidCommOutOfBandState,
+  DidCommCredentialRole,
+  DidCommAutoAcceptProof,
 } from '@credo-ts/didcomm'
 
 /**
@@ -50,7 +50,7 @@ export const BasicMessageRecordExample = {
   content: 'string',
   sentTime: '2022-08-18T08:38:40.216Z',
   connectionId: '2aecf74c-3073-4f98-9acb-92415d096834',
-  role: 'sender' as BasicMessageRole,
+  role: 'sender' as DidCommBasicMessageRole,
 }
 
 export const ConnectionRecordExample = {
@@ -58,18 +58,18 @@ export const ConnectionRecordExample = {
     invitationDid:
       'did:peer:2.SeyJzIjoiaHR0cHM6Ly9kYTIzLTg5LTIwLTE2Mi0xNDYubmdyb2suaW8iLCJ0IjoiZGlkLWNvbW11bmljYXRpb24iLCJwcmlvcml0eSI6MCwicmVjaXBpZW50S2V5cyI6WyJkaWQ6a2V5Ono2TWtualg3U1lXRmdHMThCYkNEZHJnemhuQnA0UlhyOGVITHZxQ3FvRXllckxiTiN6Nk1rbmpYN1NZV0ZnRzE4QmJDRGRyZ3pobkJwNFJYcjhlSEx2cUNxb0V5ZXJMYk4iXSwiciI6W119',
     did: 'did:peer:1zQmfQh1T3rSqarP2FZ37uKjdQHPKFdVyo2mGiAPHZ8Ep7hv',
-    state: 'invitation-sent' as DidExchangeState,
+    state: 'invitation-sent' as DidCommDidExchangeState,
     invitationKey: '9HG4rJFpLiWf56MWxHj9rgdpErFzim2zEpHuxy1dw7oz',
     outOfBandId: 'edbc89fe-785f-4774-a288-46012486881d',
     verkey: '9HG4rJFpLiWf56MWxHj9rgdpErFzim2zEpHuxy1dw7oz',
-    role: 'responder' as DidExchangeRole,
+    role: 'responder' as DidCommDidExchangeRole,
   },
   metadata: {},
   id: '821f9b26-ad04-4f56-89b6-e2ef9c72b36e',
   createdAt: new Date('2022-01-01T00:00:00.000Z'),
   did: 'did:peer:1zQmfQh1T3rSqarP2FZ37uKjdQHPKFdVyo2mGiAPHZ8Ep7hv',
-  state: 'invitation-sent' as DidExchangeState,
-  role: 'responder' as DidExchangeRole,
+  state: 'invitation-sent' as DidCommDidExchangeState,
+  role: 'responder' as DidCommDidExchangeRole,
   invitationDid:
     'did:peer:2.SeyJzIjoiaHR0cHM6Ly9kYTIzLTg5LTIwLTE2Mi0xNDYubmdyb2suaW8iLCJ0IjoiZGlkLWNvbW11bmljYXRpb24iLCJwcmlvcml0eSI6MCwicmVjaXBpZW50S2V5cyI6WyJkaWQ6a2V5Ono2TWtualg3U1lXRmdHMThCYkNEZHJnemhuQnA0UlhyOGVITHZxQ3FvRXllckxiTiN6Nk1rbmpYN1NZV0ZnRzE4QmJDRGRyZ3pobkJwNFJYcjhlSEx2cUNxb0V5ZXJMYk4iXSwiciI6W119',
   outOfBandId: 'edbc89fe-785f-4774-a288-46012486881d',
@@ -121,9 +121,9 @@ export const DidRecordExample = {
   },
 }
 
-type OutOfBandRecordProperties = Omit<OutOfBandRecordProps, 'outOfBandInvitation'>
+type OutOfBandRecordProperties = Omit<DidCommOutOfBandRecordProps, 'outOfBandInvitation'>
 export type OutOfBandInvitationProps = Omit<
-  OutOfBandInvitationOptions,
+  DidCommOutOfBandInvitationOptions,
   'handshakeProtocols' | 'services' | 'appendedAttachments'
 >
 
@@ -159,8 +159,8 @@ export const outOfBandRecordExample = {
   metadata: {},
   id: '42a95528-0e30-4f86-a462-0efb02178b53',
   createdAt: new Date('2022-01-01T00:00:00.000Z'),
-  role: 'sender' as OutOfBandRole,
-  state: 'await-response' as OutOfBandState,
+  role: 'sender' as DidCommOutOfBandRole,
+  state: 'await-response' as DidCommOutOfBandState,
   reusable: false,
 }
 
@@ -208,29 +208,29 @@ export const CredentialExchangeRecordExample = {
   credentials: [],
   id: '821f9b26-ad04-4f56-89b6-e2ef9c72b36e',
   createdAt: new Date('2022-01-01T00:00:00.000Z'),
-  state: 'offer-sent' as CredentialState,
+  state: 'offer-sent' as DidCommCredentialState,
   connectionId: 'ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b',
   threadId: '82701488-b43c-4d7b-9244-4bb204a7ae26',
   credentialAttributes: [],
   protocolVersion: 'v1',
-  role: 'issuer' as CredentialRole.Issuer,
+  role: 'issuer' as DidCommCredentialRole.Issuer,
 }
 
 export const ProofRecordExample = {
   _tags: {
-    state: 'proposal-sent' as ProofState,
+    state: 'proposal-sent' as DidCommProofState,
     threadId: '0019d466-5eea-4269-8c40-031b4896c5b7',
     connectionId: '2aecf74c-3073-4f98-9acb-92415d096834',
-  } as ProofExchangeRecordProps,
+  } as DidCommProofExchangeRecordProps,
   metadata: {},
   id: '821f9b26-ad04-4f56-89b6-e2ef9c72b36e',
   createdAt: new Date('2022-01-01T00:00:00.000Z'),
-  state: 'proposal-sent' as ProofState,
+  state: 'proposal-sent' as DidCommProofState,
   connectionId: '2aecf74c-3073-4f98-9acb-92415d096834',
   threadId: '0019d466-5eea-4269-8c40-031b4896c5b7',
-  autoAcceptProof: 'always' as AutoAcceptProof,
+  autoAcceptProof: 'always' as DidCommAutoAcceptProof,
   protocolVersion: 'v1',
-  role: 'verifier' as ProofRole.Verifier,
+  role: 'verifier' as DidCommProofRole.Verifier,
 }
 
 export const SchemaExample = {

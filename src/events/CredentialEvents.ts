@@ -2,14 +2,14 @@ import type { RestMultiTenantAgentModules } from '../cliAgent'
 import type { ServerConfig } from '../utils/ServerConfig'
 import type { Agent } from '@credo-ts/core'
 
-import { CredentialEventTypes, CredentialStateChangedEvent } from '@credo-ts/didcomm'
+import { DidCommCredentialEventTypes, DidCommCredentialStateChangedEvent } from '@credo-ts/didcomm'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
 
 export const credentialEvents = async (agent: Agent, config: ServerConfig) => {
-  agent.events.on(CredentialEventTypes.CredentialStateChanged, async (event: CredentialStateChangedEvent) => {
-    const record = event.payload.credentialRecord
+  agent.events.on(DidCommCredentialEventTypes.DidCommCredentialStateChanged, async (event: DidCommCredentialStateChangedEvent) => {
+    const record = event.payload.credentialExchangeRecord
 
     const body: Record<string, unknown> = {
       ...record.toJSON(),

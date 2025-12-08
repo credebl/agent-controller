@@ -1,6 +1,6 @@
 import type { RestAgentModules, RestMultiTenantAgentModules } from '../cliAgent'
 import type { Agent } from '@credo-ts/core'
-import type { TenantAgent } from '@credo-ts/tenants/build/TenantAgent'
+import type { TenantAgent } from '@credo-ts/tenants'
 
 // declare global {
 //   namespace Express {

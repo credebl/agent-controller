@@ -1,8 +1,6 @@
 import type { ServerConfig } from '../utils/ServerConfig'
 import type { Agent } from '@credo-ts/core'
 
-import { CredentialEventTypes, CredentialStateChangedEvent } from '@credo-ts/didcomm'
-
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
 import { OpenId4VcVerificationSessionStateChangedEvent, OpenId4VcVerifierEvents } from '@credo-ts/openid4vc'

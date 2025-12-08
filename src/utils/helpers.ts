@@ -1,5 +1,4 @@
-import { JsonTransformer } from '@credo-ts/core'
-import { JsonEncoder } from '@credo-ts/core/build/utils/JsonEncoder'
+import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
 import { randomBytes } from 'crypto'
 
 export function objectToJson<T>(result: T) {
