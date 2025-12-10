@@ -1,28 +1,27 @@
 import type { OutOfBandInvitationProps, OutOfBandRecordWithInvitationProps } from '../../examples'
-import type { AgentMessageType, RecipientKeyOption, CreateInvitationOptions } from '../../types'
+import type { RecipientKeyOption, CreateInvitationOptions, AgentMessageType } from '../../types'
 import type {
   PeerDidNumAlgo2CreateOptions,
 } from '@credo-ts/core'
 
 import {
-  JsonTransformer,
-  Key,
-  KeyType,
   createPeerDidDocumentFromServices,
+  JsonTransformer,
+  Kms,
   PeerDidNumAlgo,
+  TypedArrayEncoder,
 } from '@credo-ts/core'
 
 import {
-  ConnectionRecordProps,
-  CreateLegacyInvitationConfig,
-  Routing,
-  OutOfBandInvitation,
-  AgentMessage
+  DidCommConnectionRecordProps,
+  DidCommRouting,
+  DidCommOutOfBandInvitation,
+  DidCommMessage,
+  CreateLegacyInvitationConfig
 } from '@credo-ts/didcomm'
 import { Request as Req } from 'express'
 import { Body, Controller, Delete, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
-
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
 import { InternalServerError, NotFoundError } from '../../../errors'
@@ -48,9 +47,9 @@ export class OutOfBandController extends Controller {
             invitationId: invitationId,
           }
         : {}
-      const outOfBandRecords = await request.agent.modules.oob.findAllByQuery(query)
+      const outOfBandRecords = await request.agent.modules.didcomm.oob.findAllByQuery(query)
 
-      return outOfBandRecords.map((c) => c.toJSON())
+      return outOfBandRecords.map((c: { toJSON: () => any }) => c.toJSON())
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
@@ -65,7 +64,7 @@ export class OutOfBandController extends Controller {
   @Get('/:outOfBandId')
   public async getOutOfBandRecordById(@Request() request: Req, @Path('outOfBandId') outOfBandId: RecordId) {
     try {
-      const outOfBandRecord = await request.agent.modules.oob.findById(outOfBandId)
+      const outOfBandRecord = await request.agent.modules.didcomm.oob.findById(outOfBandId)
 
       if (!outOfBandRecord) throw new NotFoundError(`Out of band record with id "${outOfBandId}" not found.`)
 
@@ -99,21 +98,26 @@ export class OutOfBandController extends Controller {
       let invitationDid: string | undefined
       if (config?.invitationDid) {
         invitationDid = config?.invitationDid
-      } else {
-        const didRouting = await request.agent.modules.mediationRecipient.getRouting({})
-        const didDocument = createPeerDidDocumentFromServices([
-          {
-            id: 'didcomm',
-            recipientKeys: [didRouting.recipientKey],
-            routingKeys: didRouting.routingKeys,
-            serviceEndpoint: didRouting.endpoints[0],
-          },
-        ])
+      } 
+      else {
+        const didRouting = await request.agent.modules.didcomm.mediationRecipient.getRouting({})
+        const { didDocument, keys } = createPeerDidDocumentFromServices(
+          [
+            {
+              id: 'didcomm',
+              recipientKeys: [didRouting.recipientKey],
+              routingKeys: didRouting.routingKeys,
+              serviceEndpoint: didRouting.endpoints[0],
+            },
+          ],
+          true,
+        )
         const did = await request.agent.dids.create<PeerDidNumAlgo2CreateOptions>({
           didDocument,
           method: 'peer',
           options: {
             numAlgo: PeerDidNumAlgo.MultipleInceptionKeyWithoutDoc,
+            keys
           },
         })
 
@@ -124,7 +128,7 @@ export class OutOfBandController extends Controller {
         }
       }
 
-      const outOfBandRecord = await request.agent.modules.oob.createInvitation({ ...config, invitationDid })
+      const outOfBandRecord = await request.agent.modules.didcomm.oob.createInvitation({ ...config, invitationDid })
       return {
         invitationUrl: outOfBandRecord.outOfBandInvitation.toUrl({
           domain: request.agent.modules.didcomm.config.endpoints[0],
@@ -158,18 +162,23 @@ export class OutOfBandController extends Controller {
     @Body() config?: Omit<CreateLegacyInvitationConfig, 'routing'> & RecipientKeyOption,
   ) {
     try {
-      let routing: Routing
+      let routing: DidCommRouting
       if (config?.recipientKey) {
+        const recipientKey = await request.agent.kms.createKey({ type: { kty: 'OKP', crv: 'Ed25519' }, keyId: config.recipientKey })
         routing = {
           endpoints: request.agent.modules.didcomm.config.endpoints,
           routingKeys: [],
-          recipientKey: Key.fromPublicKeyBase58(config.recipientKey, KeyType.Ed25519),
+          recipientKey: Kms.PublicJwk.fromPublicKey({
+            crv: "Ed25519",
+            kty: "OKP",
+            publicKey: TypedArrayEncoder.fromBase58(config?.recipientKey)
+          }),
           mediatorId: undefined,
         }
       } else {
-        routing = await request.agent.modules.mediationRecipient.getRouting({})
+        routing = await request.agent.modules.didcomm.mediationRecipient.getRouting({})
       }
-      const { outOfBandRecord, invitation } = await request.agent.modules.oob.createLegacyInvitation({
+      const { outOfBandRecord, invitation } = await request.agent.modules.didcomm.oob.createLegacyInvitation({
         ...config,
         routing,
       })
@@ -182,7 +191,8 @@ export class OutOfBandController extends Controller {
           useDidSovPrefixWhereAllowed: request.agent.modules.didcomm.config.useDidSovPrefixWhereAllowed,
         }),
         outOfBandRecord: outOfBandRecord.toJSON(),
-        ...(config?.recipientKey ? {} : { recipientKey: routing.recipientKey.publicKeyBase58 }),
+        // Fixme: Not sure, if the below is correct
+        ...(config?.recipientKey ? {} : { recipientKey: TypedArrayEncoder.toBase58(routing.recipientKey.publicKey.publicKey)  }),
       }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
@@ -210,13 +220,13 @@ export class OutOfBandController extends Controller {
       recordId: string
       message: Record<string, unknown>;
       domain: string,
-      routing?: Routing;
+      routing?: DidCommRouting;
     },
   ) {
     try {
-      const agentMessage = JsonTransformer.fromJSON(config.message, AgentMessage) as AgentMessage
+      const agentMessage = JsonTransformer.fromJSON(config.message, DidCommMessage) as DidCommMessage
 
-      return await request.agent.modules.oob.createLegacyConnectionlessInvitation({
+      return await request.agent.modules.didcomm.oob.createLegacyConnectionlessInvitation({
         ...config,
         message: agentMessage,
       })
@@ -229,11 +239,11 @@ export class OutOfBandController extends Controller {
    * Creates inbound out-of-band record and assigns out-of-band invitation message to it if the
    * message is valid.
    *
-   * @param invitation either OutOfBandInvitation or ConnectionInvitationMessage
+   * @param invitation either DidCommOutOfBandInvitation or ConnectionInvitationMessage
    * @param config config for handling of invitation
    * @returns out-of-band record and connection record if one has been created.
    */
-  @Example<{ outOfBandRecord: OutOfBandRecordWithInvitationProps; connectionRecord: ConnectionRecordProps }>({
+  @Example<{ outOfBandRecord: OutOfBandRecordWithInvitationProps; connectionRecord: DidCommConnectionRecordProps }>({
     outOfBandRecord: outOfBandRecordExample,
     connectionRecord: ConnectionRecordExample,
   })
@@ -242,8 +252,8 @@ export class OutOfBandController extends Controller {
     const { invitation, ...config } = invitationRequest
 
     try {
-      const invite = new OutOfBandInvitation({ ...invitation, handshakeProtocols: invitation.handshake_protocols })
-      const { outOfBandRecord, connectionRecord } = await request.agent.modules.oob.receiveInvitation(invite, config)
+      const invite = new DidCommOutOfBandInvitation({ ...invitation, handshakeProtocols: invitation.handshake_protocols })
+      const { outOfBandRecord, connectionRecord } = await request.agent.modules.didcomm.oob.receiveInvitation(invite, config)
 
       return {
         outOfBandRecord: outOfBandRecord.toJSON(),
@@ -262,7 +272,7 @@ export class OutOfBandController extends Controller {
    * @param config config for handling of invitation
    * @returns out-of-band record and connection record if one has been created.
    */
-  @Example<{ outOfBandRecord: OutOfBandRecordWithInvitationProps; connectionRecord: ConnectionRecordProps }>({
+  @Example<{ outOfBandRecord: OutOfBandRecordWithInvitationProps; connectionRecord: DidCommConnectionRecordProps }>({
     outOfBandRecord: outOfBandRecordExample,
     connectionRecord: ConnectionRecordExample,
   })
@@ -278,7 +288,7 @@ export class OutOfBandController extends Controller {
       // if (linkSecretIds.length === 0) {
       //   await request.agent.modules.anoncreds.createLinkSecret()
       // }
-      const { outOfBandRecord, connectionRecord } = await request.agent.modules.oob.receiveInvitationFromUrl(
+      const { outOfBandRecord, connectionRecord } = await request.agent.modules.didcomm.oob.receiveInvitationFromUrl(
         invitationUrl,
         config,
       )
@@ -295,7 +305,7 @@ export class OutOfBandController extends Controller {
    * Accept a connection invitation as invitee (by sending a connection request message) for the connection with the specified connection id.
    * This is not needed when auto accepting of connections is enabled.
    */
-  @Example<{ outOfBandRecord: OutOfBandRecordWithInvitationProps; connectionRecord: ConnectionRecordProps }>({
+  @Example<{ outOfBandRecord: OutOfBandRecordWithInvitationProps; connectionRecord: DidCommConnectionRecordProps }>({
     outOfBandRecord: outOfBandRecordExample,
     connectionRecord: ConnectionRecordExample,
   })
@@ -306,7 +316,7 @@ export class OutOfBandController extends Controller {
     @Body() acceptInvitationConfig: AcceptInvitationConfig,
   ) {
     try {
-      const { outOfBandRecord, connectionRecord } = await request.agent.modules.oob.acceptInvitation(
+      const { outOfBandRecord, connectionRecord } = await request.agent.modules.didcomm.oob.acceptInvitation(
         outOfBandId,
         acceptInvitationConfig,
       )
@@ -329,7 +339,7 @@ export class OutOfBandController extends Controller {
   public async deleteOutOfBandRecord(@Request() request: Req, @Path('outOfBandId') outOfBandId: RecordId) {
     try {
       this.setStatus(204)
-      await request.agent.modules.oob.deleteById(outOfBandId)
+      await request.agent.modules.didcomm.oob.deleteById(outOfBandId)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
