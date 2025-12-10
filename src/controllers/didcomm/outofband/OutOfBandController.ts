@@ -27,6 +27,7 @@ import ErrorHandlingService from '../../../errorHandlingService'
 import { InternalServerError, NotFoundError } from '../../../errors'
 import { ConnectionRecordExample, outOfBandInvitationExample, outOfBandRecordExample, RecordId } from '../../examples'
 import { AcceptInvitationConfig, ReceiveInvitationByUrlProps, ReceiveInvitationProps } from '../../types'
+import { KeyAlgorithm, KeyTypes } from '../../../utils/constant'
 
 @Tags('DIDComm - Out Of Band')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
@@ -168,8 +169,8 @@ export class OutOfBandController extends Controller {
           endpoints: request.agent.modules.didcomm.config.endpoints,
           routingKeys: [],
           recipientKey: Kms.PublicJwk.fromPublicKey({
-            crv: "Ed25519",
-            kty: "OKP",
+            crv: KeyAlgorithm.Ed25519,
+            kty: KeyTypes.OKP,
             publicKey: TypedArrayEncoder.fromBase58(config?.recipientKey)
           }),
           mediatorId: undefined,
