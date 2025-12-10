@@ -164,7 +164,6 @@ export class OutOfBandController extends Controller {
     try {
       let routing: DidCommRouting
       if (config?.recipientKey) {
-        const recipientKey = await request.agent.kms.createKey({ type: { kty: 'OKP', crv: 'Ed25519' }, keyId: config.recipientKey })
         routing = {
           endpoints: request.agent.modules.didcomm.config.endpoints,
           routingKeys: [],
