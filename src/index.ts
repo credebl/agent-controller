@@ -4,12 +4,12 @@ import type { ServerConfig } from './utils/ServerConfig'
 import type { Agent } from '@credo-ts/core'
 import type { Socket } from 'net'
 
-import { Server } from 'ws'
+import { WebSocketServer } from 'ws'
 
 import { setupServer } from './server'
 
 export const startServer = async (agent: Agent, config: ServerConfig) => {
-  const socketServer = config.socketServer ?? new Server({ noServer: true })
+  const socketServer = config.socketServer ?? new WebSocketServer({ noServer: true })
   const app = await setupServer(agent, { ...config, socketServer })
   const server = app.listen(config.port)
 
