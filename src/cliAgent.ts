@@ -1,18 +1,17 @@
 import type { InitConfig } from '@credo-ts/core'
-import type { WalletConfig } from '@credo-ts/core/build/types'
 import type { IndyVdrPoolConfig } from '@credo-ts/indy-vdr'
 
-import { PolygonDidRegistrar, PolygonDidResolver, PolygonModule } from '@ayanworks/credo-polygon-w3c-module'
+// import { PolygonDidRegistrar, PolygonDidResolver, PolygonModule } from '@ayanworks/credo-polygon-w3c-module'
 import {
-  AnonCredsCredentialFormatService,
+  AnonCredsDidCommCredentialFormatService,
   AnonCredsModule,
-  AnonCredsProofFormatService,
-  LegacyIndyCredentialFormatService,
-  LegacyIndyProofFormatService,
-  V1CredentialProtocol,
-  V1ProofProtocol,
+  AnonCredsDidCommProofFormatService,
+  LegacyIndyDidCommCredentialFormatService,
+  LegacyIndyDidCommProofFormatService,
+  DidCommCredentialV1Protocol,
+  DidCommProofV1Protocol,
 } from '@credo-ts/anoncreds'
-import { AskarModule, AskarMultiWalletDatabaseScheme } from '@credo-ts/askar'
+import { AskarModule, AskarModuleConfigStoreOptions, AskarMultiWalletDatabaseScheme } from '@credo-ts/askar'
 import {
   DidsModule,
   W3cCredentialsModule,
@@ -26,23 +25,16 @@ import {
   X509Module,
 } from '@credo-ts/core'
 import {
-  HttpOutboundTransport,
-  WsOutboundTransport,
-  JsonLdCredentialFormatService,
-  DifPresentationExchangeProofFormatService,
-  ConnectionsModule,
-  ProofsModule,
-  AutoAcceptCredential,
-  AutoAcceptProof,
-  V2ProofProtocol,
-  CredentialsModule,
-  V2CredentialProtocol,
+  DidCommHttpOutboundTransport,
+  DidCommWsOutboundTransport,
+  DidCommJsonLdCredentialFormatService,
+  DidCommDifPresentationExchangeProofFormatService,
+  DidCommAutoAcceptCredential,
+  DidCommAutoAcceptProof,
+  DidCommProofV2Protocol,
+  DidCommCredentialV2Protocol,
   DidCommModule,
-  OutOfBandModule,
-  MediationRecipientModule,
-  BasicMessagesModule,
-  MessagePickupModule,
-  DiscoverFeaturesModule,
+  DidCommDiscoverFeaturesModule,
 } from '@credo-ts/didcomm'
 import {
   IndyVdrAnonCredsRegistry,
@@ -50,7 +42,7 @@ import {
   IndyVdrModule,
   IndyVdrIndyDidRegistrar,
 } from '@credo-ts/indy-vdr'
-import { agentDependencies, HttpInboundTransport, WsInboundTransport } from '@credo-ts/node'
+import { agentDependencies, DidCommHttpInboundTransport, DidCommWsInboundTransport } from '@credo-ts/node'
 import { QuestionAnswerModule } from '@credo-ts/question-answer'
 import { TenantsModule } from '@credo-ts/tenants'
 import { anoncreds } from '@hyperledger/anoncreds-nodejs'
@@ -66,16 +58,16 @@ import { CustomDocumentLoader } from './utils/customDocumentLoader'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
 import { OpenId4VcHolderModule, OpenId4VcIssuerModule, OpenId4VcVerifierModule } from '@credo-ts/openid4vc'
-import { Router } from 'express'
 import {
   getCredentialRequestToCredentialMapper,
-  getMixedCredentialRequestToCredentialMapper,
   getTrustedCerts,
 } from './utils/oid4vc-agent'
 import bodyParser from 'body-parser'
 
-const openId4VciRouter = Router()
-const openId4VpRouter = Router()
+import express from 'express'
+
+const openId4VpApp = express()
+const openId4VcApp = express()
 
 export type Transports = 'ws' | 'http'
 export type InboundTransport = {
@@ -84,13 +76,13 @@ export type InboundTransport = {
 }
 
 const inboundTransportMapping = {
-  http: HttpInboundTransport,
-  ws: WsInboundTransport,
+  http: DidCommHttpInboundTransport,
+  ws: DidCommWsInboundTransport,
 } as const
 
 const outboundTransportMapping = {
-  http: HttpOutboundTransport,
-  ws: WsOutboundTransport,
+  http: DidCommHttpOutboundTransport,
+  ws: DidCommWsOutboundTransport,
 } as const
 
 interface indyLedger {
@@ -99,14 +91,14 @@ interface indyLedger {
 }
 export interface AriesRestConfig {
   label: string
-  walletConfig: WalletConfig
+  walletConfig: AskarModuleConfigStoreOptions
   indyLedger: indyLedger[]
   adminPort: number
   publicDidSeed?: string
   endpoints?: string[]
   autoAcceptConnections?: boolean
-  autoAcceptCredentials?: AutoAcceptCredential
-  autoAcceptProofs?: AutoAcceptProof
+  autoAcceptCredentials?: DidCommAutoAcceptCredential
+  autoAcceptProofs?: DidCommAutoAcceptProof
   logLevel?: LogLevel
   inboundTransports?: InboundTransport[]
   outboundTransports?: Transports[]
@@ -145,20 +137,25 @@ const getModules = (
   rpcUrl: string,
   schemaManagerContractAddress: string,
   autoAcceptConnections: boolean,
-  autoAcceptCredentials: AutoAcceptCredential,
-  autoAcceptProofs: AutoAcceptProof,
+  autoAcceptCredentials: DidCommAutoAcceptCredential,
+  autoAcceptProofs: DidCommAutoAcceptProof,
   walletScheme: AskarMultiWalletDatabaseScheme,
+  storeOptions: AskarModuleConfigStoreOptions
 ) => {
-  const legacyIndyCredentialFormat = new LegacyIndyCredentialFormatService()
-  const legacyIndyProofFormat = new LegacyIndyProofFormatService()
-  const jsonLdCredentialFormatService = new JsonLdCredentialFormatService()
-  const anonCredsCredentialFormatService = new AnonCredsCredentialFormatService()
-  const anonCredsProofFormatService = new AnonCredsProofFormatService()
-  const presentationExchangeProofFormatService = new DifPresentationExchangeProofFormatService()
+  const legacyIndyCredentialFormat = new LegacyIndyDidCommCredentialFormatService()
+  const legacyIndyProofFormat = new LegacyIndyDidCommProofFormatService()
+  const jsonLdCredentialFormatService = new DidCommJsonLdCredentialFormatService()
+  const anonCredsCredentialFormatService = new AnonCredsDidCommCredentialFormatService()
+  const anonCredsProofFormatService = new AnonCredsDidCommProofFormatService()
+  const presentationExchangeProofFormatService = new DidCommDifPresentationExchangeProofFormatService()
   return {
     askar: new AskarModule({
       askar,
+      store: {
+        ...storeOptions
+      },
       multiWalletDatabaseScheme: walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
+      
     }),
 
     indyVdr: new IndyVdrModule({
@@ -167,78 +164,77 @@ const getModules = (
     }),
 
     dids: new DidsModule({
-      registrars: [new IndyVdrIndyDidRegistrar(), new KeyDidRegistrar(), new PolygonDidRegistrar()],
-      resolvers: [new IndyVdrIndyDidResolver(), new KeyDidResolver(), new WebDidResolver(), new PolygonDidResolver()],
+      registrars: [new IndyVdrIndyDidRegistrar(), new KeyDidRegistrar()
+        // , new PolygonDidRegistrar()
+      ],
+      resolvers: [new IndyVdrIndyDidResolver(), new KeyDidResolver(), new WebDidResolver()
+        // , new PolygonDidResolver()
+      ],
     }),
 
     anoncreds: new AnonCredsModule({
       registries: [new IndyVdrAnonCredsRegistry()],
       anoncreds,
     }),
-
-    connections: new ConnectionsModule({
-      autoAcceptConnections: autoAcceptConnections || true,
-    }),
-    proofs: new ProofsModule({
-      autoAcceptProofs: autoAcceptProofs || AutoAcceptProof.ContentApproved,
-      proofProtocols: [
-        new V1ProofProtocol({
-          indyProofFormat: legacyIndyProofFormat,
-        }),
-        new V2ProofProtocol({
-          proofFormats: [legacyIndyProofFormat, anonCredsProofFormatService, presentationExchangeProofFormatService],
-        }),
-      ],
-    }),
-    credentials: new CredentialsModule({
-      autoAcceptCredentials: autoAcceptCredentials || AutoAcceptCredential.Always,
-      credentialProtocols: [
-        new V1CredentialProtocol({
-          indyCredentialFormat: legacyIndyCredentialFormat,
-        }),
-        new V2CredentialProtocol({
-          credentialFormats: [
-            legacyIndyCredentialFormat,
-            jsonLdCredentialFormatService,
-            anonCredsCredentialFormatService,
-          ],
-        }),
-      ],
-    }),
-    w3cCredentials: isCustomDocumentLoaderEnabled()
-      ? new W3cCredentialsModule({
-          documentLoader: CustomDocumentLoader,
-        })
-      : new W3cCredentialsModule(),
+    w3cCredentials: new W3cCredentialsModule(),
     didcomm: new DidCommModule({
-      processDidCommMessagesConcurrently: true   
+      processDidCommMessagesConcurrently: true,
+      anoncreds: new AnonCredsModule({
+        registries: [new IndyVdrAnonCredsRegistry()],
+        anoncreds,
+      }),
+      oob: true,
+      mediationRecipient: true,
+      messagePickup: true,
+      basicMessages: true,
+      connections: {
+        autoAcceptConnections: autoAcceptConnections || true,
+      },
+      proofs: {
+        autoAcceptProofs: autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
+        proofProtocols: [
+          new DidCommProofV1Protocol({
+            indyProofFormat: legacyIndyProofFormat,
+          }),
+          new DidCommProofV2Protocol({
+            proofFormats: [legacyIndyProofFormat, anonCredsProofFormatService, presentationExchangeProofFormatService],
+          }),
+        ],
+      }, 
+      credentials: {
+        autoAcceptCredentials: autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
+        credentialProtocols: [
+          new DidCommCredentialV1Protocol({
+            indyCredentialFormat: legacyIndyCredentialFormat,
+          }),
+          new DidCommCredentialV2Protocol({
+            credentialFormats: [legacyIndyCredentialFormat, jsonLdCredentialFormatService, anonCredsCredentialFormatService],
+          }),
+        ],
+      },
     }),
-    oob: new OutOfBandModule(),
-    mediationRecipient: new MediationRecipientModule(),
-    discovery: new DiscoverFeaturesModule(),
-    messagePickup: new MessagePickupModule(),
-    basicMessages: new BasicMessagesModule(),
+    discovery: new DidCommDiscoverFeaturesModule(),
     cache: new CacheModule({
       cache: new InMemoryLruCache({ limit: Number(process.env.INMEMORY_LRU_CACHE_LIMIT) || Infinity }),
     }),
 
     questionAnswer: new QuestionAnswerModule(),
-    polygon: new PolygonModule({
-      didContractAddress: didRegistryContractAddress
-        ? didRegistryContractAddress
-        : (process.env.DID_CONTRACT_ADDRESS as string),
-      schemaManagerContractAddress:
-        schemaManagerContractAddress || (process.env.SCHEMA_MANAGER_CONTRACT_ADDRESS as string),
-      fileServerToken: fileServerToken ? fileServerToken : (process.env.FILE_SERVER_TOKEN as string),
-      rpcUrl: rpcUrl ? rpcUrl : (process.env.RPC_URL as string),
-      serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
-    }),
+    // polygon: new PolygonModule({
+    //   didContractAddress: didRegistryContractAddress
+    //     ? didRegistryContractAddress
+    //     : (process.env.DID_CONTRACT_ADDRESS as string),
+    //   schemaManagerContractAddress:
+    //     schemaManagerContractAddress || (process.env.SCHEMA_MANAGER_CONTRACT_ADDRESS as string),
+    //   fileServerToken: fileServerToken ? fileServerToken : (process.env.FILE_SERVER_TOKEN as string),
+    //   rpcUrl: rpcUrl ? rpcUrl : (process.env.RPC_URL as string),
+    //   serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
+    // }),
     openId4VcVerifier: new OpenId4VcVerifierModule({
       baseUrl:
         process.env.NODE_ENV === 'PROD'
           ? `https://${process.env.APP_URL}/oid4vp`
           : `${process.env.AGENT_HTTP_URL}/oid4vp`,
-      router: openId4VpRouter,
+      app: openId4VpApp,
       authorizationRequestExpirationInSeconds: Number(process.env.OID4VP_AUTH_REQUEST_PROOF_REQUEST_EXPIRY) || 3600,
     }),
     openId4VcIssuer: new OpenId4VcIssuerModule({
@@ -246,13 +242,13 @@ const getModules = (
         process.env.NODE_ENV === 'PROD'
           ? `https://${process.env.APP_URL}/oid4vci`
           : `${process.env.AGENT_HTTP_URL}/oid4vci`,
-      router: openId4VciRouter,
+      app: openId4VcApp,
       statefulCredentialOfferExpirationInSeconds: Number(process.env.OID4VCI_CRED_OFFER_EXPIRY) || 3600,
       accessTokenExpiresInSeconds: Number(process.env.OID4VCI_ACCESS_TOKEN_EXPIRY) || 3600,
       authorizationCodeExpiresInSeconds: Number(process.env.OID4VCI_AUTH_CODE_EXPIRY) || 3600,
       cNonceExpiresInSeconds: Number(process.env.OID4VCI_CNONCE_EXPIRY) || 3600,
       dpopRequired: false,
-      credentialRequestToCredentialMapper: (...args) => getMixedCredentialRequestToCredentialMapper()(...args),
+      credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
     }),
     openId4VcHolderModule: new OpenId4VcHolderModule(),
     x509: new X509Module({
@@ -275,9 +271,10 @@ const getWithTenantModules = (
   rpcUrl: string,
   schemaManagerContractAddress: string,
   autoAcceptConnections: boolean,
-  autoAcceptCredentials: AutoAcceptCredential,
-  autoAcceptProofs: AutoAcceptProof,
+  autoAcceptCredentials: DidCommAutoAcceptCredential,
+  autoAcceptProofs: DidCommAutoAcceptProof,
   walletScheme: AskarMultiWalletDatabaseScheme,
+  walletConfig: AskarModuleConfigStoreOptions
 ) => {
   const modules = getModules(
     networkConfig,
@@ -290,6 +287,7 @@ const getWithTenantModules = (
     autoAcceptCredentials,
     autoAcceptProofs,
     walletScheme,
+    walletConfig
   )
   return {
     tenants: new TenantsModule<typeof modules>({
@@ -344,17 +342,12 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
   const logger = new TsLogger(logLevel ?? LogLevel.error)
 
   const agentConfig: InitConfig = {
-    walletConfig: {
-      id: walletConfig.id,
-      key: walletConfig.key,
-      storage: walletConfig.storage,
-    },
     ...afjConfig,
     logger,
     autoUpdateStorageOnStartup: true,
     // As backup is only supported for sqlite storage
     // we need to manually take backup of the storage before updating the storage
-    backupBeforeStorageUpdate: false,
+    // backupBeforeStorageUpdate: false,
     // Ideally for testing connection between tenant agent we need to set this to 'true'. Default is 'false'
     // TODO: triage: not sure if we want it to be 'true', as it would mean parallel requests on BW
     // Setting it for now //TODO: check if this is needed
@@ -424,9 +417,10 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     rpcUrl || '',
     schemaManagerContractAddress || '',
     autoAcceptConnections || true,
-    autoAcceptCredentials || AutoAcceptCredential.Always,
-    autoAcceptProofs || AutoAcceptProof.ContentApproved,
+    autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
+    autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
     walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
+    walletConfig
   )
   const modules = getModules(
     networkConfig,
@@ -436,9 +430,10 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     rpcUrl || '',
     schemaManagerContractAddress || '',
     autoAcceptConnections || true,
-    autoAcceptCredentials || AutoAcceptCredential.Always,
-    autoAcceptProofs || AutoAcceptProof.ContentApproved,
+    autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
+    autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
     walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
+    walletConfig
   )
   const agent = new Agent({
     config: agentConfig,
@@ -460,19 +455,13 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
   }
 
   // Register inbound transports
-  // for (const inboundTransport of inboundTransports) {
-  //   const InboundTransport = inboundTransportMapping[inboundTransport.transport]
-  //   agent.modules.didcomm.registerInboundTransport(new InboundTransport({ port: inboundTransport.port }))
-  // }
-
-  // Register inbound transports
   for (const inboundTransport of inboundTransports) {
     const InboundTransport = inboundTransportMapping[inboundTransport.transport]
     const transport = new InboundTransport({ port: inboundTransport.port })
     agent.modules.didcomm.registerInboundTransport(transport)
 
     // Configure the oid4vc routers on the http inbound transport
-    if (transport instanceof HttpInboundTransport) {
+    if (transport instanceof DidCommHttpInboundTransport) {
       transport.app.use(
         bodyParser.urlencoded({
           extended: true,
@@ -481,8 +470,8 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       )
       transport.app.use(bodyParser.json({ limit: process.env.APP_JSON_BODY_SIZE ?? '5mb' }))
 
-      transport.app.use('/oid4vci', modules.openId4VcIssuer.config.router as any)
-      transport.app.use('/oid4vp', modules.openId4VcVerifier.config.router as any)
+      transport.app.use('/oid4vci', modules.openId4VcIssuer.config.app)
+      transport.app.use('/oid4vp', modules.openId4VcVerifier.config.app)
     }
   }
 
