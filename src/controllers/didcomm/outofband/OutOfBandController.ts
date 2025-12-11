@@ -7,18 +7,14 @@ import type {
 import {
   createPeerDidDocumentFromServices,
   JsonTransformer,
-  Kms,
   PeerDidNumAlgo,
-  TypedArrayEncoder,
 } from '@credo-ts/core'
 
 import {
   DidCommConnectionRecordProps,
   DidCommRouting,
   DidCommOutOfBandInvitation,
-  DidCommMessage,
-  CreateLegacyInvitationConfig
-} from '@credo-ts/didcomm'
+  DidCommMessage} from '@credo-ts/didcomm'
 import { Request as Req } from 'express'
 import { Body, Controller, Delete, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
@@ -27,7 +23,6 @@ import ErrorHandlingService from '../../../errorHandlingService'
 import { InternalServerError, NotFoundError } from '../../../errors'
 import { ConnectionRecordExample, outOfBandInvitationExample, outOfBandRecordExample, RecordId } from '../../examples'
 import { AcceptInvitationConfig, ReceiveInvitationByUrlProps, ReceiveInvitationProps } from '../../types'
-import { KeyAlgorithm, KeyTypes } from '../../../utils/constant'
 
 @Tags('DIDComm - Out Of Band')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
@@ -139,60 +134,6 @@ export class OutOfBandController extends Controller {
         }),
         outOfBandRecord: outOfBandRecord.toJSON(),
         invitationDid: config?.invitationDid ? '' : invitationDid,
-      }
-    } catch (error) {
-      throw ErrorHandlingService.handle(error)
-    }
-  }
-
-  /**
-   * Creates an outbound out-of-band record in the same way how `createInvitation` method does it,
-   * but it also converts out-of-band invitation message to an "legacy" invitation message defined
-   * in RFC 0160: Connection Protocol and returns it together with out-of-band record.
-   *
-   * @param config configuration of how a invitation should be created
-   * @returns out-of-band record and invitation
-   */
-  @Example<{ invitation: OutOfBandInvitationProps; outOfBandRecord: OutOfBandRecordWithInvitationProps }>({
-    invitation: outOfBandInvitationExample,
-    outOfBandRecord: outOfBandRecordExample,
-  })
-  @Post('/create-legacy-invitation')
-  public async createLegacyInvitation(
-    @Request() request: Req,
-    @Body() config?: Omit<CreateLegacyInvitationConfig, 'routing'> & RecipientKeyOption,
-  ) {
-    try {
-      let routing: DidCommRouting
-      if (config?.recipientKey) {
-        routing = {
-          endpoints: request.agent.modules.didcomm.config.endpoints,
-          routingKeys: [],
-          recipientKey: Kms.PublicJwk.fromPublicKey({
-            crv: KeyAlgorithm.Ed25519,
-            kty: KeyTypes.OKP,
-            publicKey: TypedArrayEncoder.fromBase58(config?.recipientKey)
-          }),
-          mediatorId: undefined,
-        }
-      } else {
-        routing = await request.agent.modules.didcomm.mediationRecipient.getRouting({})
-      }
-      const { outOfBandRecord, invitation } = await request.agent.modules.didcomm.oob.createLegacyInvitation({
-        ...config,
-        routing,
-      })
-      return {
-        invitationUrl: invitation.toUrl({
-          domain: request.agent.modules.didcomm.config.endpoints[0],
-          useDidSovPrefixWhereAllowed: request.agent.modules.didcomm.config.useDidSovPrefixWhereAllowed,
-        }),
-        invitation: invitation.toJSON({
-          useDidSovPrefixWhereAllowed: request.agent.modules.didcomm.config.useDidSovPrefixWhereAllowed,
-        }),
-        outOfBandRecord: outOfBandRecord.toJSON(),
-        // Fixme: Not sure, if the below is correct
-        ...(config?.recipientKey ? {} : { recipientKey: TypedArrayEncoder.toBase58(routing.recipientKey.publicKey.publicKey)  }),
       }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
