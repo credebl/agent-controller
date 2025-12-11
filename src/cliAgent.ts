@@ -343,9 +343,6 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     ...afjConfig,
     logger,
     autoUpdateStorageOnStartup: true,
-    // As backup is only supported for sqlite storage
-    // we need to manually take backup of the storage before updating the storage
-    // backupBeforeStorageUpdate: false,
     // Ideally for testing connection between tenant agent we need to set this to 'true'. Default is 'false'
     // TODO: triage: not sure if we want it to be 'true', as it would mean parallel requests on BW
     // Setting it for now //TODO: check if this is needed
