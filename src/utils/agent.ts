@@ -145,7 +145,7 @@ export const setupAgent = async ({ name, endpoints, port }: { name: string; endp
       const invitation = await DidCommConnectionInvitationMessage.fromUrl(req.url)
       res.send(invitation.toJSON())
     } else {
-      const { outOfBandInvitation } = await agent.modules.oob.createInvitation()
+      const { outOfBandInvitation } = await agent.modules.didcomm.oob.createInvitation()
 
       res.send(outOfBandInvitation.toUrl({ domain: endpoints + '/invitation' }))
     }
