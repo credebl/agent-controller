@@ -1,220 +1,219 @@
-import type { X509CreateCertificateOptionsDto } from './x509.types'
-import type { BasicX509CreateCertificateConfig, X509ImportCertificateOptionsDto } from '../types'
-import type { CredoError, Key } from '@credo-ts/core'
-import type { Request as Req } from 'express'
+// import type { X509CreateCertificateOptionsDto } from './x509.types'
+// import type { BasicX509CreateCertificateConfig, X509ImportCertificateOptionsDto } from '../types'
+// import type { CredoError } from '@credo-ts/core'
+// import type { Request as Req } from 'express'
 
-import {
-  KeyType,
-  TypedArrayEncoder,
-  WalletKeyExistsError,
-  X509Certificate,
-  X509ExtendedKeyUsage,
-  X509KeyUsage,
-  X509ModuleConfig,
-  X509Service,
-  type Agent,
-} from '@credo-ts/core'
+// import {
+//   TypedArrayEncoder,
+//   X509Certificate,
+//   X509ExtendedKeyUsage,
+//   X509KeyUsage,
+//   X509ModuleConfig,
+//   X509Service,
+//   type Agent,
+// } from '@credo-ts/core'
 
-import { generateSecretKey, getCertificateValidityForSystem } from '../../utils/helpers'
+// import { generateSecretKey, getCertificateValidityForSystem } from '../../utils/helpers'
 
-import { pemToRawEd25519PrivateKey } from './crypto-util'
+// import { pemToRawEd25519PrivateKey } from './crypto-util'
+// import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
-class x509Service {
-  public async createSelfSignedDCS(createX509Options: BasicX509CreateCertificateConfig, agentReq: Req) {
-    const agent = agentReq.agent
+// class x509Service {
+//   public async createSelfSignedDCS(createX509Options: BasicX509CreateCertificateConfig, agentReq: Req) {
+//     const agent = agentReq.agent
 
-    const authorityKey = await createKey(agent as Agent, createX509Options.keyType)
-    const AGENT_HOST = createX509Options.issuerAlternativeNameURL
-    const AGENT_DNS = AGENT_HOST.replace('https://', '')
-    const selfSignedx509certificate = await X509Service.createCertificate(agent.context, {
-      authorityKey: authorityKey, //createX509Options.subjectKey,
-      issuer: { countryName: createX509Options.countryName, commonName: createX509Options.commonName },
-      validity: getCertificateValidityForSystem(false),
-      extensions: {
-        subjectKeyIdentifier: {
-          include: true,
-        },
-        keyUsage: {
-          usages: [X509KeyUsage.KeyCertSign, X509KeyUsage.CrlSign, X509KeyUsage.DigitalSignature],
-          markAsCritical: true,
-        },
-        subjectAlternativeName: {
-          name: [
-            { type: 'dns', value: AGENT_DNS },
-            { type: 'url', value: AGENT_HOST },
-          ],
-        },
-        issuerAlternativeName: {
-          // biome-ignore lint/style/noNonNullAssertion:
-          //name: rootCertificate.issuerAlternativeNames!,
-          name: [
-            { type: 'dns', value: AGENT_DNS },
-            { type: 'url', value: AGENT_HOST },
-          ],
-        },
-        extendedKeyUsage: {
-          usages: [X509ExtendedKeyUsage.MdlDs],
-          markAsCritical: true,
-        },
-        basicConstraints: {
-          ca: true,
-          pathLenConstraint: 0,
-          markAsCritical: true,
-        },
-        // TODO: Create revocation list and add URL here - store this in platform
-        // crlDistributionPoints: {
-        //   urls: [`${"AGENT_HOST"}/crl`],
-        // },
-      },
-    })
+//     const authorityKey = await createKey(agent as Agent, createX509Options.keyType)
+//     const AGENT_HOST = createX509Options.issuerAlternativeNameURL
+//     const AGENT_DNS = AGENT_HOST.replace('https://', '')
+//     const selfSignedx509certificate = await X509Service.createCertificate(agent.context, {
+//       authorityKey: authorityKey, //createX509Options.subjectKey,
+//       issuer: { countryName: createX509Options.countryName, commonName: createX509Options.commonName },
+//       validity: getCertificateValidityForSystem(false),
+//       extensions: {
+//         subjectKeyIdentifier: {
+//           include: true,
+//         },
+//         keyUsage: {
+//           usages: [X509KeyUsage.KeyCertSign, X509KeyUsage.CrlSign, X509KeyUsage.DigitalSignature],
+//           markAsCritical: true,
+//         },
+//         subjectAlternativeName: {
+//           name: [
+//             { type: 'dns', value: AGENT_DNS },
+//             { type: 'url', value: AGENT_HOST },
+//           ],
+//         },
+//         issuerAlternativeName: {
+//           // biome-ignore lint/style/noNonNullAssertion:
+//           //name: rootCertificate.issuerAlternativeNames!,
+//           name: [
+//             { type: 'dns', value: AGENT_DNS },
+//             { type: 'url', value: AGENT_HOST },
+//           ],
+//         },
+//         extendedKeyUsage: {
+//           usages: [X509ExtendedKeyUsage.MdlDs],
+//           markAsCritical: true,
+//         },
+//         basicConstraints: {
+//           ca: true,
+//           pathLenConstraint: 0,
+//           markAsCritical: true,
+//         },
+//         // TODO: Create revocation list and add URL here - store this in platform
+//         // crlDistributionPoints: {
+//         //   urls: [`${"AGENT_HOST"}/crl`],
+//         // },
+//       },
+//     })
 
-    agent.config.logger.info('======= X.509 IACA Self Signed Certificate ===========')
-    const selfSignedx509certificateBase64 = selfSignedx509certificate.toString('base64')
-    agent.config.logger.debug('selfSignedx509certificateBase64', { selfSignedx509certificateBase64 })
-    return { publicCertificateBase64: selfSignedx509certificateBase64 }
-  }
+//     agent.config.logger.info('======= X.509 IACA Self Signed Certificate ===========')
+//     const selfSignedx509certificateBase64 = selfSignedx509certificate.toString('base64')
+//     agent.config.logger.debug('selfSignedx509certificateBase64', { selfSignedx509certificateBase64 })
+//     return { publicCertificateBase64: selfSignedx509certificateBase64 }
+//   }
 
-  public async createCertificate(agentReq: Req, options: X509CreateCertificateOptionsDto) {
-    const agent = agentReq.agent
+//   public async createCertificate(agentReq: Req, options: X509CreateCertificateOptionsDto) {
+//     const agent = agentReq.agent
 
-    let authorityKeyID, subjectPublicKeyID
+//     let authorityKeyID, subjectPublicKeyID
 
-    agent.config.logger.debug(`createCertificate options:`, options)
+//     agent.config.logger.debug(`createCertificate options:`, options)
 
-    if (options.authorityKey && options?.authorityKey?.seed) {
-      authorityKeyID = await agent.context.wallet.createKey({
-        keyType: options.authorityKey.keyType ?? KeyType.P256,
-        seed: TypedArrayEncoder.fromString(options.authorityKey.seed),
-      })
-    } else {
-      authorityKeyID = await agent.context.wallet.createKey({
-        keyType: KeyType.P256,
-      })
-    }
+//     if (options.authorityKey && options?.authorityKey?.seed) {
+//       authorityKeyID = await agent.context.wallet.createKey({
+//         keyType: options.authorityKey.keyType ?? KeyAlgorithm.EcSecp256r1,
+//         seed: TypedArrayEncoder.fromString(options.authorityKey.seed),
+//       })
+//     } else {
+//       authorityKeyID = await agent.context.wallet.createKey({
+//         keyType: KeyAlgorithm.EcSecp256r1,
+//       })
+//     }
 
-    if (options.subjectPublicKey) {
-      if (options?.subjectPublicKey?.seed) {
-        subjectPublicKeyID = await agent.context.wallet.createKey({
-          keyType: options.subjectPublicKey.keyType ?? KeyType.P256,
-          seed: TypedArrayEncoder.fromString(options.subjectPublicKey.seed),
-        })
-      } else {
-        subjectPublicKeyID = await agent.context.wallet.createKey({
-          keyType: KeyType.P256,
-        })
-      }
-    }
+//     if (options.subjectPublicKey) {
+//       if (options?.subjectPublicKey?.seed) {
+//         subjectPublicKeyID = await agent.context.wallet.createKey({
+//           keyType: options.subjectPublicKey.keyType ?? KeyAlgorithm.EcSecp256r1,
+//           seed: TypedArrayEncoder.fromString(options.subjectPublicKey.seed),
+//         })
+//       } else {
+//         subjectPublicKeyID = await agent.context.wallet.createKey({
+//           keyType: KeyAlgorithm.EcSecp256r1,
+//         })
+//       }
+//     }
 
-    const certificate = await agent.x509.createCertificate({
-      authorityKey: authorityKeyID as Key,
-      subjectPublicKey: (subjectPublicKeyID as Key) ?? undefined,
-      serialNumber: options.serialNumber,
-      issuer: options.issuer,
-      extensions: options.extensions,
-      subject: options.subject,
-      validity: options.validity,
-    })
+//     const certificate = await agent.x509.createCertificate({
+//       authorityKey: authorityKeyID as Key,
+//       subjectPublicKey: (subjectPublicKeyID as Key) ?? undefined,
+//       serialNumber: options.serialNumber,
+//       issuer: options.issuer,
+//       extensions: options.extensions,
+//       subject: options.subject,
+//       validity: options.validity,
+//     })
 
-    const issuerCertificate = certificate.toString('base64')
-    return { publicCertificateBase64: issuerCertificate }
-  }
+//     const issuerCertificate = certificate.toString('base64')
+//     return { publicCertificateBase64: issuerCertificate }
+//   }
 
-  public async ImportX509Certificates(agentReq: Req, options: X509ImportCertificateOptionsDto) {
-    const agent = agentReq.agent
-    agent.config.logger.debug(`Start validating keys`)
-    const secretHexKey = await pemToRawEd25519PrivateKey(options.privateKey ?? '')
-    const privateKey = TypedArrayEncoder.fromHex(secretHexKey)
+//   public async ImportX509Certificates(agentReq: Req, options: X509ImportCertificateOptionsDto) {
+//     const agent = agentReq.agent
+//     agent.config.logger.debug(`Start validating keys`)
+//     const secretHexKey = await pemToRawEd25519PrivateKey(options.privateKey ?? '')
+//     const privateKey = TypedArrayEncoder.fromHex(secretHexKey)
 
-    agent.config.logger.debug(`Decode certificate`)
-    const parsedCertificate = X509Service.parseCertificate(agent.context, {
-      encodedCertificate: options.certificate,
-    })
-    const issuerCertficicate = parsedCertificate.toString('base64')
+//     agent.config.logger.debug(`Decode certificate`)
+//     const parsedCertificate = X509Service.parseCertificate(agent.context, {
+//       encodedCertificate: options.certificate,
+//     })
+//     const issuerCertficicate = parsedCertificate.toString('base64')
 
-    try {
-      const documentSignerKey = await agent.wallet.createKey({
-        privateKey: privateKey,
-        keyType: options.keyType,
-      })
+//     try {
+//       const documentSignerKey = await agent.wallet.createKey({
+//         privateKey: privateKey,
+//         keyType: options.keyType,
+//       })
 
-      if (
-        parsedCertificate.publicKey.keyType !== options.keyType ||
-        !Buffer.from(parsedCertificate.publicKey.publicKey).equals(Buffer.from(documentSignerKey.publicKey))
-      ) {
-        throw new Error(`Key mismatched in provided X509_CERTIFICATE to import`)
-      }
-      console.log(`Keys matched with certificate`)
-    } catch (error) {
-      // If the key already exists, we assume the self-signed certificate is already created
-      if (error instanceof WalletKeyExistsError) {
-        console.error(
-          `key already exists while importing certificate ${JSON.stringify(parsedCertificate.privateKey)}`,
-          parsedCertificate.privateKey,
-        )
-      } else {
-        agent.config.logger.error(`${JSON.stringify(error)}`)
-        throw error
-      }
-    }
+//       if (
+//         parsedCertificate.publicKey.keyType !== options.keyType ||
+//         !Buffer.from(parsedCertificate.publicKey.publicKey).equals(Buffer.from(documentSignerKey.publicKey))
+//       ) {
+//         throw new Error(`Key mismatched in provided X509_CERTIFICATE to import`)
+//       }
+//       console.log(`Keys matched with certificate`)
+//     } catch (error) {
+//       // If the key already exists, we assume the self-signed certificate is already created
+//       if (error instanceof WalletKeyExistsError) {
+//         console.error(
+//           `key already exists while importing certificate ${JSON.stringify(parsedCertificate.privateKey)}`,
+//           parsedCertificate.privateKey,
+//         )
+//       } else {
+//         agent.config.logger.error(`${JSON.stringify(error)}`)
+//         throw error
+//       }
+//     }
 
-    return { issuerCertficicate }
-  }
+//     return { issuerCertficicate }
+//   }
 
-  public addTrustedCertificate(
-    agentReq: Req,
-    options: {
-      certificate: string
-    },
-  ) {
-    const agent = agentReq.agent
-    return agent.x509.addTrustedCertificate(options.certificate)
-  }
+//   public addTrustedCertificate(
+//     agentReq: Req,
+//     options: {
+//       certificate: string
+//     },
+//   ) {
+//     const agent = agentReq.agent
+//     return agent.x509.addTrustedCertificate(options.certificate)
+//   }
 
-  public getTrustedCertificates(agentReq: Req) {
-    const trustedCertificates = agentReq.agent.context.dependencyManager
-      .resolve(X509ModuleConfig)
-      .trustedCertificates?.map((cert) => X509Certificate.fromEncodedCertificate(cert).toString('base64')) // as [string, ...string[]]
+//   public getTrustedCertificates(agentReq: Req) {
+//     const trustedCertificates = agentReq.agent.context.dependencyManager
+//       .resolve(X509ModuleConfig)
+//       .trustedCertificates?.map((cert) => X509Certificate.fromEncodedCertificate(cert).toString('base64')) // as [string, ...string[]]
 
-    return trustedCertificates
-  }
+//     return trustedCertificates
+//   }
 
-  /**
-   * Parses a base64-encoded X.509 certificate into a X509Certificate
-   *
-   * @param issuerAgent {Agent}
-   * @param options {x509Input}
-   * @returns
-   */
-  public decodeCertificate(
-    agentReq: Req,
-    options: {
-      certificate: string
-    },
-  ) {
-    const parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
-      encodedCertificate: options.certificate,
-    })
+//   /**
+//    * Parses a base64-encoded X.509 certificate into a X509Certificate
+//    *
+//    * @param issuerAgent {Agent}
+//    * @param options {x509Input}
+//    * @returns
+//    */
+//   public decodeCertificate(
+//     agentReq: Req,
+//     options: {
+//       certificate: string
+//     },
+//   ) {
+//     const parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
+//       encodedCertificate: options.certificate,
+//     })
 
-    return parsedCertificate
-  }
-}
+//     return parsedCertificate
+//   }
+// }
 
-export const x509ServiceT = new x509Service()
+// export const x509ServiceT = new x509Service()
 
-export async function createKey(agent: Agent, keyType: KeyType) {
-  try {
-    const seed = await generateSecretKey(keyType === KeyType.P256 ? 64 : 32)
+// export async function createKey(agent: Agent, keyType: KeyAlgorithm) {
+//   try {
+//     const seed = await generateSecretKey(keyType === KeyAlgorithm.EcSecp256r1 ? 64 : 32)
 
-    agent.config.logger.debug(`createKey: got seed ${seed}`)
+//     agent.config.logger.debug(`createKey: got seed ${seed}`)
 
-    const authorityKey = await agent.wallet.createKey({
-      keyType: keyType,
-      seed: TypedArrayEncoder.fromString(seed),
-    })
+//     const authorityKey = await agent.kms.createKey({
+//       algorithm: keyType,
+//       seed: TypedArrayEncoder.fromString(seed),
+//     })
 
-    return authorityKey
-  } catch (error) {
-    agent.config.logger.debug(`Error while creating authorityKey`, { message: (error as CredoError).message })
-    throw error
-  }
-}
+//     return authorityKey
+//   } catch (error) {
+//     agent.config.logger.debug(`Error while creating authorityKey`, { message: (error as CredoError).message })
+//     throw error
+//   }
+// }
