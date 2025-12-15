@@ -2102,7 +2102,7 @@
     ref-array-di "^1.2.2"
     ref-struct-di "^1.1.1"
 
-"@openwallet-foundation/askar-shared@0.4.3", "@openwallet-foundation/askar-shared@^0.4.3":
+"@openwallet-foundation/askar-shared@0.4.3":
   version "0.4.3"
   resolved "https://registry.yarnpkg.com/@openwallet-foundation/askar-shared/-/askar-shared-0.4.3.tgz#e1e4576e347c922c18a3a6abd452945060bb1520"
   integrity sha512-Zt9zlvjJxNs8UWlnRydZH594Lak15YPHY72VT1+iDbXh0OjTdyq6Bf0FIsh9sfFnRYIgh2zd8+VoXxZ07GjADA==
@@ -8165,7 +8165,7 @@ tsoa@^6.0.1:
     "@tsoa/cli" "^6.6.0"
     "@tsoa/runtime" "^6.6.0"
 
-tsyringe@^4.10.0, tsyringe@^4.6.0, tsyringe@^4.8.0:
+tsyringe@^4.10.0, tsyringe@^4.6.0:
   version "4.10.0"
   resolved "https://registry.yarnpkg.com/tsyringe/-/tsyringe-4.10.0.tgz#d0c95815d584464214060285eaaadd94aa03299c"
   integrity sha512-axr3IdNuVIxnaK5XGEUFTu3YmAQ6lllgrvqfEoR16g/HGnYY/6We4oWENtAnzK6/LpJ2ur9PAb80RBt7/U4ugw==
