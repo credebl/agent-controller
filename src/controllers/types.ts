@@ -1,13 +1,12 @@
 import type { RecordId } from './examples'
 import type { CustomHandshakeProtocol } from '../enums'
-import type { AnonCredsCredentialDefinitionRecord, AnonCredsDidCommCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
+import type { AnonCredsDidCommCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
 import type {
   DidResolutionMetadata,
   DidDocumentMetadata,
   DidRegistrationExtraOptions,
   DidDocument,
   DidRegistrationSecretOptions,
-  InitConfig,
   DidResolutionOptions,
   JsonObject,
   W3cJsonLdVerifyCredentialOptions,
@@ -16,7 +15,6 @@ import type {
   W3cCredential,
   W3cCredentialSubject,
   X509CertificateIssuerAndSubjectOptions,
-  X509CreateCertificateOptions,
   SingleOrArray,
 } from '@credo-ts/core'
 
@@ -36,8 +34,7 @@ import type {
   DidCommAttachment,
 } from '@credo-ts/didcomm'
 import type { DIDDocument } from 'did-resolver'
-import { KeyType } from '@credo-ts/core/build/crypto/webcrypto/types.mjs'
-import { LinkedDataProofOptions } from '@credo-ts/core/build/modules/vc/data-integrity/models/LinkedDataProof.mjs'
+import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
 export type CustomTenantConfig = {label: string} & {
   connectionImageUrl?: string
@@ -206,7 +203,7 @@ export interface ReceiveInvitationByUrlProps extends ReceiveOutOfBandInvitationP
 export interface AcceptInvitationConfig {
   autoAcceptConnection?: boolean
   reuseConnection?: boolean
-  label?: string
+  label: string
   alias?: string
   imageUrl?: string
   mediatorId?: string
@@ -295,7 +292,8 @@ export interface ResolvedDid {
 }
 
 export interface DidCreate {
-  keyType?: KeyType
+  // FIXME: Check type
+  keyType?: KeyAlgorithm
   seed?: string
   domain?: string
   method: string
@@ -398,7 +396,8 @@ export type ThreadId = string
 
 export type SignDataOptions = {
   data: string
-  keyType: KeyType
+  // FIXME: Check type
+  keyType: any
   publicKeyBase58: string
   did?: string
   method?: string
@@ -406,7 +405,8 @@ export type SignDataOptions = {
 
 export type VerifyDataOptions = {
   data: string
-  keyType: KeyType
+  // FIXME: Check type
+  keyType: any
   publicKeyBase58: string
   signature: string
 }
@@ -425,7 +425,8 @@ export interface credentialPayloadToSign {
 }
 export interface SafeW3cJsonLdVerifyCredentialOptions extends W3cJsonLdVerifyCredentialOptions {
   // Ommited due to issues with TSOA
-  proof: SingleOrArray<Omit<LinkedDataProofOptions, 'cryptosuite'> | DataIntegrityProofOptions>
+  // FIXME: Check type
+  proof: SingleOrArray<any | DataIntegrityProofOptions>
 }
 
 export type ExtensibleW3cCredentialSubject = W3cCredentialSubject & {
@@ -448,7 +449,8 @@ export type DisclosureFrame = {
 
 export interface BasicX509CreateCertificateConfig extends X509CertificateIssuerAndSubjectOptions {
          
-    keyType: KeyType;
+  // FIXME: Check type
+  keyType: any;
     issuerAlternativeNameURL: string;
 }
 
@@ -464,5 +466,6 @@ export interface X509ImportCertificateOptionsDto {
    */
     privateKey?: string;
   
-    keyType: KeyType;
+  // FIXME: Check type
+  keyType: any;
 }
