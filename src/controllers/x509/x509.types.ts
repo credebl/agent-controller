@@ -1,4 +1,5 @@
-import type { KeyType, X509ExtendedKeyUsage, X509KeyUsage } from '@credo-ts/core'
+import type { X509ExtendedKeyUsage, X509KeyUsage } from '@credo-ts/core'
+import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
 import { Extension, Example } from 'tsoa'
 
@@ -31,7 +32,8 @@ export interface AuthorityAndSubjectKeyDto {
    * @example "p256"
    * @description Type of the key used for signing the X.509 Certificate (default is p256)
    */
-  keyType?: KeyType
+  // FIXME: Check type
+  keyType?: KeyAlgorithm
 }
 
 export interface NameDto {
