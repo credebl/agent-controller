@@ -416,11 +416,6 @@
 				],
 				"type": "string"
 			},
-			"Record_string.unknown_": {
-				"properties": {},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
-			},
 			"RecordId": {
 				"type": "string",
 				"example": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e"
@@ -520,40 +515,6 @@
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"JsonValue": {
-				"anyOf": [
-					{
-						"type": "string"
-					},
-					{
-						"type": "number",
-						"format": "double"
-					},
-					{
-						"type": "boolean"
-					},
-					{
-						"$ref": "#/components/schemas/JsonObject"
-					},
-					{
-						"$ref": "#/components/schemas/JsonArray"
-					}
-				],
-				"nullable": true
-			},
-			"JsonObject": {
-				"properties": {},
-				"type": "object",
-				"additionalProperties": {
-					"$ref": "#/components/schemas/JsonValue"
-				}
-			},
-			"JsonArray": {
-				"items": {
-					"$ref": "#/components/schemas/JsonValue"
-				},
-				"type": "array"
 			},
 			"Pick_JwsGeneralFormat.Exclude_keyofJwsGeneralFormat.payload__": {
 				"properties": {
@@ -1527,88 +1488,6 @@
 					}
 				]
 			},
-			"W3cIssuer": {
-				"properties": {
-					"id": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"W3cCredentialSubject": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"claims": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"SingleOrArray_W3cCredentialSubject_": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/W3cCredentialSubject"
-					},
-					{
-						"items": {
-							"$ref": "#/components/schemas/W3cCredentialSubject"
-						},
-						"type": "array"
-					}
-				]
-			},
-			"W3cCredentialSchema": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"type": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"SingleOrArray_W3cCredentialSchema_": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/W3cCredentialSchema"
-					},
-					{
-						"items": {
-							"$ref": "#/components/schemas/W3cCredentialSchema"
-						},
-						"type": "array"
-					}
-				]
-			},
-			"W3cCredentialStatus": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"type": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"W3cJsonLdVerifiableCredential": {
 				"properties": {
 					"context": {
@@ -1809,6 +1688,823 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"JwtObject": {
+				"properties": {
+					"alg": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"alg"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"LdpObject": {
+				"properties": {
+					"proof_type": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"proof_type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DiObject": {
+				"properties": {
+					"proof_type": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"cryptosuite": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"proof_type",
+					"cryptosuite"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SdJwtObject": {
+				"properties": {
+					"undefined": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"MsoMdocObject": {
+				"properties": {
+					"alg": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"alg"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Format": {
+				"properties": {
+					"jwt": {
+						"$ref": "#/components/schemas/JwtObject"
+					},
+					"jwt_vc": {
+						"$ref": "#/components/schemas/JwtObject"
+					},
+					"jwt_vc_json": {
+						"$ref": "#/components/schemas/JwtObject"
+					},
+					"jwt_vp": {
+						"$ref": "#/components/schemas/JwtObject"
+					},
+					"jwt_vp_json": {
+						"$ref": "#/components/schemas/JwtObject"
+					},
+					"ldp": {
+						"$ref": "#/components/schemas/LdpObject"
+					},
+					"ldp_vc": {
+						"$ref": "#/components/schemas/LdpObject"
+					},
+					"ldp_vp": {
+						"$ref": "#/components/schemas/LdpObject"
+					},
+					"di": {
+						"$ref": "#/components/schemas/DiObject"
+					},
+					"di_vc": {
+						"$ref": "#/components/schemas/DiObject"
+					},
+					"di_vp": {
+						"$ref": "#/components/schemas/DiObject"
+					},
+					"undefined": {
+						"$ref": "#/components/schemas/SdJwtObject"
+					},
+					"mso_mdoc": {
+						"$ref": "#/components/schemas/MsoMdocObject"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Issuance": {
+				"properties": {
+					"manifest": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"Optionality": {
+				"type": "string",
+				"enum": [
+					"required",
+					"preferred"
+				]
+			},
+			"Directives": {
+				"type": "string",
+				"enum": [
+					"required",
+					"allowed",
+					"disallowed"
+				]
+			},
+			"PdStatus": {
+				"properties": {
+					"directive": {
+						"$ref": "#/components/schemas/Directives"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Statuses": {
+				"properties": {
+					"active": {
+						"$ref": "#/components/schemas/PdStatus"
+					},
+					"suspended": {
+						"$ref": "#/components/schemas/PdStatus"
+					},
+					"revoked": {
+						"$ref": "#/components/schemas/PdStatus"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OneOfNumberStringBoolean": {
+				"anyOf": [
+					{
+						"type": "boolean"
+					},
+					{
+						"type": "number",
+						"format": "double"
+					},
+					{
+						"type": "string"
+					}
+				]
+			},
+			"OneOfNumberString": {
+				"anyOf": [
+					{
+						"type": "number",
+						"format": "double"
+					},
+					{
+						"type": "string"
+					}
+				]
+			},
+			"FilterV2": {
+				"properties": {
+					"const": {
+						"$ref": "#/components/schemas/OneOfNumberStringBoolean"
+					},
+					"enum": {
+						"items": {
+							"$ref": "#/components/schemas/OneOfNumberStringBoolean"
+						},
+						"type": "array"
+					},
+					"exclusiveMinimum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"exclusiveMaximum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"format": {
+						"type": "string"
+					},
+					"formatMaximum": {
+						"type": "string"
+					},
+					"formatMinimum": {
+						"type": "string"
+					},
+					"formatExclusiveMaximum": {
+						"type": "string"
+					},
+					"formatExclusiveMinimum": {
+						"type": "string"
+					},
+					"minLength": {
+						"type": "number",
+						"format": "double"
+					},
+					"maxLength": {
+						"type": "number",
+						"format": "double"
+					},
+					"minimum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"maximum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"not": {
+						"additionalProperties": false,
+						"type": "object"
+					},
+					"pattern": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"contains": {
+						"$ref": "#/components/schemas/FilterV2"
+					},
+					"items": {
+						"$ref": "#/components/schemas/FilterV2Items"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"FilterV2Items": {
+				"properties": {
+					"const": {
+						"$ref": "#/components/schemas/OneOfNumberStringBoolean"
+					},
+					"enum": {
+						"items": {
+							"$ref": "#/components/schemas/OneOfNumberStringBoolean"
+						},
+						"type": "array"
+					},
+					"exclusiveMinimum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"exclusiveMaximum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"format": {
+						"type": "string"
+					},
+					"formatMaximum": {
+						"type": "string"
+					},
+					"formatMinimum": {
+						"type": "string"
+					},
+					"formatExclusiveMaximum": {
+						"type": "string"
+					},
+					"formatExclusiveMinimum": {
+						"type": "string"
+					},
+					"minLength": {
+						"type": "number",
+						"format": "double"
+					},
+					"maxLength": {
+						"type": "number",
+						"format": "double"
+					},
+					"minimum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"maximum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"not": {
+						"additionalProperties": false,
+						"type": "object"
+					},
+					"pattern": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"contains": {
+						"$ref": "#/components/schemas/FilterV2"
+					},
+					"items": {
+						"$ref": "#/components/schemas/FilterV2Items"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"FieldV2": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"path": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"purpose": {
+						"type": "string"
+					},
+					"filter": {
+						"$ref": "#/components/schemas/FilterV2"
+					},
+					"predicate": {
+						"$ref": "#/components/schemas/Optionality"
+					},
+					"intent_to_retain": {
+						"type": "boolean"
+					},
+					"name": {
+						"type": "string"
+					},
+					"optional": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"path"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"HolderSubject": {
+				"properties": {
+					"field_id": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"directive": {
+						"$ref": "#/components/schemas/Optionality"
+					}
+				},
+				"required": [
+					"field_id",
+					"directive"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ConstraintsV2": {
+				"properties": {
+					"limit_disclosure": {
+						"$ref": "#/components/schemas/Optionality"
+					},
+					"statuses": {
+						"$ref": "#/components/schemas/Statuses"
+					},
+					"fields": {
+						"items": {
+							"$ref": "#/components/schemas/FieldV2"
+						},
+						"type": "array"
+					},
+					"subject_is_issuer": {
+						"$ref": "#/components/schemas/Optionality"
+					},
+					"is_holder": {
+						"items": {
+							"$ref": "#/components/schemas/HolderSubject"
+						},
+						"type": "array"
+					},
+					"same_subject": {
+						"items": {
+							"$ref": "#/components/schemas/HolderSubject"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"InputDescriptorV2Model": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"purpose": {
+						"type": "string"
+					},
+					"format": {
+						"$ref": "#/components/schemas/Format"
+					},
+					"group": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"issuance": {
+						"items": {
+							"$ref": "#/components/schemas/Issuance"
+						},
+						"type": "array"
+					},
+					"constraints": {
+						"$ref": "#/components/schemas/ConstraintsV2"
+					}
+				},
+				"required": [
+					"id",
+					"constraints"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Rules": {
+				"type": "string",
+				"enum": [
+					"all",
+					"pick"
+				]
+			},
+			"SubmissionRequirement": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"purpose": {
+						"type": "string"
+					},
+					"rule": {
+						"$ref": "#/components/schemas/Rules"
+					},
+					"count": {
+						"type": "number",
+						"format": "double"
+					},
+					"min": {
+						"type": "number",
+						"format": "double"
+					},
+					"max": {
+						"type": "number",
+						"format": "double"
+					},
+					"from": {
+						"type": "string"
+					},
+					"from_nested": {
+						"items": {
+							"$ref": "#/components/schemas/SubmissionRequirement"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"rule"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"InputDescriptorV2": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"purpose": {
+						"type": "string"
+					},
+					"format": {
+						"$ref": "#/components/schemas/Format"
+					},
+					"group": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"issuance": {
+						"items": {
+							"$ref": "#/components/schemas/Issuance"
+						},
+						"type": "array"
+					},
+					"constraints": {
+						"$ref": "#/components/schemas/ConstraintsV2"
+					}
+				},
+				"required": [
+					"id",
+					"constraints"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PresentationDefinitionV2": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"purpose": {
+						"type": "string"
+					},
+					"format": {
+						"$ref": "#/components/schemas/Format"
+					},
+					"submission_requirements": {
+						"items": {
+							"$ref": "#/components/schemas/SubmissionRequirement"
+						},
+						"type": "array"
+					},
+					"input_descriptors": {
+						"items": {
+							"$ref": "#/components/schemas/InputDescriptorV2"
+						},
+						"type": "array"
+					},
+					"frame": {
+						"additionalProperties": false,
+						"type": "object"
+					}
+				},
+				"required": [
+					"id",
+					"input_descriptors"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DifPresentationExchangeDefinitionV2Model": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"purpose": {
+						"type": "string"
+					},
+					"format": {
+						"$ref": "#/components/schemas/Format"
+					},
+					"submission_requirements": {
+						"items": {},
+						"type": "array"
+					},
+					"input_descriptors": {
+						"items": {
+							"$ref": "#/components/schemas/InputDescriptorV2Model"
+						},
+						"type": "array"
+					},
+					"frame": {
+						"additionalProperties": false,
+						"type": "object"
+					}
+				},
+				"required": [
+					"id",
+					"input_descriptors"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PresentationDefinition": {
+				"properties": {
+					"definition": {
+						"$ref": "#/components/schemas/DifPresentationExchangeDefinitionV2Model"
+					}
+				},
+				"required": [
+					"definition"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DcqlClaim": {
+				"properties": {
+					"path": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"intent_to_retain": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"path"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DcqlCredential": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"format": {
+						"type": "string"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/Record_string.any_"
+					},
+					"require_cryptographic_holder_binding": {
+						"type": "boolean"
+					},
+					"claims": {
+						"items": {
+							"$ref": "#/components/schemas/DcqlClaim"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"format",
+					"claims"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DcqlQuery": {
+				"properties": {
+					"combine": {
+						"type": "string",
+						"enum": [
+							"all",
+							"any"
+						]
+					},
+					"credentials": {
+						"items": {
+							"$ref": "#/components/schemas/DcqlCredential"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"credentials"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DcqlDefinition": {
+				"properties": {
+					"query": {
+						"$ref": "#/components/schemas/DcqlQuery"
+					}
+				},
+				"required": [
+					"query"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ResponseModeEnum": {
+				"enum": [
+					"direct_post",
+					"direct_post.jwt",
+					"dc_api",
+					"dc_api.jwt"
+				],
+				"type": "string"
+			},
+			"OpenId4VcJwtIssuerDid": {
+				"properties": {
+					"didUrl": {
+						"type": "string"
+					},
+					"method": {
+						"type": "string",
+						"enum": [
+							"did"
+						],
+						"nullable": false
+					}
+				},
+				"required": [
+					"didUrl",
+					"method"
+				],
+				"type": "object"
+			},
+			"OpenId4VcIssuerX5c": {
+				"properties": {
+					"alg": {
+						"type": "string"
+					},
+					"x5c": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"issuer": {
+						"type": "string"
+					},
+					"method": {
+						"type": "string",
+						"enum": [
+							"x5c"
+						],
+						"nullable": false
+					}
+				},
+				"required": [
+					"x5c",
+					"method"
+				],
+				"type": "object"
+			},
+			"CreateAuthorizationRequest": {
+				"properties": {
+					"verifierId": {
+						"type": "string"
+					},
+					"presentationExchange": {
+						"$ref": "#/components/schemas/PresentationDefinition"
+					},
+					"dcql": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"$ref": "#/components/schemas/DcqlDefinition"
+							}
+						]
+					},
+					"responseMode": {
+						"$ref": "#/components/schemas/ResponseModeEnum"
+					},
+					"requestSigner": {
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/OpenId4VcJwtIssuerDid"
+							},
+							{
+								"$ref": "#/components/schemas/OpenId4VcIssuerX5c"
+							}
+						]
+					},
+					"expectedOrigins": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"verifierId",
+					"requestSigner"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OpenId4VcVerificationSessionRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"OpenId4VcVerificationSessionState": {
+				"enum": [
+					"RequestCreated",
+					"RequestUriRetrieved",
+					"ResponseVerified",
+					"Error"
+				],
+				"type": "string"
 			}
 		},
 		"securitySchemes": {
@@ -3971,6 +4667,193 @@
 					{
 						"in": "path",
 						"name": "tenantId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verification-sessions/create-presentation-request": {
+			"post": {
+				"operationId": "CreateProofRequest",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {}
+							}
+						}
+					}
+				},
+				"description": "Create an authorization request, acting as a Relying Party (RP)",
+				"tags": [
+					"oid4vc verification sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateAuthorizationRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/openid4vc/verification-sessions": {
+			"get": {
+				"operationId": "GetAllVerificationSessions",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/OpenId4VcVerificationSessionRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Retrieve all verification session records",
+				"tags": [
+					"oid4vc verification sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "publicVerifierId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "payloadState",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "state",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/OpenId4VcVerificationSessionState"
+						}
+					},
+					{
+						"in": "query",
+						"name": "authorizationRequestUri",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "nonce",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verification-sessions/{verificationSessionId}": {
+			"get": {
+				"operationId": "GetVerificationSessionsById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcVerificationSessionRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get verification session by ID",
+				"tags": [
+					"oid4vc verification sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "verificationSessionId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verification-sessions/response/{verificationSessionId}": {
+			"get": {
+				"operationId": "GetVerifiedAuthorizationResponse",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {}
+							}
+						}
+					}
+				},
+				"tags": [
+					"oid4vc verification sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "verificationSessionId",
 						"required": true,
 						"schema": {
 							"type": "string"
