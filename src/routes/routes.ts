@@ -2169,6 +2169,11 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"alg":{"dataType":"string"},"x5c":{"dataType":"array","array":{"dataType":"string"},"required":true},"issuer":{"dataType":"string"},"method":{"dataType":"enum","enums":["x5c"],"required":true}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "OpenId4VcNone": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"method":{"dataType":"enum","enums":["none"],"required":true}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "CreateAuthorizationRequest": {
         "dataType": "refObject",
         "properties": {
@@ -2176,7 +2181,7 @@ const models: TsoaRoute.Models = {
             "presentationExchange": {"ref":"PresentationDefinition"},
             "dcql": {"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"DcqlDefinition"}]},
             "responseMode": {"ref":"ResponseModeEnum"},
-            "requestSigner": {"dataType":"union","subSchemas":[{"ref":"OpenId4VcJwtIssuerDid"},{"ref":"OpenId4VcIssuerX5c"}],"required":true},
+            "requestSigner": {"dataType":"union","subSchemas":[{"ref":"OpenId4VcJwtIssuerDid"},{"ref":"OpenId4VcIssuerX5c"},{"ref":"OpenId4VcNone"}],"required":true},
             "expectedOrigins": {"dataType":"array","array":{"dataType":"string"}},
         },
         "additionalProperties": false,

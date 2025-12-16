@@ -97,4 +97,5 @@ export enum SCOPES {
 export enum SignerMethod {
   Did = 'did',
   X5c = 'x5c',
+  None = 'none',
 }

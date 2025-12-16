@@ -5001,6 +5001,21 @@
 				],
 				"type": "object"
 			},
+			"OpenId4VcNone": {
+				"properties": {
+					"method": {
+						"type": "string",
+						"enum": [
+							"none"
+						],
+						"nullable": false
+					}
+				},
+				"required": [
+					"method"
+				],
+				"type": "object"
+			},
 			"CreateAuthorizationRequest": {
 				"properties": {
 					"verifierId": {
@@ -5029,6 +5044,9 @@
 							},
 							{
 								"$ref": "#/components/schemas/OpenId4VcIssuerX5c"
+							},
+							{
+								"$ref": "#/components/schemas/OpenId4VcNone"
 							}
 						]
 					},

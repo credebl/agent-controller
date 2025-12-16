@@ -71,6 +71,10 @@ export type OpenId4VcIssuerX5c = {
   alg?: string
 }
 
+export type OpenId4VcNone = {
+  method: 'none'
+}
+
 export interface CreateAuthorizationRequest {
   verifierId: string
   presentationExchange?: PresentationDefinition
@@ -78,7 +82,7 @@ export interface CreateAuthorizationRequest {
 
   responseMode?: ResponseModeEnum
 
-  requestSigner: OpenId4VcJwtIssuerDid | OpenId4VcIssuerX5c
+  requestSigner: OpenId4VcJwtIssuerDid | OpenId4VcIssuerX5c | OpenId4VcNone
   expectedOrigins?: string []
 }
 

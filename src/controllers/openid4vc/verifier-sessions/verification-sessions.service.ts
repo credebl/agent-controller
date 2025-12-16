@@ -27,7 +27,9 @@ class VerificationSessionsService {
   public async createProofRequest(agentReq: Req, dto: CreateAuthorizationRequest) {
     try {
       let requestSigner
-      if (dto.requestSigner.method === SignerMethod.Did) {
+      if (dto.requestSigner.method === SignerMethod.None) {
+        requestSigner = { method: 'none' }
+      } else if (dto.requestSigner.method === SignerMethod.Did) {
         requestSigner = dto.requestSigner as OpenId4VcJwtIssuerDid
 
         const didToResolve = dto.requestSigner?.didUrl
