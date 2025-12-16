@@ -1,6 +1,9 @@
 import type { MdocNameSpaces, W3cCredential } from '@credo-ts/core'
 import type { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
+import { Kms } from '@credo-ts/core'
+import { OpenId4VciCreateCredentialOfferOptions, OpenId4VciSignCredentials } from '@credo-ts/openid4vc'
+
 export enum SignerMethod {
   Did = 'did',
   X5c = 'x5c',
@@ -141,7 +144,7 @@ export interface CredentialConfigurationSupportedWithFormats {
 }
 export interface CreateIssuerOptions {
   issuerId?: string
-  accessTokenSignerKeyType?: string
+  accessTokenSignerKeyType?: any
   display?: CredentialDisplay[]
   authorizationServerConfigs?: AuthorizationServerConfig[]
   dpopSigningAlgValuesSupported?: string[]
