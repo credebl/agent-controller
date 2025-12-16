@@ -43,6 +43,7 @@
     "@credo-ts/anoncreds": "0.6.1",
     "@credo-ts/askar": "0.6.1",
     "@credo-ts/core": "0.6.1",
+    "@credo-ts/didcomm": "0.6.1",
     "@credo-ts/indy-vdr": "0.6.1",
     "@credo-ts/node": "0.6.1",
     "@credo-ts/openid4vc": "0.6.1",
