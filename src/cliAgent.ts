@@ -130,7 +130,13 @@ export async function readRestConfig(path: string) {
 export type RestMultiTenantAgentModules = Awaited<ReturnType<typeof getWithTenantModules>>
 
 export type RestAgentModules = Awaited<ReturnType<typeof getModules>>
-
+function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(`Missing environment variable: ${name}`)
+  }
+  return value
+}
 // TODO: add object
 const getModules = (
   networkConfig: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]],
@@ -230,7 +236,8 @@ const getModules = (
     }),
 
     questionAnswer: new QuestionAnswerModule(),
-    openid4vc: new OpenId4VcModule({}),
+    // openid4vc: new OpenId4VcModule({}),
+    // Todo: We can remove this polygon module for time being
     // polygon: new PolygonModule({
     //   didContractAddress: didRegistryContractAddress
     //     ? didRegistryContractAddress
@@ -241,30 +248,30 @@ const getModules = (
     //   rpcUrl: rpcUrl ? rpcUrl : (process.env.RPC_URL as string),
     //   serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
     // }),
-    // openid4vc: new OpenId4VcModule({
-    //   // app: openId4VcApp,
-    //   issuer: {
-    //     baseUrl:
-    //       process.env.NODE_ENV === 'PROD'
-    //         ? `https://${process.env.APP_URL}/oid4vci`
-    //         : `${process.env.AGENT_HTTP_URL}/oid4vci`,
-    //     app: openId4VcApp,
-    //     statefulCredentialOfferExpirationInSeconds: Number(process.env.OID4VCI_CRED_OFFER_EXPIRY) || 3600,
-    //     accessTokenExpiresInSeconds: Number(process.env.OID4VCI_ACCESS_TOKEN_EXPIRY) || 3600,
-    //     authorizationCodeExpiresInSeconds: Number(process.env.OID4VCI_AUTH_CODE_EXPIRY) || 3600,
-    //     cNonceExpiresInSeconds: Number(process.env.OID4VCI_CNONCE_EXPIRY) || 3600,
-    //     dpopRequired: false,
-    //     credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
-    //   },
-    //   verifier: {
-    //     baseUrl:
-    //       process.env.NODE_ENV === 'PROD'
-    //         ? `https://${process.env.APP_URL}/oid4vp`
-    //         : `${process.env.AGENT_HTTP_URL}/oid4vp`,
-    //     app: openId4VpApp,
-    //     authorizationRequestExpirationInSeconds: Number(process.env.OID4VP_AUTH_REQUEST_PROOF_REQUEST_EXPIRY) || 3600,
-    //   },
-    // }),
+    openid4vc: new OpenId4VcModule({
+      // app: openId4VcApp,
+      issuer: {
+        baseUrl:
+          process.env.NODE_ENV === 'PROD'
+            ? `https://${requireEnv('APP_URL')}/oid4vci`
+            : `${requireEnv('AGENT_HTTP_URL')}/oid4vci`,
+        app: openId4VcApp,
+        statefulCredentialOfferExpirationInSeconds: Number(process.env.OID4VCI_CRED_OFFER_EXPIRY) || 3600,
+        accessTokenExpiresInSeconds: Number(process.env.OID4VCI_ACCESS_TOKEN_EXPIRY) || 3600,
+        authorizationCodeExpiresInSeconds: Number(process.env.OID4VCI_AUTH_CODE_EXPIRY) || 3600,
+        cNonceExpiresInSeconds: Number(process.env.OID4VCI_CNONCE_EXPIRY) || 3600,
+        dpopRequired: false,
+        credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
+      },
+      verifier: {
+        baseUrl:
+          process.env.NODE_ENV === 'PROD'
+            ? `https://${requireEnv('APP_URL')}/oid4vp`
+            : `${requireEnv('AGENT_HTTP_URL')}/oid4vp`,
+        app: openId4VpApp,
+        authorizationRequestExpirationInSeconds: Number(process.env.OID4VP_AUTH_REQUEST_PROOF_REQUEST_EXPIRY) || 3600,
+      },
+    }),
     // openId4VcVerifier: new OpenId4VcVerifierModule({
     //   baseUrl:
     //     process.env.NODE_ENV === 'PROD'
@@ -503,8 +510,8 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       )
       transport.app.use(bodyParser.json({ limit: process.env.APP_JSON_BODY_SIZE ?? '5mb' }))
 
-      transport.app.use('/oid4vci', modules.openid4vc.issuer?.config.app ?? express.Router())
-      transport.app.use('/oid4vp', modules.openid4vc.verifier?.config.app ?? express.Router())
+      transport.app.use('/oid4vci', modules.openid4vc.issuer?.config.app._router ?? express.Router())
+      transport.app.use('/oid4vp', modules.openid4vc.verifier?.config.app._router ?? express.Router())
     }
   }
 
