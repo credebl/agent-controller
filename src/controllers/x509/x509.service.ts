@@ -16,6 +16,7 @@ import {
 
 import { generateSecretKey, getCertificateValidityForSystem } from '../../utils/helpers'
 
+import { pemToRawEd25519PrivateKey } from './crypto-util'
 import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
 
@@ -179,8 +180,8 @@ class x509Service {
   public async ImportX509Certificates(agentReq: Req, options: X509ImportCertificateOptionsDto) {
     const agent = agentReq.agent
     agent.config.logger.debug(`Start validating keys`)
-    // const secretHexKey = await pemToRawEd25519PrivateKey(options.privateKey ?? '')
-    // const privateKey = TypedArrayEncoder.fromHex(secretHexKey)
+    const secretHexKey = await pemToRawEd25519PrivateKey(options.privateKey ?? '')
+    const privateKey = TypedArrayEncoder.fromHex(secretHexKey)
 
     agent.config.logger.debug(`Decode certificate`)
     const parsedCertificate = X509Service.parseCertificate(agent.context, {
@@ -202,7 +203,7 @@ class x509Service {
         //   crv: 'P-256',
         //   kty: 'EC',
         // },
-        privateKey: TypedArrayEncoder.fromString(options.privateKey!),
+        privateKey,
       })
 
       const key = await agent.kms.importKey({
