@@ -48,6 +48,7 @@ import {
 } from '@credo-ts/indy-vdr'
 import { agentDependencies, DidCommHttpInboundTransport, DidCommWsInboundTransport } from '@credo-ts/node'
 import {
+  OpenId4VcHolderModule,
   // OpenId4VcHolderModule,
   // OpenId4VcIssuerModule,
   OpenId4VcModule,
@@ -67,10 +68,7 @@ import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network,
 import { setupServer } from './server'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
-import { getCredentialRequestToCredentialMapper, getTrustedCerts } from './utils/oid4vc-agent'
-
-const openId4VpApp = express()
-const openId4VcApp = express()
+import { getMixedCredentialRequestToCredentialMapper, getTrustedCerts } from './utils/oid4vc-agent'
 
 export type Transports = 'ws' | 'http'
 export type InboundTransport = {
@@ -137,6 +135,7 @@ function requireEnv(name: string): string {
   }
   return value
 }
+const expressApp = express()
 // TODO: add object
 const getModules = (
   networkConfig: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]],
@@ -157,6 +156,7 @@ const getModules = (
   const anonCredsCredentialFormatService = new AnonCredsDidCommCredentialFormatService()
   const anonCredsProofFormatService = new AnonCredsDidCommProofFormatService()
   const presentationExchangeProofFormatService = new DidCommDifPresentationExchangeProofFormatService()
+
   return {
     askar: new AskarModule({
       askar,
@@ -249,26 +249,26 @@ const getModules = (
     //   serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
     // }),
     openid4vc: new OpenId4VcModule({
-      // app: openId4VcApp,
+      app: expressApp,
       issuer: {
         baseUrl:
           process.env.NODE_ENV === 'PROD'
             ? `https://${requireEnv('APP_URL')}/oid4vci`
             : `${requireEnv('AGENT_HTTP_URL')}/oid4vci`,
-        app: openId4VcApp,
+        app: expressApp,
         statefulCredentialOfferExpirationInSeconds: Number(process.env.OID4VCI_CRED_OFFER_EXPIRY) || 3600,
         accessTokenExpiresInSeconds: Number(process.env.OID4VCI_ACCESS_TOKEN_EXPIRY) || 3600,
         authorizationCodeExpiresInSeconds: Number(process.env.OID4VCI_AUTH_CODE_EXPIRY) || 3600,
         cNonceExpiresInSeconds: Number(process.env.OID4VCI_CNONCE_EXPIRY) || 3600,
         dpopRequired: false,
-        credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
+        credentialRequestToCredentialMapper: (...args) => getMixedCredentialRequestToCredentialMapper()(...args),
       },
       verifier: {
         baseUrl:
           process.env.NODE_ENV === 'PROD'
             ? `https://${requireEnv('APP_URL')}/oid4vp`
             : `${requireEnv('AGENT_HTTP_URL')}/oid4vp`,
-        app: openId4VpApp,
+        // app: openId4VpApp,
         authorizationRequestExpirationInSeconds: Number(process.env.OID4VP_AUTH_REQUEST_PROOF_REQUEST_EXPIRY) || 3600,
       },
     }),
@@ -293,7 +293,7 @@ const getModules = (
     //   dpopRequired: false,
     //   credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
     // }),
-    // openId4VcHolderModule: new OpenId4VcHolderModule(),
+    openId4VcHolderModule: new OpenId4VcHolderModule(),
     x509: new X509Module({
       getTrustedCertificatesForVerification: async (_agentContext, { certificateChain, verification }) => {
         //TODO: We need to trust the certificate tenant wise, for that we need to fetch those details from platform
@@ -510,8 +510,8 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       )
       transport.app.use(bodyParser.json({ limit: process.env.APP_JSON_BODY_SIZE ?? '5mb' }))
 
-      transport.app.use('/oid4vci', modules.openid4vc.issuer?.config.app._router ?? express.Router())
-      transport.app.use('/oid4vp', modules.openid4vc.verifier?.config.app._router ?? express.Router())
+      // transport.app.use('/oid4vci', modules.openid4vc.issuer?.config.app.routes ?? express.Router())
+      // transport.app.use('/oid4vp', modules.openid4vc.verifier?.config.app.routes ?? express.Router())
     }
   }
 
@@ -547,6 +547,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       webhookUrl,
       port: adminPort,
       schemaFileServerURL,
+      app: expressApp,
     },
     apiKey,
   )
