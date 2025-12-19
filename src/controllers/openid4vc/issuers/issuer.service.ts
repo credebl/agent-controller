@@ -1,4 +1,5 @@
 import type { RestAgentModules } from '../../../cliAgent'
+import type { CreateIssuerOptions } from '../types/issuer.types'
 import type { Agent } from '@credo-ts/core'
 import type { Request as Req } from 'express'
 
@@ -9,9 +10,7 @@ export class IssuerService {
     agentReq: Req,
     createIssuerOptions: any, //TODO: Replace with OpenId4VciCreateIssuerOptions,
   ) {
-    console.log('Creating issuer agent with options:', JSON.stringify(createIssuerOptions))
     const issuerRecord = await agentReq.agent.modules.openid4vc.issuer?.createIssuer(createIssuerOptions)
-    console.log('Created issuer record:', JSON.stringify(issuerRecord, null, 2))
     const issuerMetadata = await agentReq.agent.modules.openid4vc.issuer?.getIssuerMetadata(
       issuerRecord?.issuerId ?? '',
     )
@@ -49,8 +48,8 @@ export class IssuerService {
   // }
 
   public async getIssuerAgentMetaData(agentReq: Req, issuerId: string) {
-    // return await agent.modules.openId4VcIssuer.getIssuerMetadata(issuerId)
-    return 0
+    return (await agentReq.agent.modules.openid4vc.issuer?.getIssuerMetadata(issuerId)) as any
+    // return 0
   }
 }
 

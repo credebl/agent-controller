@@ -1,5 +1,8 @@
-import { Kms, MdocNameSpaces, W3cCredential } from "@credo-ts/core"
-import { OpenId4VciCreateCredentialOfferOptions, OpenId4VciCredentialFormatProfile, OpenId4VciSignCredentials } from "@credo-ts/openid4vc"
+import type { MdocNameSpaces, W3cCredential } from '@credo-ts/core'
+import type { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
+
+import { Kms } from '@credo-ts/core'
+import { OpenId4VciCreateCredentialOfferOptions, OpenId4VciSignCredentials } from '@credo-ts/openid4vc'
 
 export enum SignerMethod {
   Did = 'did',
@@ -7,8 +10,8 @@ export enum SignerMethod {
 }
 
 export interface OpenId4VciOfferCredentials {
-  credentialSupportedId: string  
-  format: OpenId4VciCredentialFormatProfile,
+  credentialSupportedId: string
+  format: OpenId4VciCredentialFormatProfile
   signerOptions: {
     method: SignerMethod
     did?: string
@@ -17,7 +20,6 @@ export interface OpenId4VciOfferCredentials {
 }
 
 export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentials {
-  
   payload: {
     vct?: string
     [key: string]: unknown
@@ -25,31 +27,31 @@ export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentia
   disclosureFrame?: Record<string, boolean | Record<string, boolean>>
 }
 export interface ValidityInfo {
-    signed: Date;
-    validFrom: Date;
-    validUntil: Date;
-    expectedUpdate?: Date;
+  signed: Date
+  validFrom: Date
+  validUntil: Date
+  expectedUpdate?: Date
 }
 
-export interface OpenId4VciOfferMdocCredential extends OpenId4VciOfferCredentials {     
+export interface OpenId4VciOfferMdocCredential extends OpenId4VciOfferCredentials {
   payload: {
     docType: 'org.iso.18013.5.1.mDL' | (string & {})
-    validityInfo?: Partial<ValidityInfo>,
-    namespaces: MdocNameSpaces    
+    validityInfo?: Partial<ValidityInfo>
+    namespaces: MdocNameSpaces
   }
 }
 
-export interface OpenId4VciOfferW3cCredential extends OpenId4VciOfferCredentials {     
+export interface OpenId4VciOfferW3cCredential extends OpenId4VciOfferCredentials {
   payload: {
-  verificationMethod: string;
-   credential: W3cCredential;
+    verificationMethod: string
+    credential: W3cCredential
   }
 }
 
-
-export interface OpenId4VcIssuanceSessionsCreateOffer {//extends OpenId4VciCreateCredentialOfferOptions {
+export interface OpenId4VcIssuanceSessionsCreateOffer {
+  //extends OpenId4VciCreateCredentialOfferOptions {
   publicIssuerId: string
-  credentials: Array<OpenId4VciOfferSdJwtCredential | OpenId4VciOfferMdocCredential | OpenId4VciOfferW3cCredential> 
+  credentials: Array<OpenId4VciOfferSdJwtCredential | OpenId4VciOfferMdocCredential | OpenId4VciOfferW3cCredential>
   authorizationCodeFlowConfig?: {
     authorizationServerUrl: string
     requirePresentationDuringIssuance?: boolean
@@ -104,8 +106,13 @@ export interface BatchCredentialIssuanceOptions {
   batchSize: number
 }
 
+export interface KeyAttestationRequiredRecords {
+  key_storage: string[]
+  user_authentication: string[]
+}
 export interface ProofTypeConfig {
   proof_signing_alg_values_supported: string[]
+  key_attestations_required?: KeyAttestationRequiredRecords
 }
 
 export interface CredentialConfigurationDisplay {
@@ -123,17 +130,31 @@ export interface CredentialDefinition {
   [key: string]: any
 }
 
+export interface Claim {
+  path: string[]
+  display?: ClaimDisplay[]
+  mandatory?: boolean
+}
+
+export interface ClaimDisplay {
+  name: string
+  locale: string
+}
+export interface CredentialMetadata {
+  display: CredentialDisplay[]
+  claims: Claim[]
+}
+
 export interface CredentialConfigurationSupportedWithFormats {
-  format: 'vc+sd-jwt' | 'mso_mdoc' | 'jwt_vc_json' | string,
-  vct?: string,
-  doctype?: string,
+  format: 'vc+sd-jwt' | 'mso_mdoc' | 'jwt_vc_json' | string
+  vct?: string
+  doctype?: string
   scope?: string
-  claims?: any
   cryptographic_binding_methods_supported?: string[]
-  credential_signing_alg_values_supported?: string[]
+  credential_signing_alg_values_supported?: string[] | number[]
   proof_types_supported?: Record<string, ProofTypeConfig>
   credential_definition?: CredentialDefinition
-  display?: CredentialConfigurationDisplay[]
+  credential_metadata?: CredentialMetadata
 }
 export interface CreateIssuerOptions {
   issuerId?: string
