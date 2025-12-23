@@ -7,6 +7,398 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"KeyAlgorithm": {
+				"enum": [
+					"a128gcm",
+					"a256gcm",
+					"a128cbchs256",
+					"a256cbchs512",
+					"a128kw",
+					"a256kw",
+					"bls12381g1",
+					"bls12381g2",
+					"c20p",
+					"xc20p",
+					"ed25519",
+					"x25519",
+					"k256",
+					"p256",
+					"p384"
+				],
+				"type": "string"
+			},
+			"AuthorityAndSubjectKeyDto": {
+				"properties": {
+					"seed": {
+						"type": "string",
+						"example": "my-seed-12345"
+					},
+					"publicKeyBase58": {
+						"type": "string",
+						"example": "3yPQbnk6WwLgX8K3JZ4t7vBnJ8XqY2mMpRcD9fNvGtHw"
+					},
+					"keyType": {
+						"$ref": "#/components/schemas/KeyAlgorithm",
+						"example": "p256"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"X509CertificateIssuerAndSubjectOptionsDto": {
+				"properties": {
+					"countryName": {
+						"type": "string",
+						"example": "US"
+					},
+					"stateOrProvinceName": {
+						"type": "string",
+						"example": "California"
+					},
+					"organizationalUnit": {
+						"type": "string",
+						"example": "IT Department"
+					},
+					"commonName": {
+						"type": "string",
+						"example": "Example Corporation"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ValidityDto": {
+				"properties": {
+					"notBefore": {
+						"type": "string",
+						"format": "date-time",
+						"example": "2024-01-01T00:00:00.000Z"
+					},
+					"notAfter": {
+						"type": "string",
+						"format": "date-time",
+						"example": "2025-01-01T00:00:00.000Z"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"X509KeyUsage": {
+				"enum": [
+					1,
+					2,
+					4,
+					8,
+					16,
+					32,
+					64,
+					128,
+					256
+				],
+				"type": "number"
+			},
+			"KeyUsageDto": {
+				"properties": {
+					"usages": {
+						"items": {
+							"$ref": "#/components/schemas/X509KeyUsage"
+						},
+						"type": "array",
+						"example": [
+							"digitalSignature",
+							"keyEncipherment",
+							"crlSign"
+						]
+					},
+					"markAsCritical": {
+						"type": "boolean",
+						"example": true
+					}
+				},
+				"required": [
+					"usages"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"X509ExtendedKeyUsage": {
+				"enum": [
+					"1.3.6.1.5.5.7.3.1",
+					"1.3.6.1.5.5.7.3.2",
+					"1.3.6.1.5.5.7.3.3",
+					"1.3.6.1.5.5.7.3.4",
+					"1.3.6.1.5.5.7.3.8",
+					"1.3.6.1.5.5.7.3.9",
+					"1.0.18013.5.1.2"
+				],
+				"type": "string"
+			},
+			"ExtendedKeyUsageDto": {
+				"properties": {
+					"usages": {
+						"items": {
+							"$ref": "#/components/schemas/X509ExtendedKeyUsage"
+						},
+						"type": "array",
+						"example": [
+							"MdlDs",
+							"ServerAuth",
+							"ClientAuth"
+						]
+					},
+					"markAsCritical": {
+						"type": "boolean",
+						"example": true
+					}
+				},
+				"required": [
+					"usages"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AuthorityAndSubjectKeyIdentifierDto": {
+				"properties": {
+					"include": {
+						"type": "boolean",
+						"example": true
+					},
+					"markAsCritical": {
+						"type": "boolean",
+						"example": true
+					}
+				},
+				"required": [
+					"include"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GeneralNameType": {
+				"enum": [
+					"dns",
+					"dn",
+					"email",
+					"guid",
+					"ip",
+					"url",
+					"upn",
+					"id"
+				],
+				"type": "string"
+			},
+			"NameDto": {
+				"properties": {
+					"type": {
+						"$ref": "#/components/schemas/GeneralNameType",
+						"example": "dns"
+					},
+					"value": {
+						"type": "string",
+						"example": "example.com"
+					}
+				},
+				"required": [
+					"type",
+					"value"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"NameListDto": {
+				"properties": {
+					"name": {
+						"items": {
+							"$ref": "#/components/schemas/NameDto"
+						},
+						"type": "array",
+						"example": [
+							{
+								"type": "dns",
+								"value": "example.com"
+							},
+							{
+								"type": "email",
+								"value": "admin@example.com"
+							}
+						]
+					},
+					"markAsCritical": {
+						"type": "boolean",
+						"example": true
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"BasicConstraintsDto": {
+				"properties": {
+					"ca": {
+						"type": "boolean",
+						"example": false
+					},
+					"pathLenConstraint": {
+						"type": "number",
+						"format": "double",
+						"example": 0
+					},
+					"markAsCritical": {
+						"type": "boolean",
+						"example": true
+					}
+				},
+				"required": [
+					"ca"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CrlDistributionPointsDto": {
+				"properties": {
+					"urls": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"example": [
+							"http://crl.example.com/ca.crl"
+						]
+					},
+					"markAsCritical": {
+						"type": "boolean",
+						"example": true
+					}
+				},
+				"required": [
+					"urls"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"X509CertificateExtensionsOptionsDto": {
+				"properties": {
+					"keyUsage": {
+						"$ref": "#/components/schemas/KeyUsageDto"
+					},
+					"extendedKeyUsage": {
+						"$ref": "#/components/schemas/ExtendedKeyUsageDto"
+					},
+					"authorityKeyIdentifier": {
+						"$ref": "#/components/schemas/AuthorityAndSubjectKeyIdentifierDto"
+					},
+					"subjectKeyIdentifier": {
+						"$ref": "#/components/schemas/AuthorityAndSubjectKeyIdentifierDto"
+					},
+					"issuerAlternativeName": {
+						"$ref": "#/components/schemas/NameListDto"
+					},
+					"subjectAlternativeName": {
+						"$ref": "#/components/schemas/NameListDto"
+					},
+					"basicConstraints": {
+						"$ref": "#/components/schemas/BasicConstraintsDto"
+					},
+					"crlDistributionPoints": {
+						"$ref": "#/components/schemas/CrlDistributionPointsDto"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"X509CreateCertificateOptionsDto": {
+				"properties": {
+					"authorityKey": {
+						"$ref": "#/components/schemas/AuthorityAndSubjectKeyDto"
+					},
+					"subjectPublicKey": {
+						"$ref": "#/components/schemas/AuthorityAndSubjectKeyDto"
+					},
+					"serialNumber": {
+						"type": "string",
+						"example": "1234567890"
+					},
+					"issuer": {
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/X509CertificateIssuerAndSubjectOptionsDto"
+							},
+							{
+								"type": "string"
+							}
+						]
+					},
+					"subject": {
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/X509CertificateIssuerAndSubjectOptionsDto"
+							},
+							{
+								"type": "string"
+							}
+						]
+					},
+					"validity": {
+						"$ref": "#/components/schemas/ValidityDto"
+					},
+					"extensions": {
+						"$ref": "#/components/schemas/X509CertificateExtensionsOptionsDto"
+					}
+				},
+				"required": [
+					"issuer"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"X509ImportCertificateOptionsDto": {
+				"properties": {
+					"certificate": {
+						"type": "string"
+					},
+					"privateKey": {
+						"type": "string"
+					},
+					"keyType": {}
+				},
+				"required": [
+					"certificate",
+					"keyType"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicJwk": {
+				"properties": {},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Uint8Array": {
+				"description": "A typed array of 8-bit unsigned integer values. The contents are initialized to 0. If the\nrequested number of bytes could not be allocated an exception is raised.",
+				"properties": {},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AnyUint8Array": {
+				"$ref": "#/components/schemas/Uint8Array"
+			},
+			"X509Certificate": {
+				"properties": {
+					"publicJwk": {
+						"$ref": "#/components/schemas/PublicJwk"
+					},
+					"privateKey": {
+						"$ref": "#/components/schemas/AnyUint8Array"
+					}
+				},
+				"required": [
+					"publicJwk"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"QuestionAnswerRole": {
 				"enum": [
 					"questioner",
@@ -712,26 +1104,6 @@
 				"type": "string",
 				"example": "did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL"
 			},
-			"KeyAlgorithm": {
-				"enum": [
-					"a128gcm",
-					"a256gcm",
-					"a128cbchs256",
-					"a256cbchs512",
-					"a128kw",
-					"a256kw",
-					"bls12381g1",
-					"bls12381g2",
-					"c20p",
-					"xc20p",
-					"ed25519",
-					"x25519",
-					"k256",
-					"p256",
-					"p384"
-				],
-				"type": "string"
-			},
 			"DidDocument": {
 				"$ref": "#/components/schemas/Record_string.any_"
 			},
@@ -1306,6 +1678,217 @@
 		"contact": {}
 	},
 	"paths": {
+		"/x509": {
+			"post": {
+				"operationId": "CreateX509Certificate",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"publicCertificateBase64": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"publicCertificateBase64"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/X509CreateCertificateOptionsDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/x509/import": {
+			"post": {
+				"operationId": "ImportX509Certificates",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"issuerCertficicate": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"issuerCertficicate"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/X509ImportCertificateOptionsDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/x509/trusted": {
+			"post": {
+				"operationId": "AddTrustedCertificate",
+				"responses": {
+					"204": {
+						"description": "No content"
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"certificate": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"certificate"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetTrustedCertificates",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/x509/decode": {
+			"post": {
+				"operationId": "DecodeCertificate",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/X509Certificate"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"x509"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"certificate": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"certificate"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
 		"/didcomm/question-answer": {
 			"get": {
 				"operationId": "GetQuestionAnswerRecords",
