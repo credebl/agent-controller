@@ -100,6 +100,5 @@ export function getTypeFromCurve(key: Curve | KeyAlgorithm): OkpType | EcType {
       crv: 'P-256',
     }
   }
-  console.log("keyTypeInfo",keyTypeInfo)
   return keyTypeInfo
 }

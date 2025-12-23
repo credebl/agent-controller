@@ -16,10 +16,12 @@ import {
 } from '@credo-ts/core'
 import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
+import { keyAlgorithmToCurve } from '../../utils/constant'
 import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } from '../../utils/helpers'
 
 import { pemToRawEd25519PrivateKey } from './crypto-util'
 import { type X509CreateCertificateOptionsDto } from './x509.types'
+import { error } from 'console'
 
 class x509Service {
   public async createSelfSignedDCS(createX509Options: BasicX509CreateCertificateConfig, agentReq: Req) {
@@ -47,8 +49,6 @@ class x509Service {
           ],
         },
         issuerAlternativeName: {
-          // biome-ignore lint/style/noNonNullAssertion:
-          //name: rootCertificate.issuerAlternativeNames!,
           name: [
             { type: 'dns', value: AGENT_DNS },
             { type: 'url', value: AGENT_HOST },
@@ -145,7 +145,6 @@ class x509Service {
       }
     }
 
-    console.log("This is authorityKeyID", authorityKeyID)
     console.log("This is subjectPublicKeyID", subjectPublicKeyID)
 
     const certificate = await agent.x509.createCertificate({
@@ -174,7 +173,7 @@ class x509Service {
     const parsedCertificate = X509Service.parseCertificate(agent.context, {
       encodedCertificate: options.certificate,
     })
-    const issuerCertficicate = parsedCertificate.toString('base64')
+    const issuerCertificate = parsedCertificate.toString('base64')
 
     try {
       // const documentSignerKey = await agent.wallet.createKey({
@@ -210,17 +209,14 @@ class x509Service {
 
       // If the key already exists, we assume the self-signed certificate is already created
         if (error instanceof Kms.KeyManagementKeyExistsError) {
-        console.error(
-          `key already exists while importing certificate ${JSON.stringify(parsedCertificate.privateKey)}`,
-          parsedCertificate.privateKey,
-        )
+        console.error( 'key already exists while importing certificate')
       } else {
         agent.config.logger.error(`${JSON.stringify(error)}`)
         throw error
       }
     }
 
-    return { issuerCertficicate }
+    return { issuerCertificate }
   }
 
   public addTrustedCertificate(
@@ -274,13 +270,12 @@ export async function createKey(agent: Agent, keyType: KeyAlgorithm) {
     //   keyType: keyType,
     //   seed: TypedArrayEncoder.fromString(seed),
     // })
+    const normalizedCurve = keyAlgorithmToCurve[keyType]
+    if (!normalizedCurve) throw new Error('Unspported key type for method importKey')
     const importedKey = await agent.kms.importKey({
       privateJwk: transformSeedToPrivateJwk({
         seed: TypedArrayEncoder.fromString(seed),
-        type: {
-          crv: 'P-256',
-          kty: 'EC',
-        },
+        type: getTypeFromCurve(normalizedCurve),
       }).privateJwk,
     })
 

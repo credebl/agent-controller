@@ -16,7 +16,6 @@ import {
 import { Key, KeyAlgorithm,askar } from '@openwallet-foundation/askar-nodejs'
 import axios from 'axios'
 import { Request as Req } from 'express'
-import { get } from 'http'
 import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
@@ -412,7 +411,6 @@ export class DidController extends Controller {
 
 
         if (!didOptions.did) {
-            console.log("This is inside if")
             // Transform seed to private JWK and   
             // const { privateJwk } = transformSeedToPrivateJwk({
             //     type: {

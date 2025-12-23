@@ -98,7 +98,7 @@ export enum SignerMethod {
   Did = 'did',
   X5c = 'x5c',
 }
-export declare enum KeyAlgorithmCurve {
+export enum KeyAlgorithmCurve {
   Ed25519 = 'Ed25519',
   X25519 = 'X25519',
   P256 = 'P-256',
