@@ -1,7 +1,9 @@
+
 import type { DidResolutionResultProps } from '../types'
 import type { PolygonDidCreateOptions } from '@ayanworks/credo-polygon-w3c-module/build/dids'
 import type { DidDocument, KeyDidCreateOptions, PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
+import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
 import {
     TypedArrayEncoder,
     DidDocumentBuilder,
@@ -11,19 +13,23 @@ import {
     Kms,
     Hasher,
 } from '@credo-ts/core'
+import { Key, KeyAlgorithm,askar } from '@openwallet-foundation/askar-nodejs'
 import axios from 'axios'
 import { Request as Req } from 'express'
+import { get } from 'http'
 import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
-import { DidMethod, Network, Role, SCOPES } from '../../enums'
+import { DidMethod, KeyAlgorithmCurve, Network, Role, SCOPES } from '../../enums'
 import ErrorHandlingService from '../../errorHandlingService'
 import { BadRequestError, InternalServerError } from '../../errors'
 import { AgentType } from '../../types'
+import { keyAlgorithmToCurve } from '../../utils/constant'
+import { getTypeFromCurve } from '../../utils/helpers'
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
 import { DidCreate } from '../types'
-import { KeyAlgorithm,askar } from '@openwallet-foundation/askar-nodejs'
-import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
+import { supportedKeyTypesDID } from '../x509/x509.types'
+
 
 
 @Tags('Dids')
@@ -369,13 +375,14 @@ export class DidController extends Controller {
         const key = await agent.kms.importKey({ privateJwk })
 
         const publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
+        const completeDid = `${didMethod}:${did}`   
         await agent.dids.import({
-            did,
+            did: completeDid,
             keys: [
                 {
                     kmsKeyId: key.keyId,
-                    // TODO: Find what to add here
-                    didDocumentRelativeKeyId: ''
+                    didDocumentRelativeKeyId: '#verkey',
+
                 }
             ]
         })
@@ -395,9 +402,14 @@ export class DidController extends Controller {
         if (didOptions.keyType === KeyAlgorithm.Bls12381G2) {
             throw new BadRequestError('didOptions.keyType for type "bls12381g2" has been deprecated')
         }
-        if (didOptions.keyType !== KeyAlgorithm.Ed25519) {
-            throw new BadRequestError('Only ed25519 and bls12381g2 key type supported')
+        if (didOptions.keyType === 'p521' as KeyAlgorithm) {
+            throw new BadRequestError('didOptions.keyType for type p521 is not supported')
         }
+        const normalizedCurve = keyAlgorithmToCurve[didOptions.keyType as KeyAlgorithm]
+        if (!(normalizedCurve && supportedKeyTypesDID[DidMethod.Key]?.some(kt => kt.crv === normalizedCurve))) {
+            throw new BadRequestError(`Invalid keyType: ${didOptions.keyType}`)
+        }
+
 
         if (!didOptions.did) {
             console.log("This is inside if")
@@ -423,17 +435,13 @@ export class DidController extends Controller {
             //     },
             // })
             const privateJwk = transformPrivateKeyToPrivateJwk({
-                privateKey: TypedArrayEncoder.fromString('96213c3d7fc8d4d6754c7a0fd969598e'),
-                type: {
-                    kty: 'OKP',
-                    crv: 'Ed25519',
-                },
+                privateKey: TypedArrayEncoder.fromString(didOptions.seed),
+                type: getTypeFromCurve(didOptions.keyType ?? KeyAlgorithm.Ed25519),
             }).privateJwk
-
             const { keyId } = await agent.kms.importKey({
                 privateJwk,
             })
-
+            console.log("This is keyId::::::", keyId)
             const didResponse = await agent.dids.create<KeyDidCreateOptions>({
                 method: 'key',
                 options: {

@@ -1,8 +1,9 @@
-import type { X509CreateCertificateOptionsDto } from './x509.types'
+
 import type { BasicX509CreateCertificateConfig, X509ImportCertificateOptionsDto } from '../types'
 import type { CredoError } from '@credo-ts/core'
 import type { Request as Req } from 'express'
 
+import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
 import {
     Kms,
   TypedArrayEncoder,
@@ -13,12 +14,12 @@ import {
   X509Service,
   type Agent,
 } from '@credo-ts/core'
+import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
-import { generateSecretKey, getCertificateValidityForSystem } from '../../utils/helpers'
+import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } from '../../utils/helpers'
 
 import { pemToRawEd25519PrivateKey } from './crypto-util'
-import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
-import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
+import { type X509CreateCertificateOptionsDto } from './x509.types'
 
 class x509Service {
   public async createSelfSignedDCS(createX509Options: BasicX509CreateCertificateConfig, agentReq: Req) {
@@ -80,9 +81,7 @@ class x509Service {
 
     let authorityKeyID, subjectPublicKeyID
 
-    agent.config.logger.debug(`createCertificate options:`, options)
-
-      
+    agent.config.logger.debug(`createCertificate options:`, options)   
 
     
     if (options.authorityKey && options?.authorityKey?.seed) {
@@ -91,11 +90,8 @@ class x509Service {
             //   crv: 'P-256',
             //   kty: 'EC',
             // },
-          type: {
-            crv: 'Ed25519',
-            kty: 'OKP',
-          },
-            seed: TypedArrayEncoder.fromString(options.authorityKey!.seed!),
+          type: getTypeFromCurve(options.authorityKey.keyType ?? 'P-256'),
+          seed: TypedArrayEncoder.fromString(options.authorityKey!.seed!),
         })
         
       const { publicJwk } = await agent.kms.importKey({ privateJwk })
@@ -109,10 +105,7 @@ class x509Service {
           //   crv: 'P-256',
           //   kty: 'EC',
           // }
-        type: {
-          crv: 'Ed25519',
-          kty: 'OKP',
-        }
+        type: getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256')
         })
         authorityKeyID = publicJwk
     }
@@ -135,10 +128,7 @@ class x509Service {
         const importedKey = await agentReq.agent.kms.importKey({
           privateJwk: transformSeedToPrivateJwk({
             seed: TypedArrayEncoder.fromString(options.subjectPublicKey.seed),
-            type: {
-              crv: 'P-256',
-              kty: 'EC',
-            },
+            type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256'),
           }).privateJwk,
         })
 
@@ -149,10 +139,7 @@ class x509Service {
         //   keyType: KeyAlgorithm.EcSecp256r1,
         // })
         const { keyId, publicJwk } = await agent.kms.createKey({
-          type: {
-            crv: 'P-256',
-            kty: 'EC',
-          }
+          type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256')
         })
         subjectPublicKeyID = publicJwk
       }
@@ -194,11 +181,9 @@ class x509Service {
       //   privateKey: privateKey,
       //   keyType: options.keyType,
       // })
+      const keyTypeInfo = getTypeFromCurve(options.keyType)
       const { privateJwk } = transformPrivateKeyToPrivateJwk({
-        type: {
-          crv: 'Ed25519',
-          kty: 'OKP',
-        },
+        type: keyTypeInfo,
         // type: {
         //   crv: 'P-256',
         //   kty: 'EC',
@@ -209,9 +194,8 @@ class x509Service {
       const key = await agent.kms.importKey({
         privateJwk,
       })
-
       if (
-        parsedCertificate.publicJwk.publicKey.kty !== options.keyType ||
+        parsedCertificate.publicJwk.publicKey.kty !== keyTypeInfo.kty ||
         !parsedCertificate.publicJwk.equals(Kms.PublicJwk.fromPublicJwk(key.publicJwk))
       ) {
       // if (
