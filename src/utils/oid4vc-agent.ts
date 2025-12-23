@@ -204,7 +204,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     if (!issuanceMetadata?.['credentials']) throw new Error('credential payload is not provided')
 
     const allCredentialPayload = issuanceMetadata?.['credentials']
-
     //const credentialConfigurationId = credentialConfigurationIds[0]
 
     // Returns an array of all matching credentials
@@ -216,7 +215,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     const credentialConfigurationSupported = credentialConfiguration[credentialConfigurationId]
 
     const credential = credentialPayload[0]
-
     let issuerDidVerificationMethod: string | undefined = ''
     let issuerx509certificate: string[] | undefined
 
@@ -224,7 +222,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       if (credential.signerOptions.did) {
         const didsApi = agentContext.dependencyManager.resolve(DidsApi)
         const didDocument = await didsApi.resolveDidDocument(credential.signerOptions.did)
-
         // Set the first verificationMethod as backup, in case we won't find a match
         if (didDocument.verificationMethod?.[0].id) {
           issuerDidVerificationMethod = didDocument.verificationMethod?.[0].id
@@ -288,32 +285,43 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       } satisfies OpenId4VciSignSdJwtCredentials
     }
 
-    // if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.MsoMdoc) {
-    //   if (!issuerx509certificate)
-    //     throw new Error(
-    //       `issuerx509certificate is not provided for credential type ${OpenId4VciCredentialFormatProfile.MsoMdoc}`,
-    //     )
+    if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.MsoMdoc) {
+      if (!issuerx509certificate)
+        throw new Error(
+          `issuerx509certificate is not provided for credential type ${OpenId4VciCredentialFormatProfile.MsoMdoc}`,
+        )
 
-    //   if (!credentialConfiguration.doctype) {
-    //     throw new Error(
-    //       `'doctype' not found in credential configuration, ${JSON.stringify(credentialConfigurationSupported, null, 2)}`,
-    //     )
-    //   }
+      if (!credentialConfiguration.doctype) {
+        throw new Error(
+          `'doctype' not found in credential configuration, ${JSON.stringify(credentialConfigurationSupported, null, 2)}`,
+        )
+      }
 
-    //   // national id and ICAO default
-    //   const namespace = credentialConfiguration.doctype
-
-    //   return {
-    //     credentialConfigurationId,
-    //     format: ClaimFormat.MsoMdoc,
-    //     credentials: holderBindings.map((holderBinding) => ({
-    //       issuerCertificate: issuerx509certificate[0],
-    //       holderKey: holderBinding.key,
-    //       ...credential.payload,
-    //       docType: credentialConfiguration.doctype,
-    //     })),
-    //   } satisfies OpenId4VciSignMdocCredentials
-    // }
+      // national id and ICAO default
+      const namespace = credentialConfiguration.doctype
+      const holder =
+        holderBinding.bindingMethod === 'did'
+          ? {
+              method: 'did' as const,
+              didUrl: holderBinding.keys[0].method === 'did' ? holderBinding.keys[0].didUrl : '',
+            }
+          : {
+              method: 'jwk' as const,
+              jwk: holderBinding.keys[0].method === 'jwk' ? holderBinding.keys[0].jwk : {},
+            }
+      return {
+        type: 'credentials',
+        format: ClaimFormat.MsoMdoc,
+        credentials: [
+          {
+            issuerCertificate: issuerx509certificate[0],
+            holderKey: holder.method === 'jwk' ? holder.jwk : undefined,
+            ...credential.payload,
+            docType: credentialConfiguration.doctype,
+          },
+        ],
+      } satisfies OpenId4VciSignMdocCredentials
+    }
 
     // if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJson) {
     //   for (const holderBinding of holderBindings) {
@@ -350,17 +358,14 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     //   } satisfies OpenId4VciSignW3cCredentials
     // }
 
-    if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.SdJwtVc) {
-      console.log('credentialPayload', JSON.stringify(credentialPayload))
+    if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.SdJwtDc) {
       const disclosureFramePayload =
         credentialPayload[0].disclosureFrame && Object.keys(credentialPayload[0].disclosureFrame).length > 0
           ? credentialPayload[0].disclosureFrame
           : {}
-
       //Taking leaf certifcate from chain as issuer certificate, if not provided explicitly taking AGENT_HTTP_URL as issuer
       let parsedCertificate: any
       if (!issuerDidVerificationMethod && issuerx509certificate) {
-        console.log('issuerx509certificate', issuerx509certificate)
         parsedCertificate = X509Service.parseCertificate(agentContext, {
           encodedCertificate: issuerx509certificate[0],
         })

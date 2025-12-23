@@ -20,6 +20,7 @@ import {
   Mdoc,
   W3cJsonLdVerifiableCredential,
   W3cJwtVerifiableCredential,
+  SdJwtVcRecord,
 } from '@credo-ts/core'
 import {
   OpenId4VciAuthorizationFlow,
@@ -222,15 +223,21 @@ export class HolderService {
     // })
 
     const storedCredentials = await Promise.all(
-      credentialResponse.credentials.map(async (response: any) => {
-        const credential = response.credentials[0]
+      credentialResponse.credentials.map(async (response) => {
+        // console.log('response', JSON.stringify(response))
+        // const credential = response.credentials[0]
         // if (credential instanceof W3cJwtVerifiableCredential || credential instanceof W3cJsonLdVerifiableCredential) {
         //   return await agentReq.agent.w3cCredentials.storeCredential({ credential })
         // }
         // if (credential instanceof Mdoc) {
         //   return await agentReq.agent.mdoc.store({ record: credential })
         // }
-        return await agentReq.agent.sdJwtVc.store(credential.compact)
+        const credentialRecord = response.record
+        if (credentialRecord instanceof SdJwtVcRecord) {
+          return await agentReq.agent.sdJwtVc.store({
+            record: credentialRecord,
+          })
+        }
       }),
     )
 
