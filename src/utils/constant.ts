@@ -19,3 +19,6 @@ export const curveToKty = {
   'P-521': 'EC',
   secp256k1: 'EC',
 } as const
+
+export const verkey = '#verkey'
+export const p521 = 'p521'

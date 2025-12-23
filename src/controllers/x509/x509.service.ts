@@ -86,25 +86,14 @@ class x509Service {
     
     if (options.authorityKey && options?.authorityKey?.seed) {
         const { privateJwk  } = transformSeedToPrivateJwk({
-            // type: {
-            //   crv: 'P-256',
-            //   kty: 'EC',
-            // },
           type: getTypeFromCurve(options.authorityKey.keyType ?? 'P-256'),
           seed: TypedArrayEncoder.fromString(options.authorityKey!.seed!),
         })
         
       const { publicJwk } = await agent.kms.importKey({ privateJwk })
       authorityKeyID = publicJwk
-        // type: options.authorityKey.keyType ?? KeyAlgorithm.EcSecp256r1,
-        // seed: TypedArrayEncoder.fromString(options.authorityKey.seed),
-        //   })
     } else {
       const { publicJwk } = await agent.kms.createKey({
-          // type: {
-          //   crv: 'P-256',
-          //   kty: 'EC',
-          // }
         type: getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256')
         })
         authorityKeyID = publicJwk
@@ -112,19 +101,6 @@ class x509Service {
 
     if (options.subjectPublicKey) {
       if (options?.subjectPublicKey?.seed) {
-        // subjectPublicKeyID = await agent.kms.createKey({
-          // keyType: options.subjectPublicKey.keyType ?? KeyAlgorithm.EcSecp256r1,
-        //   seed: TypedArrayEncoder.fromString(options.subjectPublicKey.seed),
-        // })
-
-        // const { privateJwk } = transformSeedToPrivateJwk({
-        //   type: {
-        //     crv: 'Ed25519',
-        //     kty: 'OKP',
-        //   },
-        //   seed: TypedArrayEncoder.fromString(options.subjectPublicKey.seed),
-        // })
-        // const { keyId: subjectPublicKeyID } = await agent.kms.importKey({ privateJwk })
         const importedKey = await agentReq.agent.kms.importKey({
           privateJwk: transformSeedToPrivateJwk({
             seed: TypedArrayEncoder.fromString(options.subjectPublicKey.seed),
@@ -135,9 +111,6 @@ class x509Service {
         subjectPublicKeyID = importedKey.publicJwk
 
       } else {
-        // subjectPublicKeyID = await agent.context.createKey({
-        //   keyType: KeyAlgorithm.EcSecp256r1,
-        // })
         const { keyId, publicJwk } = await agent.kms.createKey({
           type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256')
         })
@@ -145,7 +118,7 @@ class x509Service {
       }
     }
 
-    console.log("This is subjectPublicKeyID", subjectPublicKeyID)
+    agent.config.logger.info('This is subjectPublicKeyID', subjectPublicKeyID)
 
     const certificate = await agent.x509.createCertificate({
     //   authorityKey: authorityKeyID as Key,
@@ -157,7 +130,7 @@ class x509Service {
       subject: options.subject,
       validity: options.validity,
     })
-    console.log("Result")
+    agent.config.logger.info("Result")
 
     const issuerCertificate = certificate.toString('base64')
     return { publicCertificateBase64: issuerCertificate }
@@ -176,17 +149,9 @@ class x509Service {
     const issuerCertificate = parsedCertificate.toString('base64')
 
     try {
-      // const documentSignerKey = await agent.wallet.createKey({
-      //   privateKey: privateKey,
-      //   keyType: options.keyType,
-      // })
       const keyTypeInfo = getTypeFromCurve(options.keyType)
       const { privateJwk } = transformPrivateKeyToPrivateJwk({
         type: keyTypeInfo,
-        // type: {
-        //   crv: 'P-256',
-        //   kty: 'EC',
-        // },
         privateKey,
       })
 
@@ -197,15 +162,11 @@ class x509Service {
         parsedCertificate.publicJwk.publicKey.kty !== keyTypeInfo.kty ||
         !parsedCertificate.publicJwk.equals(Kms.PublicJwk.fromPublicJwk(key.publicJwk))
       ) {
-      // if (
-      //       parsedCertificate.publicKey.keyType !== options.keyType ||
-      //       !Buffer.from(parsedCertificate.publicKey.publicKey).equals(Buffer.from(documentSignerKey.publicKey))
-      //     ) {
         throw new Error(`Key mismatched in provided X509_CERTIFICATE to import`)
       }
-      console.log(`Keys matched with certificate`)
+      agent.config.logger.info(`Keys matched with certificate`)
     } catch (error) {
-      console.log(`Error caught`)
+      agent.config.logger.error(`Error caught`)
 
       // If the key already exists, we assume the self-signed certificate is already created
         if (error instanceof Kms.KeyManagementKeyExistsError) {
@@ -266,10 +227,6 @@ export async function createKey(agent: Agent, keyType: KeyAlgorithm) {
 
     agent.config.logger.debug(`createKey: got seed ${seed}`)
 
-    // const authorityKey = await agent.kms.createKey({
-    //   keyType: keyType,
-    //   seed: TypedArrayEncoder.fromString(seed),
-    // })
     const normalizedCurve = keyAlgorithmToCurve[keyType]
     if (!normalizedCurve) throw new Error('Unspported key type for method importKey')
     const importedKey = await agent.kms.importKey({

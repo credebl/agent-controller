@@ -12,6 +12,8 @@ import {
     PeerDidNumAlgo,
     Kms,
     Hasher,
+    LogLevel,
+    Agent,
 } from '@credo-ts/core'
 import { Key, KeyAlgorithm,askar } from '@openwallet-foundation/askar-nodejs'
 import axios from 'axios'
@@ -23,11 +25,13 @@ import { DidMethod, KeyAlgorithmCurve, Network, Role, SCOPES } from '../../enums
 import ErrorHandlingService from '../../errorHandlingService'
 import { BadRequestError, InternalServerError } from '../../errors'
 import { AgentType } from '../../types'
-import { keyAlgorithmToCurve } from '../../utils/constant'
+import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
 import { DidCreate } from '../types'
 import { supportedKeyTypesDID } from '../x509/x509.types'
+import { container } from 'tsyringe'
+import { RestMultiTenantAgentModules } from '../../cliAgent'
 
 
 
@@ -41,6 +45,8 @@ export class DidController extends Controller {
      * @param did Decentralized Identifier
      * @returns DidResolutionResult
      */
+    private agent = container.resolve(Agent<RestMultiTenantAgentModules>)
+
     @Example<DidResolutionResultProps>(DidRecordExample)
     @Get('/:did')
     public async getDidRecordByDid(@Request() request: Req, @Path('did') did: Did) {
@@ -71,7 +77,7 @@ export class DidController extends Controller {
     public async writeDid(@Request() request: Req, @Body() createDidOptions: DidCreate) {
         let didRes
 
-        console.log("dsajsa", askar.version())
+        this.agent.config.logger.info(`askar version ${askar.version()}`)
         try {
             if (!createDidOptions.method) {
                 throw new BadRequestError('Method is required')
@@ -329,7 +335,6 @@ export class DidController extends Controller {
         const buffer = Hasher.hash(verificationKey.publicKey.publicKey, 'sha-256')
 
         const did = TypedArrayEncoder.toBase58(buffer.slice(0, 16))
-        // const did = `did:indy:${endorserNamespace}:${namespaceIdentifier
 
         let body
         if (createDidOptions.network === Network.Indicio_Testnet) {
@@ -380,7 +385,7 @@ export class DidController extends Controller {
             keys: [
                 {
                     kmsKeyId: key.keyId,
-                    didDocumentRelativeKeyId: '#verkey',
+                    didDocumentRelativeKeyId: verkey,
 
                 }
             ]
@@ -401,7 +406,7 @@ export class DidController extends Controller {
         if (didOptions.keyType === KeyAlgorithm.Bls12381G2) {
             throw new BadRequestError('didOptions.keyType for type "bls12381g2" has been deprecated')
         }
-        if (didOptions.keyType === 'p521' as KeyAlgorithm) {
+        if (didOptions.keyType === p521 as KeyAlgorithm) {
             throw new BadRequestError('didOptions.keyType for type p521 is not supported')
         }
         const normalizedCurve = keyAlgorithmToCurve[didOptions.keyType as KeyAlgorithm]
@@ -411,27 +416,6 @@ export class DidController extends Controller {
 
 
         if (!didOptions.did) {
-            // Transform seed to private JWK and   
-            // const { privateJwk } = transformSeedToPrivateJwk({
-            //     type: {
-            //         kty: 'OKP',
-            //         crv: 'Ed25519',
-            //     },
-            //     seed: TypedArrayEncoder.fromString(didOptions.seed),
-            // })
-            // console.log("This is privateJwk::::::", JSON.stringify(privateJwk))
-
-            // // Import the key using KMS  
-            // const { keyId } = await agent.kms.importKey({ privateJwk })
-            // console.log("This is keyId", keyId)
-
-            // // Create DID using the imported key  
-            // const didResponse = await agent.dids.create<KeyDidCreateOptions>({
-            //     method: 'key',
-            //     options: {
-            //         keyId,
-            //     },
-            // })
             const privateJwk = transformPrivateKeyToPrivateJwk({
                 privateKey: TypedArrayEncoder.fromString(didOptions.seed),
                 type: getTypeFromCurve(didOptions.keyType ?? KeyAlgorithm.Ed25519),
@@ -439,34 +423,17 @@ export class DidController extends Controller {
             const { keyId } = await agent.kms.importKey({
                 privateJwk,
             })
-            console.log("This is keyId::::::", keyId)
+            this.agent.config.logger.info(`This is keyId:::::: ${keyId}`)
             const didResponse = await agent.dids.create<KeyDidCreateOptions>({
-                method: 'key',
+                method: DidMethod.Key,
                 options: {
                     keyId,
                 },
             })
-            console.log("This is didResponse::::::", JSON.stringify(didResponse))
+            this.agent.config.logger.info(`This is didResponse:::::: ${JSON.stringify(didResponse)}`)
 
             did = `${didResponse.didState.did}`
             didDocument = didResponse.didState.didDocument
-
-            // await agent.kms.createKey({
-            //     keyType: didOptions.keyType,
-            //     seed: TypedArrayEncoder.fromString(didOptions.seed),
-            // })
-
-            // didResponse = await agent.dids.create<KeyDidCreateOptions>({
-            //     method: DidMethod.Key,
-            //     options: {
-            //         keyType: KeyAlgorithm.Ed25519,
-            //     },
-            //     secret: {
-            //         privateKey: TypedArrayEncoder.fromString(didOptions.seed),
-            //     },
-            // })
-            // did = `${didResponse.didState.did}`
-            // didDocument = didResponse.didState.didDocument
         } else {
             did = didOptions.did
             const createdDid = await agent.dids.getCreatedDids({
@@ -476,8 +443,8 @@ export class DidController extends Controller {
             didDocument = createdDid[0]?.didDocument
         }
 
-        console.log('This is did', did)
-        console.log('This is didDocument', didDocument)
+        this.agent.config.logger.info(`This is did ${did}` )
+        this.agent.config.logger.info(`This is didDocument ${didDocument}` )
 
         await agent.dids.import({
             did,
