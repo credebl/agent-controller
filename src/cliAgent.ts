@@ -27,6 +27,8 @@ import {
   LogLevel,
   Agent,
   X509Module,
+  JwkDidRegistrar,
+  JwkDidResolver,
 } from '@credo-ts/core'
 import {
   DidCommHttpOutboundTransport,
@@ -170,17 +172,19 @@ const getModules = (
       indyVdr,
       networks: networkConfig,
     }),
-
     dids: new DidsModule({
       registrars: [
         new IndyVdrIndyDidRegistrar(),
         new KeyDidRegistrar(),
+        new JwkDidRegistrar(),
         // , new PolygonDidRegistrar()
       ],
       resolvers: [
         new IndyVdrIndyDidResolver(),
         new KeyDidResolver(),
         new WebDidResolver(),
+        new JwkDidResolver(),
+        new KeyDidResolver(),
         // , new PolygonDidResolver()
       ],
     }),

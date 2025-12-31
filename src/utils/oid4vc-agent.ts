@@ -198,6 +198,9 @@ export async function getTrustedCerts() {
     }
     const data = await response.json()
     return data as string[]
+    // return [
+    //   'MIICBjCCAbigAwIBAgIQYq0k0aKF8v8XKMTnyD2q6TAFBgMrZXAwKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwHhcNMjUwMTAxMDAwMDAwWhcNMjYwMTAxMDAwMDAwWjArMRwwGgYDVQQDExNFeGFtcGxlIENvcnBvcmF0aW9uMQswCQYDVQQGEwJVUzAqMAUGAytlcAMhAC4Bjw5RcVKyweVaiL3B3zzz7mx/4Xs4qfL8qaMtAJVao4HxMIHuMB0GA1UdDgQWBBTGsKAg3mtQAAMMBnS792uyT2pUyDAOBgNVHQ8BAf8EBAMCAaIwFQYDVR0lAQH/BAswCQYHKIGMXQUBAjAiBgNVHSMBAf8EGDAWgBTGsKAg3mtQAAMMBnS792uyT2pUyDBABgNVHRIBAf8ENjA0ggtleGFtcGxlLmNvbYYSaHR0cDovL2V4YW1wbGUuY29tgRFhZG1pbkBleGFtcGxlLmNvbTAsBgNVHREBAf8EIjAgggtleGFtcGxlLmNvbYERYWRtaW5AZXhhbXBsZS5jb20wEgYDVR0TAQH/BAgwBgEB/wIBADAFBgMrZXADQQASLPWxqJ1JmneTQDOGQz0Bk1t71M29IkRx+Eytmf4ZrxYL3qlbUl+fhXQGDwvTjl0Dl5bSDgEVbOMPs3Ul1QYA',
+    // ]
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error fetching data:', error)
