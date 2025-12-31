@@ -138,6 +138,7 @@ function requireEnv(name: string): string {
   return value
 }
 const expressApp = express()
+expressApp.disable('x-powered-by')
 // TODO: add object
 const getModules = (
   networkConfig: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]],
