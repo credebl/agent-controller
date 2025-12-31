@@ -318,8 +318,8 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
 
     if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.SdJwtVc) {
       const disclosureFramePayload =
-        credentialPayload[0].disclosureFrame && Object.keys(credentialPayload[0].disclosureFrame).length > 0
-          ? credentialPayload[0].disclosureFrame
+        credential.disclosureFrame && Object.keys(credential.disclosureFrame).length > 0
+          ? credential.disclosureFrame
           : {}
 
       //Taking leaf certifcate from chain as issuer certificate, if not provided explicitly taking AGENT_HTTP_URL as issuer
@@ -430,7 +430,6 @@ export async function getTrustedCerts() {
     }
 
     const data = await response.json()
-    console.log('Success:', data)
     return data as string[]
   } catch (error) {
     console.error('Error fetching data:', error)

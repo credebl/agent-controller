@@ -3622,25 +3622,29 @@
 			"OpenId4VcIssuanceSessionRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
-			"Record_string.boolean_": {
-				"properties": {},
+			"DisclosureFrame": {
+				"properties": {
+					"_sd": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
 				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
-			},
-			"Record_string.boolean-or-Record_string.boolean__": {
-				"properties": {},
 				"additionalProperties": {
 					"anyOf": [
 						{
-							"type": "boolean"
+							"$ref": "#/components/schemas/DisclosureFrame"
 						},
 						{
-							"$ref": "#/components/schemas/Record_string.boolean_"
+							"items": {
+								"type": "string"
+							},
+							"type": "array"
 						}
 					]
-				},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
+				}
 			},
 			"OpenId4VciCredentialFormatProfile": {
 				"enum": [
@@ -3697,7 +3701,7 @@
 						"type": "object"
 					},
 					"disclosureFrame": {
-						"$ref": "#/components/schemas/Record_string.boolean-or-Record_string.boolean__"
+						"$ref": "#/components/schemas/DisclosureFrame"
 					}
 				},
 				"required": [

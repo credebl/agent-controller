@@ -1620,14 +1620,12 @@ const models: TsoaRoute.Models = {
         "type": {"ref":"Record_string.unknown_","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Record_string.boolean_": {
-        "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Record_string.boolean-or-Record_string.boolean__": {
-        "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"union","subSchemas":[{"dataType":"boolean"},{"ref":"Record_string.boolean_"}]},"validators":{}},
+    "DisclosureFrame": {
+        "dataType": "refObject",
+        "properties": {
+            "_sd": {"dataType":"array","array":{"dataType":"string"}},
+        },
+        "additionalProperties": {"dataType":"union","subSchemas":[{"ref":"DisclosureFrame"},{"dataType":"array","array":{"dataType":"string"}},{"dataType":"undefined"}]},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "OpenId4VciCredentialFormatProfile": {
@@ -1647,7 +1645,7 @@ const models: TsoaRoute.Models = {
             "format": {"ref":"OpenId4VciCredentialFormatProfile","required":true},
             "signerOptions": {"dataType":"nestedObjectLiteral","nestedProperties":{"x5c":{"dataType":"array","array":{"dataType":"string"}},"did":{"dataType":"string"},"method":{"ref":"SignerMethod","required":true}},"required":true},
             "payload": {"dataType":"nestedObjectLiteral","nestedProperties":{"vct":{"dataType":"string"}},"additionalProperties":{"dataType":"any"},"required":true},
-            "disclosureFrame": {"ref":"Record_string.boolean-or-Record_string.boolean__"},
+            "disclosureFrame": {"ref":"DisclosureFrame"},
         },
         "additionalProperties": false,
     },

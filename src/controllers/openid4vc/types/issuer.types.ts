@@ -1,5 +1,5 @@
-import { MdocNameSpaces, W3cCredential } from "@credo-ts/core"
-import { OpenId4VciCreateCredentialOfferOptions, OpenId4VciCredentialFormatProfile, OpenId4VciSignCredentials } from "@credo-ts/openid4vc"
+import type { MdocNameSpaces, W3cCredential } from '@credo-ts/core'
+import type { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
 export enum SignerMethod {
   Did = 'did',
@@ -7,8 +7,8 @@ export enum SignerMethod {
 }
 
 export interface OpenId4VciOfferCredentials {
-  credentialSupportedId: string  
-  format: OpenId4VciCredentialFormatProfile,
+  credentialSupportedId: string
+  format: OpenId4VciCredentialFormatProfile
   signerOptions: {
     method: SignerMethod
     did?: string
@@ -16,40 +16,44 @@ export interface OpenId4VciOfferCredentials {
   }
 }
 
+export interface DisclosureFrame {
+  _sd?: string[]
+  [claim: string]: DisclosureFrame | string[] | undefined
+}
+
 export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentials {
-  
   payload: {
     vct?: string
     [key: string]: unknown
   }
-  disclosureFrame?: Record<string, boolean | Record<string, boolean>>
+  // disclosureFrame?: Record<string, boolean | Record<string, boolean>>
+  disclosureFrame?: DisclosureFrame
 }
 export interface ValidityInfo {
-    signed: Date;
-    validFrom: Date;
-    validUntil: Date;
-    expectedUpdate?: Date;
+  signed: Date
+  validFrom: Date
+  validUntil: Date
+  expectedUpdate?: Date
 }
 
-export interface OpenId4VciOfferMdocCredential extends OpenId4VciOfferCredentials {     
+export interface OpenId4VciOfferMdocCredential extends OpenId4VciOfferCredentials {
   payload: {
     docType: 'org.iso.18013.5.1.mDL' | (string & {})
-    validityInfo?: Partial<ValidityInfo>,
-    namespaces: MdocNameSpaces    
+    validityInfo?: Partial<ValidityInfo>
+    namespaces: MdocNameSpaces
   }
 }
 
-export interface OpenId4VciOfferW3cCredential extends OpenId4VciOfferCredentials {     
+export interface OpenId4VciOfferW3cCredential extends OpenId4VciOfferCredentials {
   payload: {
-  verificationMethod: string;
-   credential: W3cCredential;
+    verificationMethod: string
+    credential: W3cCredential
   }
 }
 
-
-export interface OpenId4VcIssuanceSessionsCreateOffer {//extends OpenId4VciCreateCredentialOfferOptions {
+export interface OpenId4VcIssuanceSessionsCreateOffer {
   publicIssuerId: string
-  credentials: Array<OpenId4VciOfferSdJwtCredential | OpenId4VciOfferMdocCredential | OpenId4VciOfferW3cCredential> 
+  credentials: Array<OpenId4VciOfferSdJwtCredential | OpenId4VciOfferMdocCredential | OpenId4VciOfferW3cCredential>
   authorizationCodeFlowConfig?: {
     authorizationServerUrl: string
     requirePresentationDuringIssuance?: boolean
@@ -124,9 +128,9 @@ export interface CredentialDefinition {
 }
 
 export interface CredentialConfigurationSupportedWithFormats {
-  format: 'vc+sd-jwt' | 'mso_mdoc' | 'jwt_vc_json' | string,
-  vct?: string,
-  doctype?: string,
+  format: 'vc+sd-jwt' | 'mso_mdoc' | 'jwt_vc_json' | string
+  vct?: string
+  doctype?: string
   scope?: string
   claims?: any
   cryptographic_binding_methods_supported?: string[]
