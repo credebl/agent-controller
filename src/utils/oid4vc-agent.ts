@@ -11,7 +11,7 @@ import type {
   OpenId4VciSignW3cCredentials,
 } from '@credo-ts/openid4vc'
 
-import { DidsApi, X509Certificate, X509Service } from '@credo-ts/core'
+import { DidsApi, Kms, MdocApi, X509Certificate, X509Service } from '@credo-ts/core'
 import {
   ClaimFormat,
   CredoError,
@@ -309,15 +309,20 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
               method: 'jwk' as const,
               jwk: holderBinding.keys[0].method === 'jwk' ? holderBinding.keys[0].jwk : {},
             }
+      const parsedCertificate = X509Service.parseCertificate(agentContext, {
+        encodedCertificate: issuerx509certificate[0],
+      })
+      parsedCertificate.publicJwk.keyId = '7b30d6eb-81ae-483e-9843-3531cc31ffd5'
       return {
         type: 'credentials',
         format: ClaimFormat.MsoMdoc,
         credentials: [
           {
-            issuerCertificate: issuerx509certificate[0],
-            holderKey: holder.method === 'jwk' ? holder.jwk : undefined,
+            issuerCertificate: parsedCertificate,
+            holderKey: holderBinding.keys[0].jwk,
             ...credential.payload,
             docType: credentialConfiguration.doctype,
+            namespaces: namespace,
           },
         ],
       } satisfies OpenId4VciSignMdocCredentials
@@ -477,15 +482,16 @@ function assertDidBasedHolderBinding(
 export async function getTrustedCerts() {
   try {
     const response = await fetch(`${process.env.TRUST_LIST_URL}`)
-
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
-
     const data = await response.json()
-    console.log('Success:', data)
     return data as string[]
+    // return [
+    //   'MIICBjCCAbigAwIBAgIQYq0k0aKF8v8XKMTnyD2q6TAFBgMrZXAwKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwHhcNMjUwMTAxMDAwMDAwWhcNMjYwMTAxMDAwMDAwWjArMRwwGgYDVQQDExNFeGFtcGxlIENvcnBvcmF0aW9uMQswCQYDVQQGEwJVUzAqMAUGAytlcAMhAC4Bjw5RcVKyweVaiL3B3zzz7mx/4Xs4qfL8qaMtAJVao4HxMIHuMB0GA1UdDgQWBBTGsKAg3mtQAAMMBnS792uyT2pUyDAOBgNVHQ8BAf8EBAMCAaIwFQYDVR0lAQH/BAswCQYHKIGMXQUBAjAiBgNVHSMBAf8EGDAWgBTGsKAg3mtQAAMMBnS792uyT2pUyDBABgNVHRIBAf8ENjA0ggtleGFtcGxlLmNvbYYSaHR0cDovL2V4YW1wbGUuY29tgRFhZG1pbkBleGFtcGxlLmNvbTAsBgNVHREBAf8EIjAgggtleGFtcGxlLmNvbYERYWRtaW5AZXhhbXBsZS5jb20wEgYDVR0TAQH/BAgwBgEB/wIBADAFBgMrZXADQQASLPWxqJ1JmneTQDOGQz0Bk1t71M29IkRx+Eytmf4ZrxYL3qlbUl+fhXQGDwvTjl0Dl5bSDgEVbOMPs3Ul1QYA',
+    // ]
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('Error fetching data:', error)
     return []
   }

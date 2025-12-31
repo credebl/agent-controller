@@ -36,17 +36,6 @@ export function getCredentialBindingResolver({
       didMethod = 'key'
     }
 
-    const shouldKeyBeHardwareBackedForMsoMdoc =
-      credentialConfiguration?.format === OpenId4VciCredentialFormatProfile.MsoMdoc &&
-      pidSchemes?.msoMdocDoctypes.includes(credentialConfiguration.doctype)
-
-    const shouldKeyBeHardwareBackedForSdJwtVc =
-      (credentialConfiguration?.format === 'vc+sd-jwt' || credentialConfiguration.format === 'dc+sd-jwt') &&
-      credentialConfiguration.vct &&
-      pidSchemes?.sdJwtVcVcts.includes(credentialConfiguration.vct)
-
-    const shouldKeyBeHardwareBacked = shouldKeyBeHardwareBackedForSdJwtVc || shouldKeyBeHardwareBackedForMsoMdoc
-
     // We don't want to request more than 10 credentials
     const batchSize =
       requestBatch === true
@@ -54,7 +43,6 @@ export function getCredentialBindingResolver({
         : typeof requestBatch === 'number'
           ? Math.min(issuerMaxBatchSize, requestBatch)
           : 1
-    console.log('proofTypes', JSON.stringify(proofTypes))
     // TODO: support key attestations
     if (!proofTypes.jwt || proofTypes.jwt.keyAttestationsRequired) {
       throw new Error('Unable to request credentials. Only jwt proof type without key attestations supported')
@@ -67,7 +55,7 @@ export function getCredentialBindingResolver({
           .createKeyForSignatureAlgorithm({
             algorithm: signatureAlgorithm!,
             // FIXME: what should happen with already existing keys created in the secure environment?
-            backend: shouldKeyBeHardwareBacked ? 'secureEnvironment' : 'askar',
+            backend: 'askar',
           })
           .then((key) => Kms.PublicJwk.fromUnknown(key.publicJwk)),
       ),
