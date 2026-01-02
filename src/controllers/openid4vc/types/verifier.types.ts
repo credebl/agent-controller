@@ -34,26 +34,26 @@ export interface PresentationDefinition {
 /*                                 DCQL MODELS                                */
 /* -------------------------------------------------------------------------- */
 
-export interface DcqlClaim {
-  path: string[]
-  intent_to_retain?: boolean
-}
+// export interface DcqlClaim {
+//   path: string[]
+//   intent_to_retain?: boolean
+// }
 
-export interface DcqlCredential {
-  id: string
-  format: string
-  meta?: Record<string, any>
-  require_cryptographic_holder_binding?: boolean
-  claims: DcqlClaim[]
-}
+// export interface DcqlCredential {
+//   id: string
+//   format: string
+//   meta?: Record<string, any>
+//   require_cryptographic_holder_binding?: boolean
+//   claims: DcqlClaim[]
+// }
 
-export interface DcqlQuery {
-  combine?: 'all' | 'any'
-  credentials: DcqlCredential[]
-}
+// export interface DcqlQuery {
+//   combine?: 'all' | 'any'
+//   credentials: DcqlCredential[]
+// }
 
 export interface DcqlDefinition {
-  query: DcqlQuery
+  query: any
 }
 
 /* -------------------------------------------------------------------------- */
