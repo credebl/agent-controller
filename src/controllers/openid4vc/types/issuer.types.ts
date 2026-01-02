@@ -61,11 +61,13 @@ export interface OpenId4VcIssuanceSessionsCreateOffer {
   }
   preAuthorizedCodeFlowConfig?: {
     preAuthorizedCode?: string
-    txCode?: {
-      description?: string
-      length?: number
-      input_mode?: 'numeric' | 'text'
-    }
+    txCode?:
+      | {
+          description?: string
+          length?: number
+          input_mode?: 'numeric' | 'text'
+        }
+      | undefined
     authorizationServerUrl: string
   }
   issuanceMetadata?: Record<string, unknown>
