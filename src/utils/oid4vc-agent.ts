@@ -482,15 +482,15 @@ function assertDidBasedHolderBinding(
 
 export async function getTrustedCerts() {
   try {
-    // const response = await fetch(`${process.env.TRUST_LIST_URL}`)
-    // if (!response.ok) {
-    //   throw new Error(`HTTP error! status: ${response.status}`)
-    // }
-    // const data = await response.json()
-    // return data as string[]
-    return [
-      'MIICBzCCAbmgAwIBAgIRAMEUex+GR2GZKusP/izv/oswBQYDK2VwMCsxHDAaBgNVBAMTE0V4YW1wbGUgQ29ycG9yYXRpb24xCzAJBgNVBAYTAlVTMB4XDTI1MDEwMTAwMDAwMFoXDTI3MDEwMTAwMDAwMFowKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwKjAFBgMrZXADIQC5RNVbJCX2L/z/PLbvaxLqi7+hA4fUUStWcmAo/qkX2aOB8TCB7jAdBgNVHQ4EFgQUkog6trQXXfsjb472jybLCBixSAMwDgYDVR0PAQH/BAQDAgGiMBUGA1UdJQEB/wQLMAkGByiBjF0FAQIwIgYDVR0jAQH/BBgwFoAUkog6trQXXfsjb472jybLCBixSAMwQAYDVR0SAQH/BDYwNIILZXhhbXBsZS5jb22GEmh0dHA6Ly9leGFtcGxlLmNvbYERYWRtaW5AZXhhbXBsZS5jb20wLAYDVR0RAQH/BCIwIIILZXhhbXBsZS5jb22BEWFkbWluQGV4YW1wbGUuY29tMBIGA1UdEwEB/wQIMAYBAf8CAQAwBQYDK2VwA0EAPjHj2keDv8BN3FGkOqG36VQKaYvb9Ena+1BI7hb+sBJ+QgBTlj1sK/+I7LMUfu/K3oCyZxT1CZpYRZkh7GEWAw==',
-    ]
+    const response = await fetch(`${process.env.TRUST_LIST_URL}`)
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    const data = await response.json()
+    return data as string[]
+    // return [
+    //   'MIICBzCCAbmgAwIBAgIRAMEUex+GR2GZKusP/izv/oswBQYDK2VwMCsxHDAaBgNVBAMTE0V4YW1wbGUgQ29ycG9yYXRpb24xCzAJBgNVBAYTAlVTMB4XDTI1MDEwMTAwMDAwMFoXDTI3MDEwMTAwMDAwMFowKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwKjAFBgMrZXADIQC5RNVbJCX2L/z/PLbvaxLqi7+hA4fUUStWcmAo/qkX2aOB8TCB7jAdBgNVHQ4EFgQUkog6trQXXfsjb472jybLCBixSAMwDgYDVR0PAQH/BAQDAgGiMBUGA1UdJQEB/wQLMAkGByiBjF0FAQIwIgYDVR0jAQH/BBgwFoAUkog6trQXXfsjb472jybLCBixSAMwQAYDVR0SAQH/BDYwNIILZXhhbXBsZS5jb22GEmh0dHA6Ly9leGFtcGxlLmNvbYERYWRtaW5AZXhhbXBsZS5jb20wLAYDVR0RAQH/BCIwIIILZXhhbXBsZS5jb22BEWFkbWluQGV4YW1wbGUuY29tMBIGA1UdEwEB/wQIMAYBAf8CAQAwBQYDK2VwA0EAPjHj2keDv8BN3FGkOqG36VQKaYvb9Ena+1BI7hb+sBJ+QgBTlj1sK/+I7LMUfu/K3oCyZxT1CZpYRZkh7GEWAw==',
+    // ]
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error fetching data:', error)
