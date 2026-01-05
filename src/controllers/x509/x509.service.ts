@@ -1,11 +1,10 @@
-
 import type { BasicX509CreateCertificateConfig, X509ImportCertificateOptionsDto } from '../types'
 import type { CredoError } from '@credo-ts/core'
 import type { Request as Req } from 'express'
 
 import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
 import {
-    Kms,
+  Kms,
   TypedArrayEncoder,
   X509Certificate,
   X509ExtendedKeyUsage,
@@ -15,13 +14,13 @@ import {
   type Agent,
 } from '@credo-ts/core'
 import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
+import { error } from 'console'
 
 import { keyAlgorithmToCurve } from '../../utils/constant'
 import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } from '../../utils/helpers'
 
 import { pemToRawEd25519PrivateKey } from './crypto-util'
 import { type X509CreateCertificateOptionsDto } from './x509.types'
-import { error } from 'console'
 
 class x509Service {
   public async createSelfSignedDCS(createX509Options: BasicX509CreateCertificateConfig, agentReq: Req) {
@@ -79,24 +78,24 @@ class x509Service {
   public async createCertificate(agentReq: Req, options: X509CreateCertificateOptionsDto) {
     const agent = agentReq.agent
 
-    let authorityKeyID, subjectPublicKeyID
+    let authorityKeyID, subjectPublicKeyID, authorityKeyKmsId
 
-    agent.config.logger.debug(`createCertificate options:`, options)   
+    agent.config.logger.debug(`createCertificate options:`, options)
 
-    
     if (options.authorityKey && options?.authorityKey?.seed) {
-        const { privateJwk  } = transformSeedToPrivateJwk({
-          type: getTypeFromCurve(options.authorityKey.keyType ?? 'P-256'),
-          seed: TypedArrayEncoder.fromString(options.authorityKey!.seed!),
-        })
-        
+      const { privateJwk } = transformSeedToPrivateJwk({
+        type: getTypeFromCurve(options.authorityKey.keyType ?? 'P-256'),
+        seed: TypedArrayEncoder.fromString(options.authorityKey!.seed!),
+      })
+
       const { publicJwk } = await agent.kms.importKey({ privateJwk })
       authorityKeyID = publicJwk
     } else {
-      const { publicJwk } = await agent.kms.createKey({
-        type: getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256')
-        })
-        authorityKeyID = publicJwk
+      const { publicJwk, keyId } = await agent.kms.createKey({
+        type: getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256'),
+      })
+      authorityKeyID = publicJwk
+      authorityKeyKmsId = keyId
     }
 
     if (options.subjectPublicKey) {
@@ -109,19 +108,17 @@ class x509Service {
         })
 
         subjectPublicKeyID = importedKey.publicJwk
-
       } else {
         const { keyId, publicJwk } = await agent.kms.createKey({
-          type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256')
+          type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256'),
         })
         subjectPublicKeyID = publicJwk
       }
     }
-
     agent.config.logger.info('This is subjectPublicKeyID', subjectPublicKeyID)
 
     const certificate = await agent.x509.createCertificate({
-    //   authorityKey: authorityKeyID as Key,
+      //   authorityKey: authorityKeyID as Key,
       authorityKey: Kms.PublicJwk.fromPublicJwk(authorityKeyID),
       // subjectPublicKey: Kms.PublicJwk.fromPublicJwk(subjectPublicKeyID!),
       serialNumber: options.serialNumber,
@@ -130,10 +127,10 @@ class x509Service {
       subject: options.subject,
       validity: options.validity,
     })
-    agent.config.logger.info("Result")
 
     const issuerCertificate = certificate.toString('base64')
-    return { publicCertificateBase64: issuerCertificate }
+
+    return { publicCertificateBase64: issuerCertificate, keyId: authorityKeyKmsId }
   }
 
   public async ImportX509Certificates(agentReq: Req, options: X509ImportCertificateOptionsDto) {
@@ -169,8 +166,9 @@ class x509Service {
       agent.config.logger.error(`Error caught`)
 
       // If the key already exists, we assume the self-signed certificate is already created
-        if (error instanceof Kms.KeyManagementKeyExistsError) {
-        console.error( 'key already exists while importing certificate')
+      if (error instanceof Kms.KeyManagementKeyExistsError) {
+        // eslint-disable-next-line no-console
+        console.error('key already exists while importing certificate')
       } else {
         agent.config.logger.error(`${JSON.stringify(error)}`)
         throw error

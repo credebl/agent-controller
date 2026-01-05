@@ -200,7 +200,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     authorization,
   }) => {
     const issuanceMetadata = issuanceSession.issuanceMetadata
-
     if (!issuanceMetadata?.['credentials']) throw new Error('credential payload is not provided')
 
     const allCredentialPayload = issuanceMetadata?.['credentials']
@@ -312,7 +311,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       const parsedCertificate = X509Service.parseCertificate(agentContext, {
         encodedCertificate: issuerx509certificate[0],
       })
-      parsedCertificate.publicJwk.keyId = '7b30d6eb-81ae-483e-9843-3531cc31ffd5'
+      parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
       return {
         type: 'credentials',
         format: ClaimFormat.MsoMdoc,
@@ -488,7 +487,7 @@ export async function getTrustedCerts() {
     const data = await response.json()
     return data as string[]
     // return [
-    //   'MIICBjCCAbigAwIBAgIQYq0k0aKF8v8XKMTnyD2q6TAFBgMrZXAwKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwHhcNMjUwMTAxMDAwMDAwWhcNMjYwMTAxMDAwMDAwWjArMRwwGgYDVQQDExNFeGFtcGxlIENvcnBvcmF0aW9uMQswCQYDVQQGEwJVUzAqMAUGAytlcAMhAC4Bjw5RcVKyweVaiL3B3zzz7mx/4Xs4qfL8qaMtAJVao4HxMIHuMB0GA1UdDgQWBBTGsKAg3mtQAAMMBnS792uyT2pUyDAOBgNVHQ8BAf8EBAMCAaIwFQYDVR0lAQH/BAswCQYHKIGMXQUBAjAiBgNVHSMBAf8EGDAWgBTGsKAg3mtQAAMMBnS792uyT2pUyDBABgNVHRIBAf8ENjA0ggtleGFtcGxlLmNvbYYSaHR0cDovL2V4YW1wbGUuY29tgRFhZG1pbkBleGFtcGxlLmNvbTAsBgNVHREBAf8EIjAgggtleGFtcGxlLmNvbYERYWRtaW5AZXhhbXBsZS5jb20wEgYDVR0TAQH/BAgwBgEB/wIBADAFBgMrZXADQQASLPWxqJ1JmneTQDOGQz0Bk1t71M29IkRx+Eytmf4ZrxYL3qlbUl+fhXQGDwvTjl0Dl5bSDgEVbOMPs3Ul1QYA',
+    //   'MIICBjCCAbigAwIBAgIQSHpmUFWPGbA9FmUtsjRy/jAFBgMrZXAwKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwHhcNMjUwMTAxMDAwMDAwWhcNMjcwMTAxMDAwMDAwWjArMRwwGgYDVQQDExNFeGFtcGxlIENvcnBvcmF0aW9uMQswCQYDVQQGEwJVUzAqMAUGAytlcAMhAORuQWdVPZvmsAlBHqXy+HN6dfhAmZOWhdDJ81JzWqlVo4HxMIHuMB0GA1UdDgQWBBR8qFPBWwY2OSWF4CkBVk37XwubzjAOBgNVHQ8BAf8EBAMCAaIwFQYDVR0lAQH/BAswCQYHKIGMXQUBAjAiBgNVHSMBAf8EGDAWgBR8qFPBWwY2OSWF4CkBVk37XwubzjBABgNVHRIBAf8ENjA0ggtleGFtcGxlLmNvbYYSaHR0cDovL2V4YW1wbGUuY29tgRFhZG1pbkBleGFtcGxlLmNvbTAsBgNVHREBAf8EIjAgggtleGFtcGxlLmNvbYERYWRtaW5AZXhhbXBsZS5jb20wEgYDVR0TAQH/BAgwBgEB/wIBADAFBgMrZXADQQCcqIaYQ95Z7uJu1rfFfe1GP9/fyfqw0LFX3PVC2TSNlXZTJL/Hea4mJRkFtVthcAMAfUAV1tmisyviJP+5x18A',
     // ]
   } catch (error) {
     // eslint-disable-next-line no-console

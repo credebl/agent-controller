@@ -16,6 +16,7 @@ export interface OpenId4VciOfferCredentials {
     method: SignerMethod
     did?: string
     x5c?: string[]
+    keyId: string
   }
 }
 
