@@ -48,7 +48,11 @@ export function getCredentialBindingResolver({
       throw new Error('Unable to request credentials. Only jwt proof type without key attestations supported')
     }
 
-    const signatureAlgorithm = proofTypes.jwt?.supportedSignatureAlgorithms[0]
+    const signatureAlgorithm = proofTypes.jwt?.supportedSignatureAlgorithms?.[0]
+
+    if (!signatureAlgorithm) {
+      throw new Error('No supported signature algorithms found for JWT proof type')
+    }
     const keys = await Promise.all(
       new Array(batchSize).fill(0).map(() =>
         kms

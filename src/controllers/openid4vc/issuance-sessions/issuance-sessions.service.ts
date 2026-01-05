@@ -57,24 +57,18 @@ class IssuanceSessionsService {
 
     options.issuanceMetadata.credentials = mappedCredentials
 
-    // const { credentialOffer, issuanceSession } = await agentReq.agent.modules.openId4VcIssuer.createCredentialOffer({
-    //   issuerId: publicIssuerId,
-    //   issuanceMetadata: options.issuanceMetadata,
-    //   offeredCredentials: credentials.map((c) => c.credentialSupportedId),
-    //   preAuthorizedCodeFlowConfig: options.preAuthorizedCodeFlowConfig,
-    //   authorizationCodeFlowConfig: options.authorizationCodeFlowConfig,
-    // })
+    const issuerModule = agentReq.agent.modules.openid4vc.issuer
 
-    const { credentialOffer, issuanceSession } = (await agentReq.agent.modules.openid4vc.issuer?.createCredentialOffer({
+    if (!issuerModule) {
+      throw new Error('OID4VC issuer module not initialized')
+    }
+    const { credentialOffer, issuanceSession } = await issuerModule.createCredentialOffer({
       issuerId: publicIssuerId,
       issuanceMetadata: options.issuanceMetadata,
       credentialConfigurationIds: credentials.map((c) => c.credentialSupportedId),
       preAuthorizedCodeFlowConfig: options.preAuthorizedCodeFlowConfig,
       authorizationCodeFlowConfig: options.authorizationCodeFlowConfig,
-    })) as {
-      credentialOffer: unknown
-      issuanceSession: unknown
-    }
+    })
 
     return { credentialOffer, issuanceSession }
   }

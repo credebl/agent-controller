@@ -237,6 +237,7 @@ export class HolderService {
             record: credentialRecord,
           })
         }
+        throw new Error(`Unsupported credential record type`)
       }),
     )
 
