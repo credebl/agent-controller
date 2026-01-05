@@ -49,13 +49,7 @@ import {
   IndyVdrIndyDidRegistrar,
 } from '@credo-ts/indy-vdr'
 import { agentDependencies, DidCommHttpInboundTransport, DidCommWsInboundTransport } from '@credo-ts/node'
-import {
-  OpenId4VcHolderModule,
-  // OpenId4VcHolderModule,
-  // OpenId4VcIssuerModule,
-  OpenId4VcModule,
-  // OpenId4VcVerifierModule,
-} from '@credo-ts/openid4vc'
+import { OpenId4VcHolderModule, OpenId4VcModule } from '@credo-ts/openid4vc'
 import { QuestionAnswerModule } from '@credo-ts/question-answer'
 import { TenantsModule } from '@credo-ts/tenants'
 import { anoncreds } from '@hyperledger/anoncreds-nodejs'
