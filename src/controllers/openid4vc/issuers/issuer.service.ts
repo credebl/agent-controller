@@ -33,8 +33,8 @@ export class IssuerService {
 
   public async getIssuersByQuery(agentReq: Req, publicIssuerId?: string) {
     const result = publicIssuerId
-      ? (agentReq.agent as Agent<RestAgentModules>).openid4vc.issuer.getIssuerByIssuerId(publicIssuerId) // .dependencyManager.resolve(OpenId4VcIssuerRepository)
-      : (agentReq.agent as Agent<RestAgentModules>).openid4vc.issuer.getAllIssuers()
+      ? (agentReq.agent as Agent<RestAgentModules>).openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId) // .dependencyManager.resolve(OpenId4VcIssuerRepository)
+      : (agentReq.agent as Agent<RestAgentModules>).openid4vc.issuer?.getAllIssuers()
     return result
   }
 
