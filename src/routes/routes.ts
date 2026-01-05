@@ -1693,7 +1693,7 @@ const models: TsoaRoute.Models = {
             "publicIssuerId": {"dataType":"string","required":true},
             "credentials": {"dataType":"array","array":{"dataType":"union","subSchemas":[{"ref":"OpenId4VciOfferSdJwtCredential"},{"ref":"OpenId4VciOfferMdocCredential"},{"ref":"OpenId4VciOfferW3cCredential"}]},"required":true},
             "authorizationCodeFlowConfig": {"dataType":"nestedObjectLiteral","nestedProperties":{"issuerState":{"dataType":"string"},"requirePresentationDuringIssuance":{"dataType":"boolean"},"authorizationServerUrl":{"dataType":"string","required":true}}},
-            "preAuthorizedCodeFlowConfig": {"dataType":"nestedObjectLiteral","nestedProperties":{"authorizationServerUrl":{"dataType":"string","required":true},"txCode":{"dataType":"nestedObjectLiteral","nestedProperties":{"input_mode":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["numeric"]},{"dataType":"enum","enums":["text"]}]},"length":{"dataType":"double"},"description":{"dataType":"string"}}},"preAuthorizedCode":{"dataType":"string"}}},
+            "preAuthorizedCodeFlowConfig": {"dataType":"nestedObjectLiteral","nestedProperties":{"authorizationServerUrl":{"dataType":"string","required":true},"txCode":{"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"input_mode":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["numeric"]},{"dataType":"enum","enums":["text"]}]},"length":{"dataType":"double"},"description":{"dataType":"string"}}},{"dataType":"undefined"}]},"preAuthorizedCode":{"dataType":"string"}}},
             "issuanceMetadata": {"ref":"Record_string.unknown_"},
         },
         "additionalProperties": false,
@@ -2114,40 +2114,10 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DcqlClaim": {
-        "dataType": "refObject",
-        "properties": {
-            "path": {"dataType":"array","array":{"dataType":"string"},"required":true},
-            "intent_to_retain": {"dataType":"boolean"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DcqlCredential": {
-        "dataType": "refObject",
-        "properties": {
-            "id": {"dataType":"string","required":true},
-            "format": {"dataType":"string","required":true},
-            "meta": {"ref":"Record_string.any_"},
-            "require_cryptographic_holder_binding": {"dataType":"boolean"},
-            "claims": {"dataType":"array","array":{"dataType":"refObject","ref":"DcqlClaim"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DcqlQuery": {
-        "dataType": "refObject",
-        "properties": {
-            "combine": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["all"]},{"dataType":"enum","enums":["any"]}]},
-            "credentials": {"dataType":"array","array":{"dataType":"refObject","ref":"DcqlCredential"},"required":true},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "DcqlDefinition": {
         "dataType": "refObject",
         "properties": {
-            "query": {"ref":"DcqlQuery","required":true},
+            "query": {"dataType":"any","required":true},
         },
         "additionalProperties": false,
     },
