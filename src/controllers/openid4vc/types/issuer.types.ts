@@ -16,8 +16,13 @@ export interface OpenId4VciOfferCredentials {
     method: SignerMethod
     did?: string
     x5c?: string[]
-    keyId: string
+    keyId?: string
   }
+}
+
+export interface DisclosureFrame {
+  _sd?: string[]
+  [claim: string]: DisclosureFrame | string[] | undefined
 }
 
 export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentials {
@@ -25,7 +30,7 @@ export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentia
     vct?: string
     [key: string]: unknown
   }
-  disclosureFrame?: Record<string, boolean | Record<string, boolean>>
+  disclosureFrame?: DisclosureFrame
 }
 export interface ValidityInfo {
   signed: Date

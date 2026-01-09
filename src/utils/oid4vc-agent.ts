@@ -299,17 +299,16 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       }
 
       // national id and ICAO default
-      const namespace = credentialConfiguration.doctype
-      const holder =
-        holderBinding.bindingMethod === 'did'
-          ? {
-              method: 'did' as const,
-              didUrl: holderBinding.keys[0].method === 'did' ? holderBinding.keys[0].didUrl : '',
-            }
-          : {
-              method: 'jwk' as const,
-              jwk: holderBinding.keys[0].method === 'jwk' ? holderBinding.keys[0].jwk : {},
-            }
+      // const holder =
+      //   holderBinding.bindingMethod === 'did'
+      //     ? {
+      //         method: 'did' as const,
+      //         didUrl: holderBinding.keys[0].method === 'did' ? holderBinding.keys[0].didUrl : '',
+      //       }
+      //     : {
+      //         method: 'jwk' as const,
+      //         jwk: holderBinding.keys[0].method === 'jwk' ? holderBinding.keys[0].jwk : {},
+      //       }
       const parsedCertificate = X509Service.parseCertificate(agentContext, {
         encodedCertificate: issuerx509certificate[0],
       })
@@ -317,15 +316,12 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       return {
         type: 'credentials',
         format: ClaimFormat.MsoMdoc,
-        credentials: [
-          {
-            issuerCertificate: parsedCertificate,
-            holderKey: holderBinding.keys[0].jwk,
-            ...credential.payload,
-            docType: credentialConfiguration.doctype,
-            namespaces: namespace,
-          },
-        ],
+        credentials: holderBinding.keys.map((holderBindingDetails) => ({
+          issuerCertificate: parsedCertificate,
+          holderKey: holderBindingDetails.jwk,
+          ...credential.payload,
+          docType: credentialConfiguration.doctype,
+        })),
       } satisfies OpenId4VciSignMdocCredentials
     }
 
@@ -366,48 +362,56 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
 
     if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.SdJwtDc) {
       const disclosureFramePayload =
-        credentialPayload[0].disclosureFrame && Object.keys(credentialPayload[0].disclosureFrame).length > 0
-          ? credentialPayload[0].disclosureFrame
+        credential.disclosureFrame && Object.keys(credential.disclosureFrame).length > 0
+          ? credential.disclosureFrame
           : {}
       //Taking leaf certifcate from chain as issuer certificate, if not provided explicitly taking AGENT_HTTP_URL as issuer
-      let parsedCertificate: any
-      if (!issuerDidVerificationMethod && issuerx509certificate) {
-        parsedCertificate = X509Service.parseCertificate(agentContext, {
-          encodedCertificate: issuerx509certificate[0],
-        })
-      } else if (!issuerDidVerificationMethod) {
-        throw new Error(`issuerx509certificate is not provided for credential ${credentialConfigurationId}`)
-      }
-      const holder =
-        holderBinding.bindingMethod === 'did'
-          ? {
-              method: 'did' as const,
-              didUrl: holderBinding.keys[0].method === 'did' ? holderBinding.keys[0].didUrl : '',
-            }
-          : {
-              method: 'jwk' as const,
-              jwk: holderBinding.keys[0].method === 'jwk' ? holderBinding.keys[0].jwk : {},
-            }
+      // let parsedCertificate: any
+      // if (!issuerDidVerificationMethod && issuerx509certificate) {
+      //   parsedCertificate = X509Service.parseCertificate(agentContext, {
+      //     encodedCertificate: issuerx509certificate[0],
+      //   })
+      // } else if (!issuerDidVerificationMethod) {
+      //   throw new Error(`issuerx509certificate is not provided for credential ${credentialConfigurationId}`)
+      // }
+      // const holder =
+      //   holderBinding.bindingMethod === 'did'
+      //     ? {
+      //         method: 'did' as const,
+      //         didUrl: holderBinding.keys[0].method === 'did' ? holderBinding.keys[0].didUrl : '',
+      //       }
+      //     : {
+      //         method: 'jwk' as const,
+      //         jwk: holderBinding.keys[0].method === 'jwk' ? holderBinding.keys[0].jwk : {},
+      //       }
+      // console.log('holder for SdJwtDc credential:', JSON.stringify(holder), '\n\n\n')
       return {
         format: ClaimFormat.SdJwtDc,
-        credentials: [
-          {
-            payload: credentialPayload[0]?.payload,
-            holder: holder as SdJwtVcHolderBinding,
-            issuer: issuerDidVerificationMethod
-              ? {
-                  method: 'did',
-                  didUrl: issuerDidVerificationMethod,
-                }
-              : {
-                  method: 'x5c',
-                  x5c: (issuerx509certificate ?? []).map((cert) => X509Certificate.fromEncodedCertificate(cert)),
-                  // TODO: Need to check validation for issuer value
-                  // issuer: process.env.AGENT_HOST ?? 'http://localhost:4001',
-                },
-            disclosureFrame: disclosureFramePayload,
-          },
-        ],
+        credentials: holderBinding.keys.map((binding) => ({
+          payload: credentialPayload[0]?.payload,
+          holder:
+            binding.method === 'did'
+              ? ({
+                  method: 'did' as const,
+                  didUrl: binding.didUrl,
+                } as SdJwtVcHolderBinding)
+              : ({
+                  method: 'jwk' as const,
+                  jwk: binding.method === 'jwk' ? binding.jwk : {},
+                } as SdJwtVcHolderBinding),
+          issuer: issuerDidVerificationMethod
+            ? {
+                method: 'did',
+                didUrl: issuerDidVerificationMethod,
+              }
+            : {
+                method: 'x5c',
+                x5c: (issuerx509certificate ?? []).map((cert) => X509Certificate.fromEncodedCertificate(cert)),
+                // TODO: Need to check validation for issuer value
+                // issuer: process.env.AGENT_HOST ?? 'http://localhost:4001',
+              },
+          disclosureFrame: disclosureFramePayload,
+        })),
         type: 'credentials',
       } satisfies OpenId4VciSignSdJwtCredentials
     }
@@ -490,6 +494,7 @@ export async function getTrustedCerts() {
     return data as string[]
     // return [
     //   'MIICBzCCAbmgAwIBAgIRAMEUex+GR2GZKusP/izv/oswBQYDK2VwMCsxHDAaBgNVBAMTE0V4YW1wbGUgQ29ycG9yYXRpb24xCzAJBgNVBAYTAlVTMB4XDTI1MDEwMTAwMDAwMFoXDTI3MDEwMTAwMDAwMFowKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwKjAFBgMrZXADIQC5RNVbJCX2L/z/PLbvaxLqi7+hA4fUUStWcmAo/qkX2aOB8TCB7jAdBgNVHQ4EFgQUkog6trQXXfsjb472jybLCBixSAMwDgYDVR0PAQH/BAQDAgGiMBUGA1UdJQEB/wQLMAkGByiBjF0FAQIwIgYDVR0jAQH/BBgwFoAUkog6trQXXfsjb472jybLCBixSAMwQAYDVR0SAQH/BDYwNIILZXhhbXBsZS5jb22GEmh0dHA6Ly9leGFtcGxlLmNvbYERYWRtaW5AZXhhbXBsZS5jb20wLAYDVR0RAQH/BCIwIIILZXhhbXBsZS5jb22BEWFkbWluQGV4YW1wbGUuY29tMBIGA1UdEwEB/wQIMAYBAf8CAQAwBQYDK2VwA0EAPjHj2keDv8BN3FGkOqG36VQKaYvb9Ena+1BI7hb+sBJ+QgBTlj1sK/+I7LMUfu/K3oCyZxT1CZpYRZkh7GEWAw==',
+    //   'MIICBjCCAbigAwIBAgIRAJyCTLRUEF9FQkk+ELnRLOgwBQYDK2VwMCsxHDAaBgNVBAMTE0V4YW1wbGUgQ29ycG9yYXRpb24xCzAJBgNVBAYTAlVTMB4XDTI1MDEwMTAwMDAwMFoXDTI3MDEwMTAwMDAwMFowKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwKjAFBgMrZXADIQBeWlB8f20JOxam3yUOtVq0R3W7rWm1eRVDZY3u5xxnBaOB8DCB7TAdBgNVHQ4EFgQUcayusF1KIxnM+ynxIybo0bwGSY8wDgYDVR0PAQH/BAQDAgGiMBUGA1UdJQEB/wQLMAkGByiBjF0FAQIwIgYDVR0jAQH/BBgwFoAUcayusF1KIxnM+ynxIybo0bwGSY8wQQYDVR0SAQH/BDcwNYIJbG9jYWxob3N0hhVodHRwOi8vbG9jYWxob3N0OjQwMDGBEWFkbWluQGV4YW1wbGUuY29tMCoGA1UdEQEB/wQgMB6CCWxvY2FsaG9zdIERYWRtaW5AZXhhbXBsZS5jb20wEgYDVR0TAQH/BAgwBgEB/wIBADAFBgMrZXADQQCkB9fINZYClndo78TRY632qu937a0Jxo65UOR5kQ7EGDqzuf5ALxZ9Wcd0xgMYweC291WcachvfuyAmZ+BtC8B',
     // ]
   } catch (error) {
     // eslint-disable-next-line no-console
