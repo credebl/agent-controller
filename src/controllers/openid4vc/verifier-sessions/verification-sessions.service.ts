@@ -23,8 +23,6 @@ import { injectable } from 'tsyringe'
 import { SignerMethod } from '../../../enums'
 import { CreateAuthorizationRequest, OpenId4VcIssuerX5c, ResponseModeEnum } from '../types/verifier.types'
 
-// import { CreateAuthorizationRequest } from '../types/verifier.types'
-
 @injectable()
 class VerificationSessionsService {
   public async createProofRequest(agentReq: Req, dto: CreateAuthorizationRequest) {
@@ -62,10 +60,6 @@ class VerificationSessionsService {
         })
         requestSigner.issuer = parsedCertificate.sanUriNames[0]
       }
-
-      if (!requestSigner) {
-      } else if (requestSigner.method === 'did') {
-      }
       const options: any = {
         requestSigner,
         verifierId: dto.verifierId,
@@ -77,11 +71,16 @@ class VerificationSessionsService {
 
       if (dto.responseMode) options.responseMode = dto.responseMode
       if (dto.presentationExchange) {
-        options.presentationExchange = dto.presentationExchange
+        // options.presentationExchange = dto.presentationExchange
+        throw new Error('Presentation Exchange is not supported for now')
       } else if (dto.dcql) {
+        const parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
+          encodedCertificate: requestSigner.x5c[0],
+        })
+        parsedCertificate.publicJwk.keyId = requestSigner.keyId
+        options.requestSigner.x5c = [parsedCertificate]
         options.dcql = dto.dcql
       }
-
       return (await agentReq.agent.modules.openid4vc.verifier?.createAuthorizationRequest(options)) as any
     } catch (error) {
       throw error
