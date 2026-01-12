@@ -179,7 +179,6 @@ const getModules = (
         new KeyDidResolver(),
         new WebDidResolver(),
         new JwkDidResolver(),
-        new KeyDidResolver(),
         // , new PolygonDidResolver()
       ],
     }),
@@ -508,9 +507,6 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
         }),
       )
       transport.app.use(bodyParser.json({ limit: process.env.APP_JSON_BODY_SIZE ?? '5mb' }))
-
-      // transport.app.use('/oid4vci', modules.openid4vc.issuer?.config.app.routes ?? express.Router())
-      // transport.app.use('/oid4vp', modules.openid4vc.verifier?.config.app.routes ?? express.Router())
     }
   }
 

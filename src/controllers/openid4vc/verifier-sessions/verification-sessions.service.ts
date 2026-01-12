@@ -65,7 +65,7 @@ class VerificationSessionsService {
         verifierId: dto.verifierId,
       }
 
-      if (dto.responseMode === ResponseModeEnum.DC_API || ResponseModeEnum.DC_API_JWT) {
+      if (dto.responseMode === ResponseModeEnum.DC_API || dto.responseMode === ResponseModeEnum.DC_API_JWT) {
         options.expectedOrigins = dto.expectedOrigins
       }
 
@@ -109,11 +109,12 @@ class VerificationSessionsService {
   }
 
   public async getVerifiedAuthorizationResponse(request: Req, verificationSessionId: string) {
-    const verificationSession =
-      await request.agent.modules.openid4vc.verifier?.getVerificationSessionById(verificationSessionId)
-    const verified = await request.agent.modules.openid4vc.verifier?.getVerifiedAuthorizationResponse(
-      verificationSession!.id,
-    )
+    const verifier = request.agent.modules.openid4vc.verifier
+    if (!verifier) {
+      throw new Error('OID4VC verifier module not initialized')
+    }
+    const verificationSession = await verifier.getVerificationSessionById(verificationSessionId)
+    const verified = await verifier.getVerifiedAuthorizationResponse(verificationSession!.id)
 
     const presentations = await Promise.all(
       (verified!.presentationExchange?.presentations ?? Object.values(verified!.dcql?.presentations ?? {}))

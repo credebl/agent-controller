@@ -13,16 +13,7 @@ import type {
 } from '@credo-ts/openid4vc'
 import type { Request as Req } from 'express'
 
-import {
-  DifPresentationExchangeService,
-  DidKey,
-  DidJwk,
-  Mdoc,
-  W3cJsonLdVerifiableCredential,
-  W3cJwtVerifiableCredential,
-  SdJwtVcRecord,
-  MdocRecord,
-} from '@credo-ts/core'
+import { Mdoc, SdJwtVcRecord, MdocRecord } from '@credo-ts/core'
 import {
   OpenId4VciAuthorizationFlow,
   authorizationCodeGrantIdentifier,
@@ -196,7 +187,6 @@ export class HolderService {
       //   return { method: 'jwk', jwk: getJwkFromKey(key) }
       // },
       credentialBindingResolver: getCredentialBindingResolver({
-        pidSchemes: undefined,
         requestBatch: false,
       }),
       ...tokenResponse,
@@ -321,7 +311,9 @@ export class HolderService {
         credentials: dcqlCredentials as DcqlCredentialsForRequest,
       },
     })
-    return submissionResult.serverResponse
+    const result: any = submissionResult.serverResponse
+    result['authorizationResponsePayload'] = submissionResult.authorizationResponsePayload
+    return result
   }
 
   public async decodeSdJwt(agentReq: Req, body: { jwt: string }) {
