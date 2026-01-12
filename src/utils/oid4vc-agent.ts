@@ -211,7 +211,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
           (c: Record<string, unknown>) => c.credentialSupportedId === credentialConfigurationId,
         )
       : []
-    const credentialConfigurationSupported = credentialConfiguration[credentialConfigurationId]
+    // const credentialConfigurationSupported = credentialConfiguration[credentialConfigurationId]
     if (credentialPayload.length === 0) {
       throw new Error(`No credential payload found for credentialConfigurationId: ${credentialConfigurationId}`)
     }
@@ -293,9 +293,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
         )
 
       if (!credentialConfiguration.doctype) {
-        throw new Error(
-          `'doctype' not found in credential configuration, ${JSON.stringify(credentialConfigurationSupported, null, 2)}`,
-        )
+        throw new Error(`'doctype' not found in credential configuration,`)
       }
 
       // national id and ICAO default

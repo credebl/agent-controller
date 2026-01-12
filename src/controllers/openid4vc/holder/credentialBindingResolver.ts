@@ -2,10 +2,8 @@ import { DidJwk, DidKey, DidsApi, type JwkDidCreateOptions, type KeyDidCreateOpt
 import { type OpenId4VciCredentialBindingResolver, OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
 export function getCredentialBindingResolver({
-  pidSchemes,
   requestBatch,
 }: {
-  pidSchemes?: { sdJwtVcVcts: Array<string>; msoMdocDoctypes: Array<string> }
   requestBatch?: boolean | number
 }): OpenId4VciCredentialBindingResolver {
   return async ({

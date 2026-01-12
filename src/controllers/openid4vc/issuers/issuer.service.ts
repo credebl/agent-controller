@@ -10,10 +10,12 @@ export class IssuerService {
     agentReq: Req,
     createIssuerOptions: any, //TODO: Replace with OpenId4VciCreateIssuerOptions,
   ) {
-    const issuerRecord = await agentReq.agent.modules.openid4vc.issuer?.createIssuer(createIssuerOptions)
-    const issuerMetadata = await agentReq.agent.modules.openid4vc.issuer?.getIssuerMetadata(
-      issuerRecord?.issuerId ?? '',
-    )
+    const issuer = agentReq.agent.modules.openid4vc.issuer
+    if (!issuer) {
+      throw new Error('OID4VC issuer module not initialized')
+    }
+    const issuerRecord = await issuer.createIssuer(createIssuerOptions)
+    const issuerMetadata = await issuer.getIssuerMetadata(issuerRecord?.issuerId ?? '')
     // eslint-disable-next-line no-console
     console.log(`\nIssuer URL: ${issuerMetadata?.credentialIssuer.credential_issuer}`)
     return issuerRecord

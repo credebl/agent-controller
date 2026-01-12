@@ -14,7 +14,6 @@ import {
   type Agent,
 } from '@credo-ts/core'
 import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
-import { error } from 'console'
 
 import { keyAlgorithmToCurve } from '../../utils/constant'
 import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } from '../../utils/helpers'

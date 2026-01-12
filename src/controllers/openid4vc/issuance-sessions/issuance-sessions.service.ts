@@ -12,7 +12,9 @@ class IssuanceSessionsService {
     const { credentials, publicIssuerId } = options
 
     const issuer = await agentReq.agent.modules.openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId)
-
+    if (!issuer) {
+      throw new NotFoundError(`Issuer with id ${publicIssuerId} not found`)
+    }
     const mappedCredentials = credentials.map((cred) => {
       const supported = issuer?.credentialConfigurationsSupported[cred.credentialSupportedId]
       if (!supported) {
@@ -74,7 +76,11 @@ class IssuanceSessionsService {
   }
 
   public async getIssuanceSessionsById(agentReq: Req, sessionId: string) {
-    return agentReq.agent.modules.openid4vc.issuer?.getIssuanceSessionById(sessionId)
+    const issuer = agentReq.agent.modules.openid4vc.issuer
+    if (!issuer) {
+      throw new Error('OID4VC issuer module not initialized')
+    }
+    return issuer.getIssuanceSessionById(sessionId)
   }
 
   public async getIssuanceSessionsByQuery(
