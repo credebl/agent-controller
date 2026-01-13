@@ -95,7 +95,6 @@ export class HolderService {
       options = {
         resolvedCredentialOffer,
         txCode: body.txCode,
-        code: body.authorizationCode,
       } as OpenId4VciPreAuthorizedTokenRequestOptions
     } else {
       options = {
@@ -319,19 +318,6 @@ export class HolderService {
   public async decodeSdJwt(agentReq: Req, body: { jwt: string }) {
     const sdJwt = agentReq.agent.sdJwtVc.fromCompact(body.jwt)
     return sdJwt as any
-  }
-
-  public async getSelectedCredentialsForRequest(
-    dcqlQueryResult: DcqlQueryResult,
-    selectedCredentials: { [credentialQueryId: string]: string },
-  ) {
-    if (!dcqlQueryResult.can_be_satisfied) {
-      throw new Error(
-        'Cannot select the credentials for the dcql query presentation if the request cannot be satisfied',
-      )
-    }
-    // TODO: Implement logic to select credentials based on selectedCredentials
-    return {} as any // Placeholder return to avoid errors
   }
 }
 export const holderService = new HolderService()

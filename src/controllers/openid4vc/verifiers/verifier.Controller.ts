@@ -32,6 +32,9 @@ export class VerifierController {
     @Path('publicVerifierId') publicVerifierId: string,
     @Body() verifierRecordOptions: OpenId4VcUpdateVerifierRecordOptions,
   ) {
+    if (!publicVerifierId) {
+      throw new Error('verifierId is required to update verifier metadata')
+    }
     return await this.verifierService.updateVerifierMetadata(request, {
       verifierId: publicVerifierId,
       clientMetadata: verifierRecordOptions.clientMetadata,

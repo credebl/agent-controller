@@ -446,41 +446,41 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       },
     ]
   }
+  let modules
 
-  const tenantModule = await getWithTenantModules(
-    networkConfig,
-    didRegistryContractAddress || '',
-    fileServerToken || '',
-    fileServerUrl || '',
-    rpcUrl || '',
-    schemaManagerContractAddress || '',
-    autoAcceptConnections || true,
-    autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
-    autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
-    walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
-    walletConfig,
-  )
-  const modules = getModules(
-    networkConfig,
-    didRegistryContractAddress || '',
-    fileServerToken || '',
-    fileServerUrl || '',
-    rpcUrl || '',
-    schemaManagerContractAddress || '',
-    autoAcceptConnections || true,
-    autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
-    autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
-    walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
-    walletConfig,
-  )
+  if (afjConfig.tenancy) {
+    modules = await getWithTenantModules(
+      networkConfig,
+      didRegistryContractAddress || '',
+      fileServerToken || '',
+      fileServerUrl || '',
+      rpcUrl || '',
+      schemaManagerContractAddress || '',
+      autoAcceptConnections || true,
+      autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
+      autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
+      walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
+      walletConfig,
+    )
+  } else {
+    modules = getModules(
+      networkConfig,
+      didRegistryContractAddress || '',
+      fileServerToken || '',
+      fileServerUrl || '',
+      rpcUrl || '',
+      schemaManagerContractAddress || '',
+      autoAcceptConnections || true,
+      autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
+      autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
+      walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
+      walletConfig,
+    )
+  }
+
   const agent = new Agent({
     config: agentConfig,
     modules: {
-      ...(afjConfig.tenancy
-        ? {
-            ...tenantModule,
-          }
-        : {}),
       ...modules,
     },
     dependencies: agentDependencies,

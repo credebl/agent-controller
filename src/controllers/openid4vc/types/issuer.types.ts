@@ -20,9 +20,9 @@ export interface OpenId4VciOfferCredentials {
   }
 }
 
-export interface DisclosureFrame {
+export interface DisclosureFrameForOffer {
   _sd?: string[]
-  [claim: string]: DisclosureFrame | string[] | undefined
+  [claim: string]: DisclosureFrameForOffer | string[] | undefined
 }
 
 export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentials {
@@ -30,8 +30,7 @@ export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentia
     vct?: string
     [key: string]: unknown
   }
-  // disclosureFrame?: Record<string, boolean | Record<string, boolean>>
-  disclosureFrame?: DisclosureFrame
+  disclosureFrame?: DisclosureFrameForOffer
 }
 export interface ValidityInfo {
   signed: Date

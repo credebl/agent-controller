@@ -37,7 +37,7 @@ export class IssuanceSessionsController extends Controller {
   /**
    * Get issuance details by issuance SessionId
    */
-  @Get('/:issuanceSessionId')
+  @Get('{issuanceSessionId}')
   public async getIssuanceSessionsById(@Request() request: Req, @Path('issuanceSessionId') issuanceSessionId: string) {
     try {
       return await issuanceSessionService.getIssuanceSessionsById(request, issuanceSessionId)
@@ -77,7 +77,7 @@ export class IssuanceSessionsController extends Controller {
   /**
    * Update issuance session metadata by session ID
    */
-  @Put('/:issuanceSessionId')
+  @Put('{issuanceSessionId}')
   public async updateSessionById(
     @Request() request: Req,
     @Path('issuanceSessionId') issuanceSessionId: string,
@@ -93,7 +93,7 @@ export class IssuanceSessionsController extends Controller {
   /**
    * Delete issuance session by session ID
    */
-  @Delete('/:issuanceSessionId')
+  @Delete('{issuanceSessionId}')
   public async deleteIssuanceSessionById(
     @Request() request: Req,
     @Path('issuanceSessionId') issuanceSessionId: string,
