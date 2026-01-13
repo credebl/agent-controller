@@ -166,7 +166,7 @@ export class DidController extends Controller {
       throw new BadRequestError('Only ed25519 key type supported')
     }
 
-    if (!Network.Bcovrin_Testnet && !Network.Indicio_Demonet && !Network.Indicio_Testnet) {
+    if (!Object.values(Network).includes(createDidOptions.network as Network)) {
       throw new BadRequestError(`Invalid network for 'indy' method: ${createDidOptions.network}`)
     }
 
@@ -215,6 +215,9 @@ export class DidController extends Controller {
           didDocument: didDocument,
         }
       } else {
+        if (!process.env.BCOVRIN_REGISTER_URL) {
+          throw new InternalServerError('BCOVRIN_REGISTER_URL is not set in environment variables')
+        }
         const BCOVRIN_REGISTER_URL = process.env.BCOVRIN_REGISTER_URL as string
         const res = await axios.post(BCOVRIN_REGISTER_URL, {
           role: 'ENDORSER',
@@ -286,6 +289,10 @@ export class DidController extends Controller {
             did: `${didMethod}:${key.did}`,
             didDocument: didDocument,
           }
+        } else {
+          throw new InternalServerError(
+            `Failed to register DID with Indicio: ${res.data.message || res.data.body || 'Unknown error'}`,
+          )
         }
       }
     } else {
@@ -494,8 +501,8 @@ export class DidController extends Controller {
       throw new BadRequestError('keyType is required')
     }
 
-    if (didOptions.keyType !== KeyAlgorithm.Ed25519 && didOptions.keyType !== KeyAlgorithm.Bls12381G2) {
-      throw new BadRequestError('Only ed25519 and bls12381g2 key type supported')
+    if (didOptions.keyType !== KeyAlgorithm.Ed25519) {
+      throw new BadRequestError('Only ed25519 key type supported')
     }
 
     const domain = didOptions.domain

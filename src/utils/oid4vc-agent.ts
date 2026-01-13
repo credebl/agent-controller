@@ -229,7 +229,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
         }
 
         if (!issuerDidVerificationMethod) {
-          throw new Error('No matching verification method found')
+          throw new Error('DID must be provided when using Did as signer method')
         }
       }
     } else if (credential.signerOptions.method === SignerMethod.X5c) {

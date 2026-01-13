@@ -31,10 +31,10 @@ export class VerifierService {
     return await agentReq.agent.modules.openid4vc.verifier.getVerifierByVerifierId(publicVerifierId)
   }
 
-  public async deleteVerifier(agentReq: Req, publicVerifierId: string) {
+  public async deleteVerifier(agentReq: Req, verifierId: string) {
     const verifierRepository = agentReq.agent.dependencyManager.resolve(OpenId4VcVerifierRepository)
     return await verifierRepository
-      .deleteById(agentReq.agent.context, publicVerifierId)
+      .deleteById(agentReq.agent.context, verifierId)
       .then(() => ({ message: 'Record deleted successfully' }))
   }
 }
