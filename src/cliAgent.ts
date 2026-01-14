@@ -270,27 +270,6 @@ const getModules = (
         authorizationRequestExpirationInSeconds: Number(process.env.OID4VP_AUTH_REQUEST_PROOF_REQUEST_EXPIRY) || 3600,
       },
     }),
-    // openId4VcVerifier: new OpenId4VcVerifierModule({
-    //   baseUrl:
-    //     process.env.NODE_ENV === 'PROD'
-    //       ? `https://${process.env.APP_URL}/oid4vp`
-    //       : `${process.env.AGENT_HTTP_URL}/oid4vp`,
-    //   app: openId4VpApp,
-    //   authorizationRequestExpirationInSeconds: Number(process.env.OID4VP_AUTH_REQUEST_PROOF_REQUEST_EXPIRY) || 3600,
-    // }),
-    // openId4VcIssuer: new OpenId4VcIssuerModule({
-    //   baseUrl:
-    //     process.env.NODE_ENV === 'PROD'
-    //       ? `https://${process.env.APP_URL}/oid4vci`
-    //       : `${process.env.AGENT_HTTP_URL}/oid4vci`,
-    //   app: openId4VcApp,
-    //   statefulCredentialOfferExpirationInSeconds: Number(process.env.OID4VCI_CRED_OFFER_EXPIRY) || 3600,
-    //   accessTokenExpiresInSeconds: Number(process.env.OID4VCI_ACCESS_TOKEN_EXPIRY) || 3600,
-    //   authorizationCodeExpiresInSeconds: Number(process.env.OID4VCI_AUTH_CODE_EXPIRY) || 3600,
-    //   cNonceExpiresInSeconds: Number(process.env.OID4VCI_CNONCE_EXPIRY) || 3600,
-    //   dpopRequired: false,
-    //   credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
-    // }),
     openId4VcHolderModule: new OpenId4VcHolderModule(),
     x509: new X509Module({
       getTrustedCertificatesForVerification: async (_agentContext, { certificateChain, verification }) => {

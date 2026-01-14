@@ -107,55 +107,7 @@ export class HolderService {
     }
 
     return (await this.requestAndStoreCredentials(agentReq, resolvedCredentialOffer, options)) as any
-    // return {} as any
   }
-  // private async requestAndStoreCredentials(
-  //   //   agentReq: Req,
-  //   //   resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
-  //   //   options: OpenId4VciTokenRequestOptions,
-  //   // ) {
-  //   //   const tokenResponse = await agentReq.agent.modules.openId4VcHolderModule.requestToken({ ...options })
-  //   //   const credentialResponse = await agentReq.agent.modules.openId4VcHolderModule.requestCredentials({
-  //   //     ...options,
-  //   //     credentialConfigurationIds: resolvedCredentialOffer.credentialOfferPayload.credential_configuration_ids,
-  //   //     credentialBindingResolver: async ({
-  //   //       keyTypes,
-  //   //       supportedDidMethods,
-  //   //       supportsAllDidMethods,
-  //   //     }: {
-  //   //       keyTypes: string[]
-  //   //       supportedDidMethods?: string[]
-  //   //       supportsAllDidMethods?: boolean
-  //   //     }) => {
-  //   //       const key = await agentReq.agent.wallet.createKey({ keyType: keyTypes[0] as any })
-  //   //       if (supportsAllDidMethods || supportedDidMethods?.includes('did:key')) {
-  //   //         const didKey = new DidKey(key)
-  //   //         return { method: 'did', didUrl: `${didKey.did}#${didKey.key.fingerprint}` }
-  //   //       }
-  //   //       if (supportedDidMethods?.includes('did:jwk')) {
-  //   //         const didJwk = DidJwk.fromJwk(getJwkFromKey(key))
-  //   //         return { method: 'did', didUrl: `${didJwk.did}#0` }
-  //   //       }
-  //   //       return { method: 'jwk', jwk: getJwkFromKey(key) }
-  //   //     },
-  //   //     ...tokenResponse,
-  //   //   })
-
-  //   //   const storedCredentials = await Promise.all(
-  //   //     credentialResponse.credentials.map(async (response: any) => {
-  //   //       const credential = response.credentials[0]
-  //   //       if (credential instanceof W3cJwtVerifiableCredential || credential instanceof W3cJsonLdVerifiableCredential) {
-  //   //         return await agentReq.agent.w3cCredentials.storeCredential({ credential })
-  //   //       }
-  //   //       if (credential instanceof Mdoc) {
-  //   //         return await agentReq.agent.mdoc.store(credential)
-  //   //       }
-  //   //       return await agentReq.agent.sdJwtVc.store(credential.compact)
-  //   //     }),
-  //   //   )
-
-  //   //   return storedCredentials as any
-  //   // }
   private async requestAndStoreCredentials(
     agentReq: Req,
     resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
@@ -165,52 +117,11 @@ export class HolderService {
     const credentialResponse = await agentReq.agent.modules.openid4vc.holder.requestCredentials({
       ...options,
       credentialConfigurationIds: resolvedCredentialOffer.credentialOfferPayload.credential_configuration_ids,
-      // credentialBindingResolver: async ({
-      //   keyTypes,
-      //   supportedDidMethods,
-      //   supportsAllDidMethods,
-      // }: {
-      //   keyTypes: string[]
-      //   supportedDidMethods?: string[]
-      //   supportsAllDidMethods?: boolean
-      // }) => {
-      //   const key = await agentReq.agent.wallet.createKey({ keyType: keyTypes[0] as any })
-      //   if (supportsAllDidMethods || supportedDidMethods?.includes('did:key')) {
-      //     const didKey = new DidKey(key)
-      //     return { method: 'did', didUrl: `${didKey.did}#${didKey.key.fingerprint}` }
-      //   }
-      //   if (supportedDidMethods?.includes('did:jwk')) {
-      //     const didJwk = DidJwk.fromJwk(getJwkFromKey(key))
-      //     return { method: 'did', didUrl: `${didJwk.did}#0` }
-      //   }
-      //   return { method: 'jwk', jwk: getJwkFromKey(key) }
-      // },
       credentialBindingResolver: getCredentialBindingResolver({
         requestBatch: false,
       }),
       ...tokenResponse,
     })
-    // const credentialResponse = await agentReq.agent.modules.openid4vc.holder.requestCredentials({
-    //   ...options,
-    //   credentialConfigurationIds: resolvedCredentialOffer.credentialOfferPayload.credential_configuration_ids,
-    //   credentialBindingResolver: async (options) => {
-    //     const { keyId, publicJwk } = await agentReq.agent.kms.createKey({
-    //       type: {
-    //         crv: 'Ed25519',
-    //         kty: 'OKP',
-    //       },
-    //     })
-    //     if (options.supportsAllDidMethods || options.supportedDidMethods?.includes('did:key')) {
-    //       const didKey = new DidKey(key)
-    //       return { method: 'did', didUrls: [`${didKey.did}#${didKey.key.fingerprint}`] }
-    //     }
-    //     if (options.supportedDidMethods?.includes('did:jwk')) {
-    //       const didJwk = DidJwk.fromKey(key)
-    //       return { method: 'did', didUrls: [`${didJwk.did}#0`] }
-    //     }
-    //     return { method: 'jwk', jwk: key }
-    //   },
-    // })
 
     const storedCredentials = await Promise.all(
       credentialResponse.credentials.map(async (response) => {
