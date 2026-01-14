@@ -161,6 +161,7 @@ class VerificationSessionsService {
                   issuerSignedNamespaces: Object.entries(doc.issuerSignedNamespaces).map(
                     ([nameSpace, nameSpacEntries]) => [
                       nameSpace,
+                      // TODO: Address it later to check whether the received Uint8Array is an image or not.
                       Object.entries(nameSpacEntries).map(([key, value]) =>
                         value instanceof Uint8Array
                           ? [`base64:${key}`, `data:image/jpeg;base64,${TypedArrayEncoder.toBase64(value)}`]
