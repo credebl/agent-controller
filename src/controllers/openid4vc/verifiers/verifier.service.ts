@@ -38,5 +38,3 @@ export class VerifierService {
       .then(() => ({ message: 'Record deleted successfully' }))
   }
 }
-
-export const verifierService = new VerifierService()
