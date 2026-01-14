@@ -1,6 +1,7 @@
 // Note: For now we need to import askar-nodejs at the top to handle the undefined askar issue
 // Refer from: https://github.com/credebl/mobile-sdk/blob/main/packages/ssi/src/wallet/wallet.ts
 import '@openwallet-foundation/askar-nodejs'
+import type { AskarModuleConfigStoreOptions } from '@credo-ts/askar'
 import type { InitConfig } from '@credo-ts/core'
 import type { IndyVdrPoolConfig } from '@credo-ts/indy-vdr'
 
@@ -14,7 +15,7 @@ import {
   DidCommCredentialV1Protocol,
   DidCommProofV1Protocol,
 } from '@credo-ts/anoncreds'
-import { AskarModule, AskarModuleConfigStoreOptions, AskarMultiWalletDatabaseScheme } from '@credo-ts/askar'
+import { AskarModule, AskarMultiWalletDatabaseScheme } from '@credo-ts/askar'
 import {
   DidsModule,
   W3cCredentialsModule,
@@ -26,6 +27,8 @@ import {
   LogLevel,
   Agent,
   X509Module,
+  JwkDidRegistrar,
+  JwkDidResolver,
 } from '@credo-ts/core'
 import {
   DidCommHttpOutboundTransport,
@@ -46,29 +49,22 @@ import {
   IndyVdrIndyDidRegistrar,
 } from '@credo-ts/indy-vdr'
 import { agentDependencies, DidCommHttpInboundTransport, DidCommWsInboundTransport } from '@credo-ts/node'
+import { OpenId4VcHolderModule, OpenId4VcModule } from '@credo-ts/openid4vc'
 import { QuestionAnswerModule } from '@credo-ts/question-answer'
 import { TenantsModule } from '@credo-ts/tenants'
 import { anoncreds } from '@hyperledger/anoncreds-nodejs'
-import { askar } from '@openwallet-foundation/askar-nodejs'
 import { indyVdr } from '@hyperledger/indy-vdr-nodejs'
+import { askar } from '@openwallet-foundation/askar-nodejs'
 import axios from 'axios'
+import bodyParser from 'body-parser'
+import express from 'express'
 import { readFile } from 'fs/promises'
 
 import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network, NetworkName } from './enums'
 import { setupServer } from './server'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
-import { OpenId4VcHolderModule, OpenId4VcIssuerModule, OpenId4VcVerifierModule } from '@credo-ts/openid4vc'
-import {
-  getCredentialRequestToCredentialMapper,
-  getTrustedCerts,
-} from './utils/oid4vc-agent'
-import bodyParser from 'body-parser'
-
-import express from 'express'
-
-const openId4VpApp = express()
-const openId4VcApp = express()
+import { getMixedCredentialRequestToCredentialMapper, getTrustedCerts } from './utils/oid4vc-agent'
 
 export type Transports = 'ws' | 'http'
 export type InboundTransport = {
@@ -128,7 +124,15 @@ export async function readRestConfig(path: string) {
 export type RestMultiTenantAgentModules = Awaited<ReturnType<typeof getWithTenantModules>>
 
 export type RestAgentModules = Awaited<ReturnType<typeof getModules>>
-
+function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(`Missing environment variable: ${name}`)
+  }
+  return value
+}
+const expressApp = express()
+expressApp.disable('x-powered-by')
 // TODO: add object
 const getModules = (
   networkConfig: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]],
@@ -141,7 +145,7 @@ const getModules = (
   autoAcceptCredentials: DidCommAutoAcceptCredential,
   autoAcceptProofs: DidCommAutoAcceptProof,
   walletScheme: AskarMultiWalletDatabaseScheme,
-  storeOptions: AskarModuleConfigStoreOptions
+  storeOptions: AskarModuleConfigStoreOptions,
 ) => {
   const legacyIndyCredentialFormat = new LegacyIndyDidCommCredentialFormatService()
   const legacyIndyProofFormat = new LegacyIndyDidCommProofFormatService()
@@ -149,26 +153,32 @@ const getModules = (
   const anonCredsCredentialFormatService = new AnonCredsDidCommCredentialFormatService()
   const anonCredsProofFormatService = new AnonCredsDidCommProofFormatService()
   const presentationExchangeProofFormatService = new DidCommDifPresentationExchangeProofFormatService()
+
   return {
     askar: new AskarModule({
       askar,
       store: {
-        ...storeOptions
+        ...storeOptions,
       },
       multiWalletDatabaseScheme: walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
-      
     }),
 
     indyVdr: new IndyVdrModule({
       indyVdr,
       networks: networkConfig,
     }),
-
     dids: new DidsModule({
-      registrars: [new IndyVdrIndyDidRegistrar(), new KeyDidRegistrar()
+      registrars: [
+        new IndyVdrIndyDidRegistrar(),
+        new KeyDidRegistrar(),
+        new JwkDidRegistrar(),
         // , new PolygonDidRegistrar()
       ],
-      resolvers: [new IndyVdrIndyDidResolver(), new KeyDidResolver(), new WebDidResolver()
+      resolvers: [
+        new IndyVdrIndyDidResolver(),
+        new KeyDidResolver(),
+        new WebDidResolver(),
+        new JwkDidResolver(),
         // , new PolygonDidResolver()
       ],
     }),
@@ -210,7 +220,11 @@ const getModules = (
             indyCredentialFormat: legacyIndyCredentialFormat,
           }),
           new DidCommCredentialV2Protocol({
-            credentialFormats: [legacyIndyCredentialFormat, jsonLdCredentialFormatService, anonCredsCredentialFormatService],
+            credentialFormats: [
+              legacyIndyCredentialFormat,
+              jsonLdCredentialFormatService,
+              anonCredsCredentialFormatService,
+            ],
           }),
         ],
       },
@@ -220,6 +234,8 @@ const getModules = (
     }),
 
     questionAnswer: new QuestionAnswerModule(),
+    // openid4vc: new OpenId4VcModule({}),
+    // Todo: We can remove this polygon module for time being
     // polygon: new PolygonModule({
     //   didContractAddress: didRegistryContractAddress
     //     ? didRegistryContractAddress
@@ -230,26 +246,29 @@ const getModules = (
     //   rpcUrl: rpcUrl ? rpcUrl : (process.env.RPC_URL as string),
     //   serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
     // }),
-    openId4VcVerifier: new OpenId4VcVerifierModule({
-      baseUrl:
-        process.env.NODE_ENV === 'PROD'
-          ? `https://${process.env.APP_URL}/oid4vp`
-          : `${process.env.AGENT_HTTP_URL}/oid4vp`,
-      app: openId4VpApp,
-      authorizationRequestExpirationInSeconds: Number(process.env.OID4VP_AUTH_REQUEST_PROOF_REQUEST_EXPIRY) || 3600,
-    }),
-    openId4VcIssuer: new OpenId4VcIssuerModule({
-      baseUrl:
-        process.env.NODE_ENV === 'PROD'
-          ? `https://${process.env.APP_URL}/oid4vci`
-          : `${process.env.AGENT_HTTP_URL}/oid4vci`,
-      app: openId4VcApp,
-      statefulCredentialOfferExpirationInSeconds: Number(process.env.OID4VCI_CRED_OFFER_EXPIRY) || 3600,
-      accessTokenExpiresInSeconds: Number(process.env.OID4VCI_ACCESS_TOKEN_EXPIRY) || 3600,
-      authorizationCodeExpiresInSeconds: Number(process.env.OID4VCI_AUTH_CODE_EXPIRY) || 3600,
-      cNonceExpiresInSeconds: Number(process.env.OID4VCI_CNONCE_EXPIRY) || 3600,
-      dpopRequired: false,
-      credentialRequestToCredentialMapper: (...args) => getCredentialRequestToCredentialMapper()(...args),
+    openid4vc: new OpenId4VcModule({
+      app: expressApp,
+      issuer: {
+        baseUrl:
+          process.env.NODE_ENV === 'PROD'
+            ? `https://${requireEnv('APP_URL')}/oid4vci`
+            : `${requireEnv('AGENT_HTTP_URL')}/oid4vci`,
+        app: expressApp,
+        statefulCredentialOfferExpirationInSeconds: Number(process.env.OID4VCI_CRED_OFFER_EXPIRY) || 3600,
+        accessTokenExpiresInSeconds: Number(process.env.OID4VCI_ACCESS_TOKEN_EXPIRY) || 3600,
+        authorizationCodeExpiresInSeconds: Number(process.env.OID4VCI_AUTH_CODE_EXPIRY) || 3600,
+        cNonceExpiresInSeconds: Number(process.env.OID4VCI_CNONCE_EXPIRY) || 3600,
+        dpopRequired: false,
+        credentialRequestToCredentialMapper: (...args) => getMixedCredentialRequestToCredentialMapper()(...args),
+      },
+      verifier: {
+        baseUrl:
+          process.env.NODE_ENV === 'PROD'
+            ? `https://${requireEnv('APP_URL')}/oid4vp`
+            : `${requireEnv('AGENT_HTTP_URL')}/oid4vp`,
+        // app: openId4VpApp,
+        authorizationRequestExpirationInSeconds: Number(process.env.OID4VP_AUTH_REQUEST_PROOF_REQUEST_EXPIRY) || 3600,
+      },
     }),
     openId4VcHolderModule: new OpenId4VcHolderModule(),
     x509: new X509Module({
@@ -275,7 +294,7 @@ const getWithTenantModules = (
   autoAcceptCredentials: DidCommAutoAcceptCredential,
   autoAcceptProofs: DidCommAutoAcceptProof,
   walletScheme: AskarMultiWalletDatabaseScheme,
-  walletConfig: AskarModuleConfigStoreOptions
+  walletConfig: AskarModuleConfigStoreOptions,
 ) => {
   const modules = getModules(
     networkConfig,
@@ -288,7 +307,7 @@ const getWithTenantModules = (
     autoAcceptCredentials,
     autoAcceptProofs,
     walletScheme,
-    walletConfig
+    walletConfig,
   )
   return {
     tenants: new TenantsModule<typeof modules>({
@@ -406,41 +425,41 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       },
     ]
   }
+  let modules
 
-  const tenantModule = await getWithTenantModules(
-    networkConfig,
-    didRegistryContractAddress || '',
-    fileServerToken || '',
-    fileServerUrl || '',
-    rpcUrl || '',
-    schemaManagerContractAddress || '',
-    autoAcceptConnections || true,
-    autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
-    autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
-    walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
-    walletConfig
-  )
-  const modules = getModules(
-    networkConfig,
-    didRegistryContractAddress || '',
-    fileServerToken || '',
-    fileServerUrl || '',
-    rpcUrl || '',
-    schemaManagerContractAddress || '',
-    autoAcceptConnections || true,
-    autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
-    autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
-    walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
-    walletConfig
-  )
+  if (afjConfig.tenancy) {
+    modules = await getWithTenantModules(
+      networkConfig,
+      didRegistryContractAddress || '',
+      fileServerToken || '',
+      fileServerUrl || '',
+      rpcUrl || '',
+      schemaManagerContractAddress || '',
+      autoAcceptConnections || true,
+      autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
+      autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
+      walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
+      walletConfig,
+    )
+  } else {
+    modules = getModules(
+      networkConfig,
+      didRegistryContractAddress || '',
+      fileServerToken || '',
+      fileServerUrl || '',
+      rpcUrl || '',
+      schemaManagerContractAddress || '',
+      autoAcceptConnections || true,
+      autoAcceptCredentials || DidCommAutoAcceptCredential.Always,
+      autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
+      walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
+      walletConfig,
+    )
+  }
+
   const agent = new Agent({
     config: agentConfig,
     modules: {
-      ...(afjConfig.tenancy
-        ? {
-            ...tenantModule,
-          }
-        : {}),
       ...modules,
     },
     dependencies: agentDependencies,
@@ -467,9 +486,6 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
         }),
       )
       transport.app.use(bodyParser.json({ limit: process.env.APP_JSON_BODY_SIZE ?? '5mb' }))
-
-      transport.app.use('/oid4vci', modules.openId4VcIssuer.config.app)
-      transport.app.use('/oid4vp', modules.openId4VcVerifier.config.app)
     }
   }
 
@@ -505,6 +521,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       webhookUrl,
       port: adminPort,
       schemaFileServerURL,
+      app: expressApp,
     },
     apiKey,
   )
