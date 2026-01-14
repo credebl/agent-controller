@@ -24,7 +24,7 @@ import { SignerMethod } from '../../../enums'
 import { CreateAuthorizationRequest, OpenId4VcIssuerX5c, ResponseModeEnum } from '../types/verifier.types'
 
 @injectable()
-class VerificationSessionsService {
+export class VerificationSessionsService {
   public async createProofRequest(agentReq: Req, dto: CreateAuthorizationRequest) {
     const verifier = agentReq.agent.modules.openid4vc.verifier
     if (!verifier) throw new Error('OID4VC verifier module not initialized')
@@ -212,5 +212,3 @@ class VerificationSessionsService {
     } as any
   }
 }
-
-export const verificationSessionService = new VerificationSessionsService()

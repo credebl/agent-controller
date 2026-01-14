@@ -27,166 +27,6 @@ import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
 import { SignerMethod } from '../enums/enum'
 
-// export function getCredentialRequestToCredentialMapper(): OpenId4VciCredentialRequestToCredentialMapper {
-//   return async (options) => {
-//     const {
-//       holderBinding,
-//       issuanceSession,
-//       verification,
-//       credentialConfigurationId,
-//       credentialConfiguration,
-//       agentContext,
-//       authorization,
-//       credentialRequest,
-//       credentialOffer,
-//     } = options
-
-//     const issuanceMetadata = issuanceSession.issuanceMetadata
-//     const issuerDid = issuanceMetadata?.['issuerDid'] as string | undefined
-//     const issuerx509certificate = issuanceMetadata?.['issuerx509certificate'] as string[] | undefined
-
-//     if (!issuerDid && !issuerx509certificate) {
-//       throw new Error('Either issuerDid or issuerx509certificate must be provided')
-//     }
-
-//     let issuerDidUrl: string | undefined = ''
-//     if (issuerDid) {
-//       const didsApi = await agentContext.dependencyManager.resolve(DidsApi)
-//       const didDocument = await didsApi.resolveDidDocument(issuerDid)
-
-//       // Set the first verificationMethod as backup, in case we won't find a match
-//       if (!issuerDidUrl && didDocument.verificationMethod?.[0].id) {
-//         issuerDidUrl = didDocument.verificationMethod?.[0].id
-//       }
-//     }
-
-//     if (!issuerDidUrl && !issuerx509certificate) {
-//       throw new Error('No matching verification method found')
-//     }
-
-//     if (!issuanceMetadata?.['credentials']) throw new Error('credential payload is not provided')
-
-//     const allCredentialPayload = issuanceMetadata?.['credentials']
-
-//     // Returns an array of all matching credentials
-//     const credentialPayload = Array.isArray(allCredentialPayload)
-//       ? allCredentialPayload.filter((c) => c.credentialSupportedId === credentialConfigurationId)
-//       : []
-
-//     if (credentialConfigurationId === 'PresentationAuthorization') {
-//       const trustedCertificates = agentContext.dependencyManager.resolve(X509ModuleConfig).trustedCertificates
-//       if (trustedCertificates?.length !== 1) {
-//         throw new Error(`Expected exactly one trusted certificate. Received ${trustedCertificates?.length}.`)
-//       }
-
-//       // For PresentationAuthorization, use JWK binding
-//       if (holderBinding.bindingMethod !== 'jwk') {
-//         throw new Error('PresentationAuthorization requires JWK binding')
-//       }
-
-//       return {
-//         format: ClaimFormat.SdJwtDc,
-//         credentials: [
-//           {
-//             payload: {
-//               vct: credentialConfiguration.vct,
-//               authorized_user: authorization.accessToken.payload.sub,
-//             },
-//             holder: {
-//               method: 'jwk',
-//               jwk: holderBinding.keys[0].jwk,
-//             } as SdJwtVcHolderBinding,
-//             issuer: {
-//               method: 'x5c',
-//               x5c: trustedCertificates.map((cert) => X509Certificate.fromEncodedCertificate(cert)),
-//               issuer: 'ISSUER_HOST',
-//             },
-//           },
-//         ],
-//         type: 'credentials',
-//       } satisfies OpenId4VciSignSdJwtCredentials
-//     }
-
-//     if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJson) {
-//       if (holderBinding.bindingMethod !== 'did') {
-//         throw new Error('JwtVcJson requires DID binding')
-//       }
-
-//       const didKey = holderBinding.keys[0]
-//       if (didKey.method !== 'did') {
-//         throw new Error('Expected DID binding method')
-//       }
-
-//       return {
-//         format: ClaimFormat.JwtVc,
-//         credentials: [
-//           {
-//             credential: new W3cCredential({
-//               type: credentialConfiguration.credential_definition.type,
-//               issuer: new W3cIssuer({
-//                 id: parseDid(issuerDidUrl ?? '').did,
-//               }),
-//               credentialSubject: JsonTransformer.fromJSON(
-//                 {
-//                   id: parseDid(didKey.didUrl).did,
-//                   claims: {
-//                     ...credentialPayload[0]?.payload,
-//                   },
-//                 },
-//                 W3cCredentialSubject
-//               ),
-//               issuanceDate: w3cDate(Date.now()),
-//             }),
-//             verificationMethod: issuerDidUrl ?? '',
-//           },
-//         ],
-//         type: 'credentials',
-//       } satisfies OpenId4VciSignW3cCredentials
-//     }
-
-//     if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.SdJwtVc) {
-//       const disclosureFramePayload =
-//         credentialPayload[0]?.disclosureFrame && Object.keys(credentialPayload[0].disclosureFrame).length > 0
-//           ? credentialPayload[0].disclosureFrame
-//           : {}
-
-//       const holder =
-//         holderBinding.bindingMethod === 'did'
-//           ? {
-//             method: 'did' as const,
-//             didUrl: holderBinding.keys[0].method === 'did' ? holderBinding.keys[0].didUrl : '',
-//           }
-//           : {
-//             method: 'jwk' as const,
-//             jwk: holderBinding.keys[0].method === 'jwk' ? holderBinding.keys[0].jwk : {},
-//           }
-
-//       return {
-//         format: ClaimFormat.SdJwtDc,
-//         credentials: [
-//           {
-//             payload: credentialPayload[0]?.payload,
-//             holder: holder as SdJwtVcHolderBinding,
-//             issuer: issuerDidUrl
-//               ? {
-//                 method: 'did',
-//                 didUrl: issuerDidUrl,
-//               }
-//               : {
-//                 method: 'x5c',
-//                 x5c: (issuerx509certificate ?? []).map((cert) => X509Certificate.fromEncodedCertificate(cert)),
-//                 issuer: process.env.AGENT_HOST ?? 'http://localhost:4001',
-//               },
-//             disclosureFrame: disclosureFramePayload,
-//           },
-//         ],
-//         type: 'credentials',
-//       } satisfies OpenId4VciSignSdJwtCredentials
-//     }
-//     throw new Error('Invalid request')
-//   }
-// }
-
 export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredentialRequestToCredentialMapper {
   return async ({
     holderBinding,
@@ -194,8 +34,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     verification,
     credentialConfigurationId,
     credentialConfiguration,
-    // credentialConfigurationId,
-    // credentialConfigurationsSupported,
     agentContext,
     authorization,
   }) => {
@@ -203,7 +41,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     if (!issuanceMetadata?.['credentials']) throw new Error('credential payload is not provided')
 
     const allCredentialPayload = issuanceMetadata?.['credentials']
-    //const credentialConfigurationId = credentialConfigurationIds[0]
 
     // Returns an array of all matching credentials
     const credentialPayload = Array.isArray(allCredentialPayload)
@@ -211,7 +48,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
           (c: Record<string, unknown>) => c.credentialSupportedId === credentialConfigurationId,
         )
       : []
-    // const credentialConfigurationSupported = credentialConfiguration[credentialConfigurationId]
     if (credentialPayload.length === 0) {
       throw new Error(`No credential payload found for credentialConfigurationId: ${credentialConfigurationId}`)
     }
@@ -249,7 +85,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       }
 
       return {
-        //credentialConfigurationId,
         format: ClaimFormat.SdJwtDc,
         credentials: [
           {
@@ -372,17 +207,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       // } else if (!issuerDidVerificationMethod) {
       //   throw new Error(`issuerx509certificate is not provided for credential ${credentialConfigurationId}`)
       // }
-      // const holder =
-      //   holderBinding.bindingMethod === 'did'
-      //     ? {
-      //         method: 'did' as const,
-      //         didUrl: holderBinding.keys[0].method === 'did' ? holderBinding.keys[0].didUrl : '',
-      //       }
-      //     : {
-      //         method: 'jwk' as const,
-      //         jwk: holderBinding.keys[0].method === 'jwk' ? holderBinding.keys[0].jwk : {},
-      //       }
-      // console.log('holder for SdJwtDc credential:', JSON.stringify(holder), '\n\n\n')
       return {
         format: ClaimFormat.SdJwtDc,
         credentials: holderBinding.keys.map((binding) => ({
@@ -418,68 +242,12 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
   }
 }
 
-function assertDidBasedHolderBinding(
-  holderBinding: OpenId4VcCredentialHolderBinding,
-): asserts holderBinding is OpenId4VcCredentialHolderDidBinding {
-  if (holderBinding.method !== 'did') {
-    throw new CredoError('Only did based holder bindings supported for this credential type')
-  }
-}
-
-// export interface OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions {
-//   /**
-//    * The id of the `credential_supported` entry that is present in the issuer
-//    * metadata. This id is used to identify the credential that is being offered.
-//    *
-//    * @example "ExampleCredentialSdJwtVc"
-//    */
-//   credentialSupportedId: string
-
-//   /**
-//    * The format of the credential that is being offered.
-//    * MUST match the format of the `credential_supported` entry.
-//    *
-//    * @example {@link OpenId4VciCredentialFormatProfile.SdJwtVc}
-//    */
-//   format: OpenId4VciCredentialFormatProfile
-
-//   /**
-//    * The payload of the credential that will be issued.
-//    *
-//    * If `vct` claim is included, it MUST match the `vct` claim from the issuer metadata.
-//    * If `vct` claim is not included, it will be added automatically.
-//    *
-//    * @example
-//    * {
-//    *   "first_name": "John",
-//    *   "last_name": "Doe",
-//    *   "age": {
-//    *      "over_18": true,
-//    *      "over_21": true,
-//    *      "over_65": false
-//    *   }
-//    * }
-//    */
-//   payload: {
-//     vct?: string
-//     [key: string]: unknown
+// function assertDidBasedHolderBinding(
+//   holderBinding: OpenId4VcCredentialHolderBinding,
+// ): asserts holderBinding is OpenId4VcCredentialHolderDidBinding {
+//   if (holderBinding.method !== 'did') {
+//     throw new CredoError('Only did based holder bindings supported for this credential type')
 //   }
-
-//   /**
-//    * Disclosure frame indicating which fields of the credential can be selectively disclosed.
-//    *
-//    * @example
-//    * {
-//    *   "first_name": false,
-//    *   "last_name": false,
-//    *   "age": {
-//    *      "over_18": true,
-//    *      "over_21": true,
-//    *      "over_65": true
-//    *   }
-//    * }
-//    */
-//   disclosureFrame: DisclosureFrame
 // }
 
 export async function getTrustedCerts() {
@@ -490,10 +258,6 @@ export async function getTrustedCerts() {
     }
     const data = await response.json()
     return data as string[]
-    // return [
-    //   'MIICBzCCAbmgAwIBAgIRAMEUex+GR2GZKusP/izv/oswBQYDK2VwMCsxHDAaBgNVBAMTE0V4YW1wbGUgQ29ycG9yYXRpb24xCzAJBgNVBAYTAlVTMB4XDTI1MDEwMTAwMDAwMFoXDTI3MDEwMTAwMDAwMFowKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwKjAFBgMrZXADIQC5RNVbJCX2L/z/PLbvaxLqi7+hA4fUUStWcmAo/qkX2aOB8TCB7jAdBgNVHQ4EFgQUkog6trQXXfsjb472jybLCBixSAMwDgYDVR0PAQH/BAQDAgGiMBUGA1UdJQEB/wQLMAkGByiBjF0FAQIwIgYDVR0jAQH/BBgwFoAUkog6trQXXfsjb472jybLCBixSAMwQAYDVR0SAQH/BDYwNIILZXhhbXBsZS5jb22GEmh0dHA6Ly9leGFtcGxlLmNvbYERYWRtaW5AZXhhbXBsZS5jb20wLAYDVR0RAQH/BCIwIIILZXhhbXBsZS5jb22BEWFkbWluQGV4YW1wbGUuY29tMBIGA1UdEwEB/wQIMAYBAf8CAQAwBQYDK2VwA0EAPjHj2keDv8BN3FGkOqG36VQKaYvb9Ena+1BI7hb+sBJ+QgBTlj1sK/+I7LMUfu/K3oCyZxT1CZpYRZkh7GEWAw==',
-    //   'MIICBjCCAbigAwIBAgIRAJyCTLRUEF9FQkk+ELnRLOgwBQYDK2VwMCsxHDAaBgNVBAMTE0V4YW1wbGUgQ29ycG9yYXRpb24xCzAJBgNVBAYTAlVTMB4XDTI1MDEwMTAwMDAwMFoXDTI3MDEwMTAwMDAwMFowKzEcMBoGA1UEAxMTRXhhbXBsZSBDb3Jwb3JhdGlvbjELMAkGA1UEBhMCVVMwKjAFBgMrZXADIQBeWlB8f20JOxam3yUOtVq0R3W7rWm1eRVDZY3u5xxnBaOB8DCB7TAdBgNVHQ4EFgQUcayusF1KIxnM+ynxIybo0bwGSY8wDgYDVR0PAQH/BAQDAgGiMBUGA1UdJQEB/wQLMAkGByiBjF0FAQIwIgYDVR0jAQH/BBgwFoAUcayusF1KIxnM+ynxIybo0bwGSY8wQQYDVR0SAQH/BDcwNYIJbG9jYWxob3N0hhVodHRwOi8vbG9jYWxob3N0OjQwMDGBEWFkbWluQGV4YW1wbGUuY29tMCoGA1UdEQEB/wQgMB6CCWxvY2FsaG9zdIERYWRtaW5AZXhhbXBsZS5jb20wEgYDVR0TAQH/BAgwBgEB/wIBADAFBgMrZXADQQCkB9fINZYClndo78TRY632qu937a0Jxo65UOR5kQ7EGDqzuf5ALxZ9Wcd0xgMYweC291WcachvfuyAmZ+BtC8B',
-    // ]
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error fetching data:', error)

@@ -55,7 +55,6 @@ export interface OpenId4VciOfferW3cCredential extends OpenId4VciOfferCredentials
 }
 
 export interface OpenId4VcIssuanceSessionsCreateOffer {
-  //extends OpenId4VciCreateCredentialOfferOptions {
   publicIssuerId: string
   credentials: Array<OpenId4VciOfferSdJwtCredential | OpenId4VciOfferMdocCredential | OpenId4VciOfferW3cCredential>
   authorizationCodeFlowConfig?: {
