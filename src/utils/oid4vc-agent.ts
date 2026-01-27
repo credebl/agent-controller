@@ -168,7 +168,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
               }
             : {
                 method: 'x5c',
-                // x5c: (issuerx509certificate ?? []).map((cert) => X509Certificate.fromEncodedCertificate(cert)),
                 x5c: [parsedCertificate],
                 // TODO: Need to check validation for issuer value
                 // issuer: process.env.AGENT_HOST ?? 'http://localhost:4001',
