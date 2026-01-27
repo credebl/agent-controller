@@ -1,4 +1,6 @@
-import { createPrivateKey, KeyObject } from 'crypto'
+import type { KeyObject } from 'crypto'
+
+import { createPrivateKey } from 'crypto'
 
 /**
  * Extracts the raw private key (hex) from a PEM-encoded EC (P-256) private key.

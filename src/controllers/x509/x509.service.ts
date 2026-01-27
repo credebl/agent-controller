@@ -143,7 +143,7 @@ class x509Service {
       encodedCertificate: options.certificate,
     })
     const issuerCertificate = parsedCertificate.toString('base64')
-
+    let key
     try {
       const keyTypeInfo = getTypeFromCurve(options.keyType)
       const { privateJwk } = transformPrivateKeyToPrivateJwk({
@@ -151,7 +151,7 @@ class x509Service {
         privateKey,
       })
 
-      const key = await agent.kms.importKey({
+      key = await agent.kms.importKey({
         privateJwk,
       })
       if (
@@ -174,7 +174,7 @@ class x509Service {
       }
     }
 
-    return { issuerCertificate }
+    return { issuerCertificate, keyId: key?.keyId }
   }
 
   public addTrustedCertificate(
