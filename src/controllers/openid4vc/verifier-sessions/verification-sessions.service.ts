@@ -30,6 +30,7 @@ export class VerificationSessionsService {
     if (!verifier) throw new Error('OID4VC verifier module not initialized')
 
     let requestSigner
+    let parsedCertificate
     if (dto.requestSigner.method === SignerMethod.Did) {
       requestSigner = dto.requestSigner as OpenId4VcJwtIssuerDid
 
@@ -57,7 +58,7 @@ export class VerificationSessionsService {
     } else {
       requestSigner = dto.requestSigner as OpenId4VcIssuerX5c
 
-      const parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
+      parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
         encodedCertificate: requestSigner.x5c[0],
       })
       requestSigner.issuer = parsedCertificate.sanUriNames[0]
@@ -75,21 +76,13 @@ export class VerificationSessionsService {
     if (dto.presentationExchange) {
       // options.presentationExchange = dto.presentationExchange
       throw new Error('Presentation Exchange is not supported for now')
-    } else if (dto.dcql) {
-      if (
-        dto.requestSigner.method !== SignerMethod.X5c ||
-        !Array.isArray((requestSigner as OpenId4VcIssuerX5c).x5c) ||
-        !(requestSigner as OpenId4VcIssuerX5c).x5c[0]
-      ) {
-        throw new Error('dcql currently requires x5c requestSigner with a valid certificate chain')
-      }
-      const parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
-        encodedCertificate: requestSigner.x5c[0],
-      })
-      parsedCertificate.publicJwk.keyId = requestSigner.keyId
-      options.requestSigner.x5c = [parsedCertificate]
-      options.dcql = dto.dcql
     }
+    if (parsedCertificate) {
+      parsedCertificate.publicJwk.keyId = requestSigner.keyId
+    }
+    options.requestSigner.x5c = [parsedCertificate]
+    options.dcql = dto.dcql
+    // }
     return (await verifier.createAuthorizationRequest(options)) as any
   }
 
