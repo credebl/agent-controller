@@ -1,5 +1,6 @@
 import type {
   AuthorizeRequestCredentialOffer,
+  DeleteCredentialBody,
   RequestCredentialBody,
   ResolveCredentialOfferBody,
   ResolveProofRequest,
@@ -19,6 +20,8 @@ import {
   authorizationCodeGrantIdentifier,
   preAuthorizedCodeGrantIdentifier,
 } from '@credo-ts/openid4vc'
+
+import { CredentialType } from '../types/holder.types'
 
 import { getCredentialBindingResolver } from './credentialBindingResolver'
 export class HolderService {
@@ -224,6 +227,24 @@ export class HolderService {
     const result: any = submissionResult.serverResponse
     result['authorizationResponsePayload'] = submissionResult.authorizationResponsePayload
     return result
+  }
+
+  public async deleteCredential(agentReq: Req, { credentialId, credentialType }: DeleteCredentialBody) {
+    if (credentialType === CredentialType.SD_JWT) {
+      const sdJwtRecord = await agentReq.agent.sdJwtVc.getById(credentialId)
+      if (sdJwtRecord) {
+        return await agentReq.agent.sdJwtVc.deleteById(credentialId)
+      }
+      throw new Error(`Credential with id ${credentialId} not found`)
+    } else if (credentialType === CredentialType.MSO_MDOC) {
+      const mdocRecord = await agentReq.agent.mdoc.getById(credentialId)
+      if (mdocRecord) {
+        return await agentReq.agent.mdoc.deleteById(credentialId)
+      }
+      throw new Error(`Credential with id ${credentialId} not found`)
+    } else {
+      throw new Error(`Unsupported credential type: ${credentialType}`)
+    }
   }
 
   public async decodeSdJwt(agentReq: Req, body: { jwt: string }) {

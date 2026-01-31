@@ -1,10 +1,12 @@
 import { Request as Req } from 'express'
-import { Body, Controller, Get, Post, Route, Security, Tags, Request } from 'tsoa'
+import { Body, Controller, Get, Post, Route, Security, Tags, Request, Delete } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums/enum'
 import {
   AuthorizeRequestCredentialOffer,
+  CredentialType,
+  DeleteCredentialBody,
   RequestCredentialBody,
   ResolveCredentialOfferBody,
   ResolveProofRequest,
@@ -93,5 +95,10 @@ export class HolderController extends Controller {
   @Post('decode-sdjwt')
   public async decodeSdJwt(@Request() request: Req, @Body() body: { jwt: string }) {
     return await holderService.decodeSdJwt(request, body)
+  }
+
+  @Delete('credential')
+  public async delete(@Request() agentReq: Req, @Body() body: DeleteCredentialBody) {
+    return await holderService.deleteCredential(agentReq, body)
   }
 }
