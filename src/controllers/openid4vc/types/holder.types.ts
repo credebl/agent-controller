@@ -23,3 +23,13 @@ export interface AcceptProofRequest {
   proofRequestUri: string
   // selectedCredentials?: { [inputDescriptorId: string]: string }
 }
+
+export interface DeleteCredentialBody {
+  credentialType: CredentialType
+  credentialId: string
+}
+
+export enum CredentialType {
+  SD_JWT = 'sd-jwt-vc',
+  MSO_MDOC = 'mso_mdoc',
+}
