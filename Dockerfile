@@ -1,5 +1,5 @@
 # Stage 1: Builder stage
-FROM node:20.19.0 AS builder
+FROM node:22.22.0 AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN yarn global add patch-package
 RUN yarn build
 
 # Stage 2: Production stage
-FROM node:20.19.0-slim
+FROM node:22.22.0-slim
 
 WORKDIR /app
 
