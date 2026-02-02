@@ -79,6 +79,7 @@ export class IssuerController extends Controller {
     }
   }
 
+  // TODO: We can implement this method later
   /**
    * Deletes a specific issuer by record id.
    */

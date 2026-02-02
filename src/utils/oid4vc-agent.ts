@@ -1,28 +1,12 @@
-// FIXME: We've made many changes in this file for building agent with OIDC modules, please check the types and proper implementation of the changes
-
-import type { DisclosureFrame } from '../controllers/types'
 import type { SdJwtVcHolderBinding } from '@credo-ts/core'
 import type {
-  OpenId4VcCredentialHolderBinding,
-  OpenId4VcCredentialHolderDidBinding,
   OpenId4VciCredentialRequestToCredentialMapper,
   OpenId4VciSignMdocCredentials,
   OpenId4VciSignSdJwtCredentials,
-  OpenId4VciSignW3cCredentials,
 } from '@credo-ts/openid4vc'
 
-import { DidsApi, Kms, MdocApi, X509Certificate, X509Service } from '@credo-ts/core'
-import {
-  ClaimFormat,
-  CredoError,
-  JsonTransformer,
-  W3cCredential,
-  W3cCredentialSubject,
-  W3cIssuer,
-  X509ModuleConfig,
-  parseDid,
-  w3cDate,
-} from '@credo-ts/core'
+import { DidsApi, X509Certificate, X509Service } from '@credo-ts/core'
+import { ClaimFormat, X509ModuleConfig } from '@credo-ts/core'
 import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
 import { SignerMethod } from '../enums/enum'
@@ -31,7 +15,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
   return async ({
     holderBinding,
     issuanceSession,
-    verification,
     credentialConfigurationId,
     credentialConfiguration,
     agentContext,
@@ -169,8 +152,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
             : {
                 method: 'x5c',
                 x5c: [parsedCertificate],
-                // TODO: Need to check validation for issuer value
-                // issuer: process.env.AGENT_HOST ?? 'http://localhost:4001',
               },
           disclosureFrame: disclosureFramePayload,
         })),
@@ -181,14 +162,6 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     throw new Error('Invalid request')
   }
 }
-
-// function assertDidBasedHolderBinding(
-//   holderBinding: OpenId4VcCredentialHolderBinding,
-// ): asserts holderBinding is OpenId4VcCredentialHolderDidBinding {
-//   if (holderBinding.method !== 'did') {
-//     throw new CredoError('Only did based holder bindings supported for this credential type')
-//   }
-// }
 
 export async function getTrustedCerts() {
   try {

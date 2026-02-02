@@ -44,6 +44,7 @@ export class IssuerService {
     return await agentReq.agent.modules.openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId)
   }
 
+  // TODO: We can implement this method later
   // public async deleteIssuer(agentReq: Req, issuerId: string) {
   //   const result = (agentReq.agent as Agent<RestAgentModules>).openid4vc.config.issuer.
   //   return result
@@ -51,7 +52,6 @@ export class IssuerService {
 
   public async getIssuerAgentMetaData(agentReq: Req, issuerId: string) {
     return (await agentReq.agent.modules.openid4vc.issuer?.getIssuerMetadata(issuerId)) as any
-    // return 0
   }
 }
 

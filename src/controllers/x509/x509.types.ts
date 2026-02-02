@@ -34,7 +34,6 @@ export interface AuthorityAndSubjectKeyDto {
    * @example "p256"
    * @description Type of the key used for signing the X.509 Certificate (default is p256)
    */
-  // FIXME: Check type
   keyType?: Curve
 }
 

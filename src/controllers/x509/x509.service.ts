@@ -117,9 +117,7 @@ class x509Service {
     agent.config.logger.info('This is subjectPublicKeyID', subjectPublicKeyID)
 
     const certificate = await agent.x509.createCertificate({
-      //   authorityKey: authorityKeyID as Key,
       authorityKey: Kms.PublicJwk.fromPublicJwk(authorityKeyID),
-      // subjectPublicKey: Kms.PublicJwk.fromPublicJwk(subjectPublicKeyID!),
       serialNumber: options.serialNumber,
       issuer: options.issuer,
       extensions: options.extensions,
