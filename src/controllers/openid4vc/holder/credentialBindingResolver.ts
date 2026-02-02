@@ -56,7 +56,6 @@ export function getCredentialBindingResolver({
         kms
           .createKeyForSignatureAlgorithm({
             algorithm: signatureAlgorithm!,
-            // FIXME: what should happen with already existing keys created in the secure environment?
             backend: 'askar',
           })
           .then((key) => Kms.PublicJwk.fromUnknown(key.publicJwk)),

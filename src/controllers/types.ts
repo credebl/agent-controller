@@ -17,7 +17,6 @@ import type {
   X509CertificateIssuerAndSubjectOptions,
   SingleOrArray,
 } from '@credo-ts/core'
-
 import type {
   JsonCredential,
   ReceiveOutOfBandInvitationConfig,
@@ -33,10 +32,10 @@ import type {
   DidCommRouting,
   DidCommAttachment,
 } from '@credo-ts/didcomm'
+import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import type { DIDDocument } from 'did-resolver'
-import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
-export type CustomTenantConfig = {label: string} & {
+export type CustomTenantConfig = { label: string } & {
   connectionImageUrl?: string
 }
 
@@ -83,12 +82,6 @@ export interface ProposeCredentialOptions {
   connectionId: RecordId
 }
 
-// export interface ProposeCredentialOptions<CPs extends CredentialProtocol[] = CredentialProtocol[]> extends BaseOptions {
-//   connectionId: string
-//   protocolVersion: CredentialProtocolVersionType<CPs>
-//   credentialFormats: DidCommCredentialFormatPayload<CredentialFormatsFromProtocols<CPs>, 'createProposal'>
-// }
-
 export interface AcceptCredentialProposalOptions {
   credentialRecordId: string
   credentialFormats?: DidCommCredentialFormatPayload<CredentialFormats, 'acceptProposal'>
@@ -106,7 +99,10 @@ export interface CreateOfferOptions {
   goal?: string
 }
 
-type CredentialFormatType = LegacyIndyCredentialFormat | DidCommJsonLdCredentialFormat | AnonCredsDidCommCredentialFormat
+type CredentialFormatType =
+  | LegacyIndyCredentialFormat
+  | DidCommJsonLdCredentialFormat
+  | AnonCredsDidCommCredentialFormat
 
 export interface CreateOfferOobOptions {
   protocolVersion: string
@@ -232,17 +228,6 @@ export interface ConnectionInvitationSchema {
   imageUrl?: string
 }
 
-// TODO: added type in protocolVersion
-// export interface RequestProofOptions {
-//   protocolVersion: 'v1' | 'v2'
-//   connectionId: string
-//   // TODO: added indy proof formate
-//   proofFormats: ProofFormatPayload<[IndyProofFormat], 'createRequest'>
-//   comment: string
-//   autoAcceptProof?: DidCommAutoAcceptProof
-//   parentThreadId?: string
-// }
-
 export interface RequestProofOptions {
   connectionId: string
   protocolVersion: string
@@ -292,7 +277,6 @@ export interface ResolvedDid {
 }
 
 export interface DidCreate {
-  // FIXME: Check type
   keyType?: KeyAlgorithm
   seed?: string
   domain?: string
@@ -446,26 +430,23 @@ export type DisclosureFrame = {
   [key: string]: boolean | DisclosureFrame
 }
 
-
 export interface BasicX509CreateCertificateConfig extends X509CertificateIssuerAndSubjectOptions {
-         
   // FIXME: Check type
-  keyType: any;
-    issuerAlternativeNameURL: string;
+  keyType: any
+  issuerAlternativeNameURL: string
 }
 
 export interface X509ImportCertificateOptionsDto {
-
-    /*
+  /*
         X.509 certificate in base64 string format
     */
-    certificate: string;
+  certificate: string
 
-   /*
+  /*
    Private key in base64 string format
    */
-    privateKey?: string;
-  
+  privateKey?: string
+
   // FIXME: Check type
-  keyType: any;
+  keyType: any
 }

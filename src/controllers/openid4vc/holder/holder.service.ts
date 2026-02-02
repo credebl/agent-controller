@@ -129,6 +129,7 @@ export class HolderService {
     const storedCredentials = await Promise.all(
       credentialResponse.credentials.map(async (response) => {
         const credentialRecord = response.record
+        // TODO: We can add this later
         // if (credential instanceof W3cJwtVerifiableCredential || credential instanceof W3cJsonLdVerifiableCredential) {
         //   return await agentReq.agent.w3cCredentials.storeCredential({ credential })
         // }

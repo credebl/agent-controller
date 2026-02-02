@@ -11,7 +11,8 @@ const run = async () => {
   const agent = await setupAgent({
     port: 3001,
     endpoints: [endpoint],
-    name: 'Aries Test Agent',
+    id: 'Sample',
+    key: 'Sample',
   })
 
   const conf: ServerConfig = {
