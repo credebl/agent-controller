@@ -3,8 +3,6 @@ import type { CreateIssuerOptions } from '../types/issuer.types'
 import type { Agent } from '@credo-ts/core'
 import type { Request as Req } from 'express'
 
-// import { OpenId4VcIssuerRepository } from '@credo-ts/openid4vc/build/openid4vc-issuer/repository/OpenId4VcIssuerRepository.mjs'
-
 export class IssuerService {
   public async createIssuerAgent(
     agentReq: Req,
@@ -35,7 +33,7 @@ export class IssuerService {
 
   public async getIssuersByQuery(agentReq: Req, publicIssuerId?: string) {
     const result = publicIssuerId
-      ? (agentReq.agent as Agent<RestAgentModules>).openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId) // .dependencyManager.resolve(OpenId4VcIssuerRepository)
+      ? (agentReq.agent as Agent<RestAgentModules>).openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId)
       : (agentReq.agent as Agent<RestAgentModules>).openid4vc.issuer?.getAllIssuers()
     return result
   }

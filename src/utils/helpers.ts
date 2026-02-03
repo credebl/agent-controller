@@ -1,11 +1,10 @@
-import type { Curve, EcCurve, EcType, OkpCurve, OkpType } from '../controllers/x509/x509.types'
 import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
+import type { Curve, EcCurve, EcType, OkpCurve, OkpType } from 'src/controllers/types'
 
 import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
 import { randomBytes } from 'crypto'
 
 import { curveToKty, keyAlgorithmToCurve } from './constant'
-
 
 export function objectToJson<T>(result: T) {
   const serialized = JsonTransformer.serialize(result)
@@ -31,33 +30,24 @@ export async function generateSecretKey(length: number = 32): Promise<string> {
 }
 
 export function getCertificateValidityForSystem(IsRootCA = false) {
-  let options: { validityYears?: number, startFromCurrentMonth?: boolean };
+  let options: { validityYears?: number; startFromCurrentMonth?: boolean }
   if (IsRootCA) {
     options = {
-      validityYears:  parseInt(process.env.ROOT_CA_VALIDITY_YEARS ?? '3'),
-      startFromCurrentMonth: (process.env.ROOT_CA_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false
+      validityYears: parseInt(process.env.ROOT_CA_VALIDITY_YEARS ?? '3'),
+      startFromCurrentMonth: (process.env.ROOT_CA_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false,
     }
-
   } else {
     options = {
-      validityYears:  parseInt(process.env.DCS_VALIDITY_YEARS ?? '3'),
-      startFromCurrentMonth: (process.env.DCS_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false
+      validityYears: parseInt(process.env.DCS_VALIDITY_YEARS ?? '3'),
+      startFromCurrentMonth: (process.env.DCS_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false,
     }
-
   }
 
-  return getCertificateValidity(options);
-
+  return getCertificateValidity(options)
 }
 
-export function getCertificateValidity(options?: {
-  validityYears?: number
-  startFromCurrentMonth?: boolean
-}) {
-  const {
-    validityYears = 3,
-    startFromCurrentMonth = false,
-  } = options || {}
+export function getCertificateValidity(options?: { validityYears?: number; startFromCurrentMonth?: boolean }) {
+  const { validityYears = 3, startFromCurrentMonth = false } = options || {}
 
   const now = new Date()
 

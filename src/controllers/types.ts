@@ -1,5 +1,4 @@
 import type { RecordId } from './examples'
-import type { CustomHandshakeProtocol } from '../enums'
 import type { AnonCredsDidCommCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
 import type {
   DidResolutionMetadata,
@@ -34,6 +33,8 @@ import type {
 } from '@credo-ts/didcomm'
 import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import type { DIDDocument } from 'did-resolver'
+
+import { DidMethod, type CustomHandshakeProtocol } from '../enums'
 
 export type CustomTenantConfig = { label: string } & {
   connectionImageUrl?: string
@@ -449,4 +450,46 @@ export interface X509ImportCertificateOptionsDto {
 
   // FIXME: Check type
   keyType: any
+}
+
+export const supportedKeyTypesDID: Record<DidMethod, readonly { kty: string; crv: string }[]> = {
+  [DidMethod.Indy]: [{ kty: 'OKP', crv: 'Ed25519' }],
+
+  [DidMethod.Peer]: [
+    { kty: 'OKP', crv: 'Ed25519' },
+    { kty: 'OKP', crv: 'X25519' },
+  ],
+
+  [DidMethod.Key]: [
+    { kty: 'OKP', crv: 'Ed25519' },
+    { kty: 'OKP', crv: 'X25519' },
+    { kty: 'EC', crv: 'P-256' },
+    { kty: 'EC', crv: 'P-384' },
+    { kty: 'EC', crv: 'P-521' },
+    { kty: 'EC', crv: 'secp256k1' },
+  ],
+
+  [DidMethod.Web]: [
+    { kty: 'OKP', crv: 'Ed25519' },
+    { kty: 'OKP', crv: 'X25519' },
+    { kty: 'EC', crv: 'P-256' },
+    { kty: 'EC', crv: 'secp256k1' },
+  ],
+
+  [DidMethod.Polygon]: [{ kty: 'EC', crv: 'secp256k1' }],
+}
+
+export type Curve = 'Ed25519' | 'X25519' | 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
+
+export type OkpCurve = 'Ed25519' | 'X25519'
+export type EcCurve = 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
+
+export type OkpType = {
+  kty: 'OKP'
+  crv: 'Ed25519' | 'X25519'
+}
+
+export type EcType = {
+  kty: 'EC'
+  crv: 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
 }

@@ -1,9 +1,5 @@
+import type { Curve } from '../types'
 import type { X509ExtendedKeyUsage, X509KeyUsage } from '@credo-ts/core'
-import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
-
-import { Extension, Example } from 'tsoa'
-
-import { DidMethod } from '../../enums/enum'
 
 // Enum remains the same
 export enum GeneralNameType {
@@ -204,62 +200,4 @@ export interface X509CreateCertificateOptionsDto {
 
   validity?: ValidityDto
   extensions?: X509CertificateExtensionsOptionsDto
-}
-
-export type OkpCurve = 'Ed25519' | 'X25519'
-export type EcCurve = 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
-
-export type OkpType = {
-  kty: 'OKP'
-  crv: 'Ed25519' | 'X25519'
-}
-
-export type EcType = {
-  kty: 'EC'
-  crv: 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
-}
-
-export type Curve = 'Ed25519' | 'X25519' | 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
-
-export enum RsaModulusLength {
-  RSA_2048 = 2048,
-  RSA_3072 = 3072,
-  RSA_4096 = 4096,
-}
-
-export type KmsCreateKeyTypeAssymetric =
-  | {
-      kty: 'OKP'
-      crv: 'Ed25519' | 'X25519'
-    }
-  | {
-      kty: 'EC'
-      crv: 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
-    }
-
-export const supportedKeyTypesDID: Record<DidMethod, readonly { kty: string; crv: string }[]> = {
-  [DidMethod.Indy]: [{ kty: 'OKP', crv: 'Ed25519' }],
-
-  [DidMethod.Peer]: [
-    { kty: 'OKP', crv: 'Ed25519' },
-    { kty: 'OKP', crv: 'X25519' },
-  ],
-
-  [DidMethod.Key]: [
-    { kty: 'OKP', crv: 'Ed25519' },
-    { kty: 'OKP', crv: 'X25519' },
-    { kty: 'EC', crv: 'P-256' },
-    { kty: 'EC', crv: 'P-384' },
-    { kty: 'EC', crv: 'P-521' },
-    { kty: 'EC', crv: 'secp256k1' },
-  ],
-
-  [DidMethod.Web]: [
-    { kty: 'OKP', crv: 'Ed25519' },
-    { kty: 'OKP', crv: 'X25519' },
-    { kty: 'EC', crv: 'P-256' },
-    { kty: 'EC', crv: 'secp256k1' },
-  ],
-
-  [DidMethod.Polygon]: [{ kty: 'EC', crv: 'secp256k1' }],
 }

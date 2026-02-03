@@ -30,8 +30,7 @@ import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
-import { DidCreate } from '../types'
-import { supportedKeyTypesDID } from '../x509/x509.types'
+import { DidCreate, supportedKeyTypesDID } from '../types'
 
 @Tags('Dids')
 @Route('/dids')

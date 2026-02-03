@@ -5,7 +5,6 @@ import { injectable } from 'tsyringe'
 import { SCOPES } from '../../../enums/enum'
 import {
   AuthorizeRequestCredentialOffer,
-  CredentialType,
   DeleteCredentialBody,
   RequestCredentialBody,
   ResolveCredentialOfferBody,
