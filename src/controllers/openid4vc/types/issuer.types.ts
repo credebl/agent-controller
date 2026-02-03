@@ -1,6 +1,9 @@
 import type { MdocNameSpaces, W3cCredential } from '@credo-ts/core'
 import type { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
+import { Kms } from '@credo-ts/core'
+import { OpenId4VciCreateCredentialOfferOptions, OpenId4VciSignCredentials } from '@credo-ts/openid4vc'
+
 export enum SignerMethod {
   Did = 'did',
   X5c = 'x5c',
@@ -13,12 +16,13 @@ export interface OpenId4VciOfferCredentials {
     method: SignerMethod
     did?: string
     x5c?: string[]
+    keyId?: string
   }
 }
 
-export interface DisclosureFrame {
+export interface DisclosureFrameForOffer {
   _sd?: string[]
-  [claim: string]: DisclosureFrame | string[] | undefined
+  [claim: string]: DisclosureFrameForOffer | string[] | undefined
 }
 
 export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentials {
@@ -26,8 +30,7 @@ export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentia
     vct?: string
     [key: string]: unknown
   }
-  // disclosureFrame?: Record<string, boolean | Record<string, boolean>>
-  disclosureFrame?: DisclosureFrame
+  disclosureFrame?: DisclosureFrameForOffer
 }
 export interface ValidityInfo {
   signed: Date
@@ -108,8 +111,13 @@ export interface BatchCredentialIssuanceOptions {
   batchSize: number
 }
 
+export interface KeyAttestationRequiredRecords {
+  key_storage: string[]
+  user_authentication: string[]
+}
 export interface ProofTypeConfig {
   proof_signing_alg_values_supported: string[]
+  key_attestations_required?: KeyAttestationRequiredRecords
 }
 
 export interface CredentialConfigurationDisplay {
@@ -127,21 +135,35 @@ export interface CredentialDefinition {
   [key: string]: any
 }
 
+export interface Claim {
+  path: string[]
+  display?: ClaimDisplay[]
+  mandatory?: boolean
+}
+
+export interface ClaimDisplay {
+  name: string
+  locale: string
+}
+export interface CredentialMetadata {
+  display: CredentialDisplay[]
+  claims: Claim[]
+}
+
 export interface CredentialConfigurationSupportedWithFormats {
   format: 'vc+sd-jwt' | 'mso_mdoc' | 'jwt_vc_json' | string
   vct?: string
   doctype?: string
   scope?: string
-  claims?: any
   cryptographic_binding_methods_supported?: string[]
-  credential_signing_alg_values_supported?: string[]
+  credential_signing_alg_values_supported?: string[] | number[]
   proof_types_supported?: Record<string, ProofTypeConfig>
   credential_definition?: CredentialDefinition
-  display?: CredentialConfigurationDisplay[]
+  credential_metadata?: CredentialMetadata
 }
 export interface CreateIssuerOptions {
   issuerId?: string
-  accessTokenSignerKeyType?: string
+  accessTokenSignerKeyType?: any
   display?: CredentialDisplay[]
   authorizationServerConfigs?: AuthorizationServerConfig[]
   dpopSigningAlgValuesSupported?: string[]

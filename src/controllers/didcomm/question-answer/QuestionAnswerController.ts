@@ -39,7 +39,7 @@ export class QuestionAnswerController extends Controller {
         state,
         threadId,
       })
-      return questionAnswerRecords.map((record) => record.toJSON())
+      return questionAnswerRecords.map((record: { toJSON: () => any }) => record.toJSON())
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }

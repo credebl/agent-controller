@@ -1,7 +1,7 @@
-import { SCOPES } from '../../../enums'
-import { Body, Delete, Get, Path, Post, Put, Query, Route, Request, Security, Tags } from 'tsoa'
 import { Request as Req } from 'express'
+import { Body, Delete, Get, Path, Post, Put, Query, Route, Request, Security, Tags } from 'tsoa'
 
+import { SCOPES } from '../../../enums'
 import { OpenId4VcSiopCreateVerifierOptions, OpenId4VcUpdateVerifierRecordOptions } from '../types/verifier.types'
 import { VerifierService } from '../verifiers/verifier.service'
 
@@ -32,6 +32,9 @@ export class VerifierController {
     @Path('publicVerifierId') publicVerifierId: string,
     @Body() verifierRecordOptions: OpenId4VcUpdateVerifierRecordOptions,
   ) {
+    if (!publicVerifierId) {
+      throw new Error('verifierId is required to update verifier metadata')
+    }
     return await this.verifierService.updateVerifierMetadata(request, {
       verifierId: publicVerifierId,
       clientMetadata: verifierRecordOptions.clientMetadata,
@@ -58,7 +61,10 @@ export class VerifierController {
    * Delete verifier by ID
    */
   @Delete('{verifierId}')
-  public async deleteVerifier(@Request() request: Req, @Path('verifierId') verifierId: string): Promise<void> {
-    await this.verifierService.deleteVerifier(request, verifierId)
+  public async deleteVerifier(
+    @Request() request: Req,
+    @Path('verifierId') verifierId: string,
+  ): Promise<{ message: string }> {
+    return await this.verifierService.deleteVerifier(request, verifierId)
   }
 }

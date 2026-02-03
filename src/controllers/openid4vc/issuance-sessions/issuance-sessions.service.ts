@@ -2,7 +2,7 @@ import type { OpenId4VcIssuanceSessionsCreateOffer } from '../types/issuer.types
 import type { Request as Req } from 'express'
 
 import { type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
-import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc/build/openid4vc-issuer/repository'
+import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc'
 
 import { SignerMethod } from '../../../enums/enum'
 import { BadRequestError, NotFoundError } from '../../../errors/errors'
@@ -11,10 +11,12 @@ class IssuanceSessionsService {
   public async createCredentialOffer(options: OpenId4VcIssuanceSessionsCreateOffer, agentReq: Req) {
     const { credentials, publicIssuerId } = options
 
-    const issuer = await agentReq.agent.modules.openId4VcIssuer.getIssuerByIssuerId(publicIssuerId)
-
+    const issuer = await agentReq.agent.modules.openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId)
+    if (!issuer) {
+      throw new NotFoundError(`Issuer with id ${publicIssuerId} not found`)
+    }
     const mappedCredentials = credentials.map((cred) => {
-      const supported = issuer.credentialConfigurationsSupported[cred.credentialSupportedId]
+      const supported = issuer?.credentialConfigurationsSupported[cred.credentialSupportedId]
       if (!supported) {
         throw new Error(`CredentialSupportedId '${cred.credentialSupportedId}' is not supported by issuer`)
       }
@@ -57,10 +59,15 @@ class IssuanceSessionsService {
 
     options.issuanceMetadata.credentials = mappedCredentials
 
-    const { credentialOffer, issuanceSession } = await agentReq.agent.modules.openId4VcIssuer.createCredentialOffer({
+    const issuerModule = agentReq.agent.modules.openid4vc.issuer
+
+    if (!issuerModule) {
+      throw new Error('OID4VC issuer module not initialized')
+    }
+    const { credentialOffer, issuanceSession } = await issuerModule.createCredentialOffer({
       issuerId: publicIssuerId,
       issuanceMetadata: options.issuanceMetadata,
-      offeredCredentials: credentials.map((c) => c.credentialSupportedId),
+      credentialConfigurationIds: credentials.map((c) => c.credentialSupportedId),
       preAuthorizedCodeFlowConfig: options.preAuthorizedCodeFlowConfig,
       authorizationCodeFlowConfig: options.authorizationCodeFlowConfig,
     })
@@ -69,7 +76,11 @@ class IssuanceSessionsService {
   }
 
   public async getIssuanceSessionsById(agentReq: Req, sessionId: string) {
-    return agentReq.agent.modules.openId4VcIssuer.getIssuanceSessionById(sessionId)
+    const issuer = agentReq.agent.modules.openid4vc.issuer
+    if (!issuer) {
+      throw new Error('OID4VC issuer module not initialized')
+    }
+    return issuer.getIssuanceSessionById(sessionId)
   }
 
   public async getIssuanceSessionsByQuery(

@@ -7,7 +7,6 @@ import type { ServerConfig } from './utils/ServerConfig'
 import type { Response as ExResponse, Request as ExRequest, NextFunction, ErrorRequestHandler } from 'express'
 
 import { Agent } from '@credo-ts/core'
-import { TenantAgent } from '@credo-ts/tenants/build/TenantAgent'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import dotenv from 'dotenv'
@@ -31,6 +30,7 @@ import { RegisterRoutes } from './routes/routes'
 import { SecurityMiddleware } from './securityMiddleware'
 import { openId4VcIssuanceSessionEvents } from './events/openId4VcIssuanceSessionEvents'
 import { openId4VcVerificationSessionEvents } from './events/openId4VcVerificationSessionEvents'
+import { TenantAgent } from '@credo-ts/tenants'
 
 dotenv.config()
 

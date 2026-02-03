@@ -1,6 +1,5 @@
-import type { KeyType, X509ExtendedKeyUsage, X509KeyUsage } from '@credo-ts/core'
-
-import { Extension, Example } from 'tsoa'
+import type { Curve } from '../types'
+import type { X509ExtendedKeyUsage, X509KeyUsage } from '@credo-ts/core'
 
 // Enum remains the same
 export enum GeneralNameType {
@@ -31,7 +30,7 @@ export interface AuthorityAndSubjectKeyDto {
    * @example "p256"
    * @description Type of the key used for signing the X.509 Certificate (default is p256)
    */
-  keyType?: KeyType
+  keyType?: Curve
 }
 
 export interface NameDto {

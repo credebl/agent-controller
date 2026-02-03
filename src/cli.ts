@@ -176,7 +176,7 @@ export async function runCliServer() {
     walletConfig: {
       id: parsed['wallet-id'],
       key: parsed['wallet-key'],
-      storage: {
+      database: {
         type: parsed['wallet-type'],
         config: {
           host: parsed['wallet-url'],

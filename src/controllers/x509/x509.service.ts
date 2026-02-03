@@ -1,12 +1,11 @@
-import type { X509CreateCertificateOptionsDto } from './x509.types'
 import type { BasicX509CreateCertificateConfig, X509ImportCertificateOptionsDto } from '../types'
-import type { CredoError, Key } from '@credo-ts/core'
+import type { CredoError } from '@credo-ts/core'
 import type { Request as Req } from 'express'
 
+import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
 import {
-  KeyType,
+  Kms,
   TypedArrayEncoder,
-  WalletKeyExistsError,
   X509Certificate,
   X509ExtendedKeyUsage,
   X509KeyUsage,
@@ -14,10 +13,13 @@ import {
   X509Service,
   type Agent,
 } from '@credo-ts/core'
+import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
-import { generateSecretKey, getCertificateValidityForSystem } from '../../utils/helpers'
+import { keyAlgorithmToCurve } from '../../utils/constant'
+import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } from '../../utils/helpers'
 
 import { pemToRawEd25519PrivateKey } from './crypto-util'
+import { type X509CreateCertificateOptionsDto } from './x509.types'
 
 class x509Service {
   public async createSelfSignedDCS(createX509Options: BasicX509CreateCertificateConfig, agentReq: Req) {
@@ -27,7 +29,7 @@ class x509Service {
     const AGENT_HOST = createX509Options.issuerAlternativeNameURL
     const AGENT_DNS = AGENT_HOST.replace('https://', '')
     const selfSignedx509certificate = await X509Service.createCertificate(agent.context, {
-      authorityKey: authorityKey, //createX509Options.subjectKey,
+      authorityKey: Kms.PublicJwk.fromPublicJwk(authorityKey.publicJwk), //createX509Options.subjectKey,
       issuer: { countryName: createX509Options.countryName, commonName: createX509Options.commonName },
       validity: getCertificateValidityForSystem(false),
       extensions: {
@@ -45,8 +47,6 @@ class x509Service {
           ],
         },
         issuerAlternativeName: {
-          // biome-ignore lint/style/noNonNullAssertion:
-          //name: rootCertificate.issuerAlternativeNames!,
           name: [
             { type: 'dns', value: AGENT_DNS },
             { type: 'url', value: AGENT_HOST },
@@ -77,37 +77,47 @@ class x509Service {
   public async createCertificate(agentReq: Req, options: X509CreateCertificateOptionsDto) {
     const agent = agentReq.agent
 
-    let authorityKeyID, subjectPublicKeyID
+    let authorityKeyID, subjectPublicKeyID, authorityKeyKmsId
 
     agent.config.logger.debug(`createCertificate options:`, options)
 
     if (options.authorityKey && options?.authorityKey?.seed) {
-      authorityKeyID = await agent.context.wallet.createKey({
-        keyType: options.authorityKey.keyType ?? KeyType.P256,
-        seed: TypedArrayEncoder.fromString(options.authorityKey.seed),
+      const { privateJwk } = transformSeedToPrivateJwk({
+        type: getTypeFromCurve(options.authorityKey.keyType ?? 'P-256'),
+        seed: TypedArrayEncoder.fromString(options.authorityKey!.seed!),
       })
+
+      const { publicJwk } = await agent.kms.importKey({ privateJwk })
+      authorityKeyID = publicJwk
     } else {
-      authorityKeyID = await agent.context.wallet.createKey({
-        keyType: KeyType.P256,
+      const { publicJwk, keyId } = await agent.kms.createKey({
+        type: getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256'),
       })
+      authorityKeyID = publicJwk
+      authorityKeyKmsId = keyId
     }
 
     if (options.subjectPublicKey) {
       if (options?.subjectPublicKey?.seed) {
-        subjectPublicKeyID = await agent.context.wallet.createKey({
-          keyType: options.subjectPublicKey.keyType ?? KeyType.P256,
-          seed: TypedArrayEncoder.fromString(options.subjectPublicKey.seed),
+        const importedKey = await agentReq.agent.kms.importKey({
+          privateJwk: transformSeedToPrivateJwk({
+            seed: TypedArrayEncoder.fromString(options.subjectPublicKey.seed),
+            type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256'),
+          }).privateJwk,
         })
+
+        subjectPublicKeyID = importedKey.publicJwk
       } else {
-        subjectPublicKeyID = await agent.context.wallet.createKey({
-          keyType: KeyType.P256,
+        const { keyId, publicJwk } = await agent.kms.createKey({
+          type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256'),
         })
+        subjectPublicKeyID = publicJwk
       }
     }
+    agent.config.logger.info('This is subjectPublicKeyID', subjectPublicKeyID)
 
     const certificate = await agent.x509.createCertificate({
-      authorityKey: authorityKeyID as Key,
-      subjectPublicKey: (subjectPublicKeyID as Key) ?? undefined,
+      authorityKey: Kms.PublicJwk.fromPublicJwk(authorityKeyID),
       serialNumber: options.serialNumber,
       issuer: options.issuer,
       extensions: options.extensions,
@@ -116,7 +126,8 @@ class x509Service {
     })
 
     const issuerCertificate = certificate.toString('base64')
-    return { publicCertificateBase64: issuerCertificate }
+
+    return { publicCertificateBase64: issuerCertificate, keyId: authorityKeyKmsId }
   }
 
   public async ImportX509Certificates(agentReq: Req, options: X509ImportCertificateOptionsDto) {
@@ -129,35 +140,39 @@ class x509Service {
     const parsedCertificate = X509Service.parseCertificate(agent.context, {
       encodedCertificate: options.certificate,
     })
-    const issuerCertficicate = parsedCertificate.toString('base64')
-
+    const issuerCertificate = parsedCertificate.toString('base64')
+    let key
     try {
-      const documentSignerKey = await agent.wallet.createKey({
-        privateKey: privateKey,
-        keyType: options.keyType,
+      const keyTypeInfo = getTypeFromCurve(options.keyType)
+      const { privateJwk } = transformPrivateKeyToPrivateJwk({
+        type: keyTypeInfo,
+        privateKey,
       })
 
+      key = await agent.kms.importKey({
+        privateJwk,
+      })
       if (
-        parsedCertificate.publicKey.keyType !== options.keyType ||
-        !Buffer.from(parsedCertificate.publicKey.publicKey).equals(Buffer.from(documentSignerKey.publicKey))
+        parsedCertificate.publicJwk.publicKey.kty !== keyTypeInfo.kty ||
+        !parsedCertificate.publicJwk.equals(Kms.PublicJwk.fromPublicJwk(key.publicJwk))
       ) {
         throw new Error(`Key mismatched in provided X509_CERTIFICATE to import`)
       }
-      console.log(`Keys matched with certificate`)
+      agent.config.logger.info(`Keys matched with certificate`)
     } catch (error) {
+      agent.config.logger.error(`Error caught`)
+
       // If the key already exists, we assume the self-signed certificate is already created
-      if (error instanceof WalletKeyExistsError) {
-        console.error(
-          `key already exists while importing certificate ${JSON.stringify(parsedCertificate.privateKey)}`,
-          parsedCertificate.privateKey,
-        )
+      if (error instanceof Kms.KeyManagementKeyExistsError) {
+        // eslint-disable-next-line no-console
+        console.error('key already exists while importing certificate')
       } else {
         agent.config.logger.error(`${JSON.stringify(error)}`)
         throw error
       }
     }
 
-    return { issuerCertficicate }
+    return { issuerCertificate, keyId: key?.keyId }
   }
 
   public addTrustedCertificate(
@@ -167,7 +182,7 @@ class x509Service {
     },
   ) {
     const agent = agentReq.agent
-    return agent.x509.addTrustedCertificate(options.certificate)
+    return agent.x509.config.addTrustedCertificate(options.certificate)
   }
 
   public getTrustedCertificates(agentReq: Req) {
@@ -201,18 +216,22 @@ class x509Service {
 
 export const x509ServiceT = new x509Service()
 
-export async function createKey(agent: Agent, keyType: KeyType) {
+export async function createKey(agent: Agent, keyType: KeyAlgorithm) {
   try {
-    const seed = await generateSecretKey(keyType === KeyType.P256 ? 64 : 32)
+    const seed = await generateSecretKey(keyType === KeyAlgorithm.EcSecp256r1 ? 64 : 32)
 
     agent.config.logger.debug(`createKey: got seed ${seed}`)
 
-    const authorityKey = await agent.wallet.createKey({
-      keyType: keyType,
-      seed: TypedArrayEncoder.fromString(seed),
+    const normalizedCurve = keyAlgorithmToCurve[keyType]
+    if (!normalizedCurve) throw new Error('Unspported key type for method importKey')
+    const importedKey = await agent.kms.importKey({
+      privateJwk: transformSeedToPrivateJwk({
+        seed: TypedArrayEncoder.fromString(seed),
+        type: getTypeFromCurve(normalizedCurve),
+      }).privateJwk,
     })
 
-    return authorityKey
+    return importedKey
   } catch (error) {
     agent.config.logger.debug(`Error while creating authorityKey`, { message: (error as CredoError).message })
     throw error

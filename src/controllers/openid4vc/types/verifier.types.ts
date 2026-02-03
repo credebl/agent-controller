@@ -6,7 +6,7 @@ export enum ResponseModeEnum {
   DIRECT_POST = 'direct_post',
   DIRECT_POST_JWT = 'direct_post.jwt',
   DC_API = 'dc_api',
-  DC_API_JWT = 'dc_api.jwt'
+  DC_API_JWT = 'dc_api.jwt',
 }
 
 /* -------------------------------------------------------------------------- */
@@ -69,6 +69,7 @@ export type OpenId4VcIssuerX5c = {
   issuer?: string
   x5c: string[]
   alg?: string
+  keyId?: string
 }
 
 export interface CreateAuthorizationRequest {
@@ -79,7 +80,7 @@ export interface CreateAuthorizationRequest {
   responseMode?: ResponseModeEnum
 
   requestSigner: OpenId4VcJwtIssuerDid | OpenId4VcIssuerX5c
-  expectedOrigins?: string []
+  expectedOrigins?: string[]
 }
 
 /* -------------------------------------------------------------------------- */
@@ -97,6 +98,5 @@ export class OpenId4VcSiopCreateVerifierOptions {
 }
 
 export class OpenId4VcUpdateVerifierRecordOptions {
-  verifierId?: string
   clientMetadata?: OpenId4VcSiopVerifierClientMetadata
 }

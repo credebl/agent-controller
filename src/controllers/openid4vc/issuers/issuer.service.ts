@@ -1,18 +1,21 @@
-import type { RestAgentModules, RestMultiTenantAgentModules } from '../../../cliAgent'
+import type { RestAgentModules } from '../../../cliAgent'
+import type { CreateIssuerOptions } from '../types/issuer.types'
 import type { Agent } from '@credo-ts/core'
-import { Request as Req } from 'express'
-
-import { OpenId4VcIssuerRepository } from '@credo-ts/openid4vc/build/openid4vc-issuer/repository'
+import type { Request as Req } from 'express'
 
 export class IssuerService {
   public async createIssuerAgent(
     agentReq: Req,
     createIssuerOptions: any, //TODO: Replace with OpenId4VciCreateIssuerOptions,
   ) {
-    const issuerRecord = await agentReq.agent.modules.openId4VcIssuer.createIssuer(createIssuerOptions)
-    const issuerMetadata = await agentReq.agent.modules.openId4VcIssuer.getIssuerMetadata(issuerRecord.issuerId)
+    const issuer = agentReq.agent.modules.openid4vc.issuer
+    if (!issuer) {
+      throw new Error('OID4VC issuer module not initialized')
+    }
+    const issuerRecord = await issuer.createIssuer(createIssuerOptions)
+    const issuerMetadata = await issuer.getIssuerMetadata(issuerRecord?.issuerId ?? '')
     // eslint-disable-next-line no-console
-    console.log(`\nIssuer URL: ${issuerMetadata.credentialIssuer.credential_issuer}`)
+    console.log(`\nIssuer URL: ${issuerMetadata?.credentialIssuer.credential_issuer}`)
     return issuerRecord
   }
 
@@ -21,36 +24,32 @@ export class IssuerService {
     publicIssuerId: string,
     updateIssuerRecordOptions: any, // TODO: Replace with OpenId4VcUpdateIssuerRecordOptions
   ) {
-    await agentReq.agent.modules.openId4VcIssuer.updateIssuerMetadata({
+    await agentReq.agent.modules.openid4vc.issuer?.updateIssuerMetadata({
       issuerId: publicIssuerId,
       ...updateIssuerRecordOptions,
     })
     return await this.getIssuer(agentReq, publicIssuerId)
   }
 
-  public async getIssuersByQuery(
-    agentReq: Req,
-    publicIssuerId?: string,
-  ) {
-    const repository = agentReq.agent.dependencyManager.resolve(OpenId4VcIssuerRepository)
-    return await repository.findByQuery(agentReq.agent.context, { issuerId: publicIssuerId })
+  public async getIssuersByQuery(agentReq: Req, publicIssuerId?: string) {
+    const result = publicIssuerId
+      ? (agentReq.agent as Agent<RestAgentModules>).openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId)
+      : (agentReq.agent as Agent<RestAgentModules>).openid4vc.issuer?.getAllIssuers()
+    return result
   }
 
-  public async getIssuer(agentReq:Req , publicIssuerId: string) {
-    return await agentReq.agent.modules.openId4VcIssuer.getIssuerByIssuerId(publicIssuerId)
+  public async getIssuer(agentReq: Req, publicIssuerId: string) {
+    return await agentReq.agent.modules.openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId)
   }
 
-  public async deleteIssuer(agentReq: Req, issuerId: string) {
-    const repository = agentReq.agent.dependencyManager.resolve(OpenId4VcIssuerRepository)
-    await repository.deleteById(agentReq.agent.context, issuerId)
-  }
+  // TODO: We can implement this method later
+  // public async deleteIssuer(agentReq: Req, issuerId: string) {
+  //   const result = (agentReq.agent as Agent<RestAgentModules>).openid4vc.config.issuer.
+  //   return result
+  // }
 
-  public async getIssuerAgentMetaData(
-    agentReq: Req,
-    issuerId: string,
-  ) {
-    // return await agent.modules.openId4VcIssuer.getIssuerMetadata(issuerId)
-    return 0
+  public async getIssuerAgentMetaData(agentReq: Req, issuerId: string) {
+    return (await agentReq.agent.modules.openid4vc.issuer?.getIssuerMetadata(issuerId)) as any
   }
 }
 

@@ -1,16 +1,12 @@
 import type { RecordId } from './examples'
-import type { CustomHandshakeProtocol } from '../enums'
-import type { AnonCredsCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
+import type { AnonCredsDidCommCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
 import type {
   DidResolutionMetadata,
   DidDocumentMetadata,
   DidRegistrationExtraOptions,
   DidDocument,
   DidRegistrationSecretOptions,
-  InitConfig,
-  WalletConfig,
   DidResolutionOptions,
-  KeyType,
   JsonObject,
   W3cJsonLdVerifyCredentialOptions,
   DataIntegrityProofOptions,
@@ -18,32 +14,30 @@ import type {
   W3cCredential,
   W3cCredentialSubject,
   X509CertificateIssuerAndSubjectOptions,
-  X509CreateCertificateOptions,
+  SingleOrArray,
 } from '@credo-ts/core'
-
 import type {
-  AutoAcceptCredential,
-  AutoAcceptProof,
-  JsonLdCredentialFormat,
   JsonCredential,
-  AgentMessage,
-  Routing,
-  Attachment,
-  CredentialExchangeRecord,
-  ProofExchangeRecord,
-  ProofFormat,
-  CredentialFormatPayload,
-  HandshakeProtocol,
   ReceiveOutOfBandInvitationConfig,
   OutOfBandDidCommService,
+  DidCommCredentialFormatPayload,
+  DidCommAutoAcceptCredential,
+  DidCommProofExchangeRecord,
+  DidCommJsonLdCredentialFormat,
+  DidCommCredentialExchangeRecord,
+  DidCommAutoAcceptProof,
+  DidCommHandshakeProtocol,
+  DidCommMessage,
+  DidCommRouting,
+  DidCommAttachment,
 } from '@credo-ts/didcomm'
-import type { LinkedDataProofOptions } from '@credo-ts/core/build/modules/vc/data-integrity/models/LinkedDataProof'
-import type { SingleOrArray } from '@credo-ts/core/build/utils'
+import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import type { DIDDocument } from 'did-resolver'
 
-export type CustomTenantConfig = Pick<InitConfig, 'label'> & {
+import { DidMethod, type CustomHandshakeProtocol } from '../enums'
+
+export type CustomTenantConfig = { label: string } & {
   connectionImageUrl?: string
-  walletConfig: Pick<WalletConfig, 'id' | 'key' | 'keyDerivationMethod'>
 }
 
 export interface AgentInfo {
@@ -71,11 +65,11 @@ export interface DidResolutionResultProps {
 
 export interface ProofRequestMessageResponse {
   message: string
-  proofRecord: ProofExchangeRecord
+  proofRecord: DidCommProofExchangeRecord
 }
 
 // type CredentialFormats = [CredentialFormat]
-type CredentialFormats = [LegacyIndyCredentialFormat, AnonCredsCredentialFormat, JsonLdCredentialFormat]
+type CredentialFormats = [LegacyIndyCredentialFormat, AnonCredsDidCommCredentialFormat, DidCommJsonLdCredentialFormat]
 
 enum ProtocolVersion {
   v1 = 'v1',
@@ -83,41 +77,38 @@ enum ProtocolVersion {
 }
 export interface ProposeCredentialOptions {
   protocolVersion: ProtocolVersion
-  credentialFormats: CredentialFormatPayload<CredentialFormatType[], 'createProposal'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats: DidCommCredentialFormatPayload<CredentialFormatType[], 'createProposal'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
   connectionId: RecordId
 }
 
-// export interface ProposeCredentialOptions<CPs extends CredentialProtocol[] = CredentialProtocol[]> extends BaseOptions {
-//   connectionId: string
-//   protocolVersion: CredentialProtocolVersionType<CPs>
-//   credentialFormats: CredentialFormatPayload<CredentialFormatsFromProtocols<CPs>, 'createProposal'>
-// }
-
 export interface AcceptCredentialProposalOptions {
   credentialRecordId: string
-  credentialFormats?: CredentialFormatPayload<CredentialFormats, 'acceptProposal'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats?: DidCommCredentialFormatPayload<CredentialFormats, 'acceptProposal'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
 }
 
 export interface CreateOfferOptions {
   protocolVersion: ProtocolVersion
   connectionId: RecordId
-  credentialFormats: CredentialFormatPayload<CredentialFormats, 'createOffer'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats: DidCommCredentialFormatPayload<CredentialFormats, 'createOffer'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
   goalCode?: string
   goal?: string
 }
 
-type CredentialFormatType = LegacyIndyCredentialFormat | JsonLdCredentialFormat | AnonCredsCredentialFormat
+type CredentialFormatType =
+  | LegacyIndyCredentialFormat
+  | DidCommJsonLdCredentialFormat
+  | AnonCredsDidCommCredentialFormat
 
 export interface CreateOfferOobOptions {
   protocolVersion: string
-  credentialFormats: CredentialFormatPayload<CredentialFormatType[], 'createOffer'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats: DidCommCredentialFormatPayload<CredentialFormatType[], 'createOffer'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
   goalCode?: string
   parentThreadId?: string
@@ -128,7 +119,7 @@ export interface CreateOfferOobOptions {
   invitationDid?: string
 }
 export interface CredentialCreateOfferOptions {
-  credentialRecord: CredentialExchangeRecord
+  credentialRecord: DidCommCredentialExchangeRecord
   credentialFormats: JsonCredential
   options: any
   attachmentId?: string
@@ -140,7 +131,7 @@ export interface CreateProofRequestOobOptions {
   goalCode?: string
   parentThreadId?: string
   willConfirm?: boolean
-  autoAcceptProof?: AutoAcceptProof
+  autoAcceptProof?: DidCommAutoAcceptProof
   comment?: string
   label?: string
   imageUrl?: string
@@ -158,7 +149,7 @@ export interface OfferCredentialOptions {
       }[]
     }
   }
-  autoAcceptCredential?: AutoAcceptCredential
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
   connectionId: string
 }
@@ -184,15 +175,15 @@ export interface AcceptCredential {
 
 export interface CredentialOfferOptions {
   credentialRecordId: RecordId
-  credentialFormats?: CredentialFormatPayload<CredentialFormats, 'acceptOffer'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats?: DidCommCredentialFormatPayload<CredentialFormats, 'acceptOffer'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
 }
 
 export interface AcceptCredentialRequestOptions {
   credentialRecordId: RecordId
-  credentialFormats?: CredentialFormatPayload<CredentialFormats, 'acceptRequest'>
-  autoAcceptCredential?: AutoAcceptCredential
+  credentialFormats?: DidCommCredentialFormatPayload<CredentialFormats, 'acceptRequest'>
+  autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
 }
 
@@ -209,7 +200,7 @@ export interface ReceiveInvitationByUrlProps extends ReceiveOutOfBandInvitationP
 export interface AcceptInvitationConfig {
   autoAcceptConnection?: boolean
   reuseConnection?: boolean
-  label?: string
+  label: string
   alias?: string
   imageUrl?: string
   mediatorId?: string
@@ -238,23 +229,12 @@ export interface ConnectionInvitationSchema {
   imageUrl?: string
 }
 
-// TODO: added type in protocolVersion
-// export interface RequestProofOptions {
-//   protocolVersion: 'v1' | 'v2'
-//   connectionId: string
-//   // TODO: added indy proof formate
-//   proofFormats: ProofFormatPayload<[IndyProofFormat], 'createRequest'>
-//   comment: string
-//   autoAcceptProof?: AutoAcceptProof
-//   parentThreadId?: string
-// }
-
 export interface RequestProofOptions {
   connectionId: string
   protocolVersion: string
   proofFormats: any
   comment: string
-  autoAcceptProof: AutoAcceptProof
+  autoAcceptProof: DidCommAutoAcceptProof
   goalCode?: string
   parentThreadId?: string
   willConfirm?: boolean
@@ -266,7 +246,7 @@ export interface RequestProofProposalOptions {
   proofFormats: any
   goalCode?: string
   parentThreadId?: string
-  autoAcceptProof?: AutoAcceptProof
+  autoAcceptProof?: DidCommAutoAcceptProof
   comment?: string
 }
 
@@ -274,7 +254,7 @@ export interface AcceptProofProposal {
   proofRecordId: string
   proofFormats: any
   comment?: string
-  autoAcceptProof?: AutoAcceptProof
+  autoAcceptProof?: DidCommAutoAcceptProof
   goalCode?: string
   willConfirm?: boolean
 }
@@ -298,7 +278,7 @@ export interface ResolvedDid {
 }
 
 export interface DidCreate {
-  keyType?: KeyType
+  keyType?: KeyAlgorithm
   seed?: string
   domain?: string
   method: string
@@ -337,12 +317,12 @@ export interface CreateInvitationOptions {
   goalCode?: string
   goal?: string
   handshake?: boolean
-  handshakeProtocols?: HandshakeProtocol[]
-  messages?: AgentMessage[]
+  handshakeProtocols?: DidCommHandshakeProtocol[]
+  messages?: DidCommMessage[]
   multiUseInvitation?: boolean
   autoAcceptConnection?: boolean
-  routing?: Routing
-  appendedAttachments?: Attachment[]
+  routing?: DidCommRouting
+  appendedAttachments?: DidCommAttachment[]
   invitationDid?: string
 }
 
@@ -401,7 +381,8 @@ export type ThreadId = string
 
 export type SignDataOptions = {
   data: string
-  keyType: KeyType
+  // FIXME: Check type
+  keyType: any
   publicKeyBase58: string
   did?: string
   method?: string
@@ -409,7 +390,8 @@ export type SignDataOptions = {
 
 export type VerifyDataOptions = {
   data: string
-  keyType: KeyType
+  // FIXME: Check type
+  keyType: any
   publicKeyBase58: string
   signature: string
 }
@@ -428,7 +410,8 @@ export interface credentialPayloadToSign {
 }
 export interface SafeW3cJsonLdVerifyCredentialOptions extends W3cJsonLdVerifyCredentialOptions {
   // Ommited due to issues with TSOA
-  proof: SingleOrArray<Omit<LinkedDataProofOptions, 'cryptosuite'> | DataIntegrityProofOptions>
+  // FIXME: Check type
+  proof: SingleOrArray<any | DataIntegrityProofOptions>
 }
 
 export type ExtensibleW3cCredentialSubject = W3cCredentialSubject & {
@@ -448,24 +431,65 @@ export type DisclosureFrame = {
   [key: string]: boolean | DisclosureFrame
 }
 
-
 export interface BasicX509CreateCertificateConfig extends X509CertificateIssuerAndSubjectOptions {
-         
-    keyType: KeyType;
-    issuerAlternativeNameURL: string;
+  // FIXME: Check type
+  keyType: any
+  issuerAlternativeNameURL: string
 }
 
 export interface X509ImportCertificateOptionsDto {
-
-    /*
+  /*
         X.509 certificate in base64 string format
     */
-    certificate: string;
+  certificate: string
 
-   /*
+  /*
    Private key in base64 string format
    */
-    privateKey?: string;
-  
-    keyType: KeyType;
+  privateKey?: string
+
+  // FIXME: Check type
+  keyType: any
+}
+
+export const supportedKeyTypesDID: Record<DidMethod, readonly { kty: string; crv: string }[]> = {
+  [DidMethod.Indy]: [{ kty: 'OKP', crv: 'Ed25519' }],
+
+  [DidMethod.Peer]: [
+    { kty: 'OKP', crv: 'Ed25519' },
+    { kty: 'OKP', crv: 'X25519' },
+  ],
+
+  [DidMethod.Key]: [
+    { kty: 'OKP', crv: 'Ed25519' },
+    { kty: 'OKP', crv: 'X25519' },
+    { kty: 'EC', crv: 'P-256' },
+    { kty: 'EC', crv: 'P-384' },
+    { kty: 'EC', crv: 'P-521' },
+    { kty: 'EC', crv: 'secp256k1' },
+  ],
+
+  [DidMethod.Web]: [
+    { kty: 'OKP', crv: 'Ed25519' },
+    { kty: 'OKP', crv: 'X25519' },
+    { kty: 'EC', crv: 'P-256' },
+    { kty: 'EC', crv: 'secp256k1' },
+  ],
+
+  [DidMethod.Polygon]: [{ kty: 'EC', crv: 'secp256k1' }],
+}
+
+export type Curve = 'Ed25519' | 'X25519' | 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
+
+export type OkpCurve = 'Ed25519' | 'X25519'
+export type EcCurve = 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
+
+export type OkpType = {
+  kty: 'OKP'
+  crv: 'Ed25519' | 'X25519'
+}
+
+export type EcType = {
+  kty: 'EC'
+  crv: 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
 }

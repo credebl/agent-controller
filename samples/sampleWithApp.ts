@@ -14,7 +14,8 @@ const run = async () => {
   const agent = await setupAgent({
     port: 3001,
     endpoints: [endpoint],
-    name: 'Aries Test Agent',
+    id: 'Sample',
+    key: 'Sample',
   })
 
   const app = express()
@@ -23,7 +24,7 @@ const run = async () => {
   app.post('/greeting', jsonParser, (req, res) => {
     const config = agent.dependencyManager.resolve(AgentConfig)
 
-    res.send(`Hello, ${config.label}!`)
+    res.send(`Hello, agent initialized: , ${agent.isInitialized}!`)
   })
 
   const conf: ServerConfig = {

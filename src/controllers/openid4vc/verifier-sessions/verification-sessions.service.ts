@@ -7,82 +7,83 @@ import {
   JsonEncoder,
   JsonTransformer,
   Jwt,
+  Mdoc,
   MdocDeviceResponse,
   RecordNotFoundError,
   TypedArrayEncoder,
   W3cJsonLdVerifiablePresentation,
   W3cJwtVerifiablePresentation,
+  W3cPresentation,
   X509Service,
 } from '@credo-ts/core'
-import { OpenId4VcIssuerX5c, OpenId4VcJwtIssuerDid, OpenId4VcVerificationSessionState } from '@credo-ts/openid4vc'
-import { injectable } from 'tsyringe'
+import { OpenId4VcJwtIssuerDid, OpenId4VcVerificationSessionState } from '@credo-ts/openid4vc'
 import { Request as Req } from 'express'
-import { SignerMethod } from '../../../enums'
-import { CreateAuthorizationRequest, ResponseModeEnum } from '../types/verifier.types'
+import { injectable } from 'tsyringe'
 
-// import { CreateAuthorizationRequest } from '../types/verifier.types'
+import { SignerMethod } from '../../../enums'
+import { CreateAuthorizationRequest, OpenId4VcIssuerX5c, ResponseModeEnum } from '../types/verifier.types'
 
 @injectable()
-class VerificationSessionsService {
+export class VerificationSessionsService {
   public async createProofRequest(agentReq: Req, dto: CreateAuthorizationRequest) {
-    try {
-      let requestSigner
-      if (dto.requestSigner.method === SignerMethod.Did) {
-        requestSigner = dto.requestSigner as OpenId4VcJwtIssuerDid
+    const verifier = agentReq.agent.modules.openid4vc.verifier
+    if (!verifier) throw new Error('OID4VC verifier module not initialized')
 
-        const didToResolve = dto.requestSigner?.didUrl
-        if (!didToResolve) {
-          throw new Error('No DID provided to resolve (neither requestSigner.didUrl nor verifierDid present)')
-        }
+    let requestSigner
+    let parsedCertificate
+    if (dto.requestSigner.method === SignerMethod.Did) {
+      requestSigner = dto.requestSigner as OpenId4VcJwtIssuerDid
 
-        const didDocument = await agentReq.agent.dids.resolveDidDocument(didToResolve)
-
-        let verifierDidUrl: string | undefined = undefined
-        if (didDocument.verificationMethod?.[0]?.id) {
-          verifierDidUrl = didDocument.verificationMethod[0].id
-        }
-
-        if (!verifierDidUrl) {
-          throw new Error('No matching verification method found on verifier DID document')
-        }
-
-        if (!requestSigner.didUrl || !String(requestSigner.didUrl).includes('#')) {
-          requestSigner.didUrl = verifierDidUrl
-        }
-
-        requestSigner = { method: 'did', didUrl: verifierDidUrl } as any
-      } else {
-        requestSigner = dto.requestSigner as OpenId4VcIssuerX5c
-
-        const parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
-          encodedCertificate: requestSigner.x5c[0],
-        })
-        requestSigner.issuer = parsedCertificate.sanUriNames[0]
+      const didToResolve = dto.requestSigner?.didUrl
+      if (!didToResolve) {
+        throw new Error('No DID provided to resolve (neither requestSigner.didUrl nor verifierDid present)')
       }
 
-      if (!requestSigner) {
-      } else if (requestSigner.method === 'did') {
-      }
-      const options: any = {
-        requestSigner,
-        verifierId: dto.verifierId,
+      const didDocument = await agentReq.agent.dids.resolveDidDocument(didToResolve)
+
+      let verifierDidUrl: string | undefined = undefined
+      if (didDocument.verificationMethod?.[0]?.id) {
+        verifierDidUrl = didDocument.verificationMethod[0].id
       }
 
-      if(dto.responseMode === ResponseModeEnum.DC_API || ResponseModeEnum.DC_API_JWT){
-        options.expectedOrigins = dto.expectedOrigins
+      if (!verifierDidUrl) {
+        throw new Error('No matching verification method found on verifier DID document')
       }
 
-      if (dto.responseMode) options.responseMode = dto.responseMode
-      if (dto.presentationExchange) {
-        options.presentationExchange = dto.presentationExchange
-      } else if (dto.dcql) {
-        options.dcql = dto.dcql
+      if (!requestSigner.didUrl || !String(requestSigner.didUrl).includes('#')) {
+        requestSigner.didUrl = verifierDidUrl
       }
 
-      return (await agentReq.agent.modules.openId4VcVerifier.createAuthorizationRequest(options)) as any
-    } catch (error) {
-      throw error
+      requestSigner = { method: 'did', didUrl: verifierDidUrl } as any
+    } else {
+      requestSigner = dto.requestSigner as OpenId4VcIssuerX5c
+
+      parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
+        encodedCertificate: requestSigner.x5c[0],
+      })
+      requestSigner.issuer = parsedCertificate.sanUriNames[0]
     }
+    const options: any = {
+      requestSigner,
+      verifierId: dto.verifierId,
+    }
+
+    if (dto.responseMode === ResponseModeEnum.DC_API || dto.responseMode === ResponseModeEnum.DC_API_JWT) {
+      options.expectedOrigins = dto.expectedOrigins
+    }
+
+    if (dto.responseMode) options.responseMode = dto.responseMode
+    if (dto.presentationExchange) {
+      // options.presentationExchange = dto.presentationExchange
+      throw new Error('Presentation Exchange is not supported for now')
+    }
+    if (parsedCertificate) {
+      parsedCertificate.publicJwk.keyId = requestSigner.keyId
+    }
+    options.requestSigner.x5c = [parsedCertificate]
+    options.dcql = dto.dcql
+    // }
+    return (await verifier.createAuthorizationRequest(options)) as any
   }
 
   public async findVerificationSessionsByQuery(
@@ -93,7 +94,7 @@ class VerificationSessionsService {
     authorizationRequestUri?: string,
     nonce?: string,
   ) {
-    return await agentReq.agent.modules.openId4VcVerifier.findVerificationSessionsByQuery({
+    return await agentReq.agent.modules.openid4vc.verifier?.findVerificationSessionsByQuery({
       verifierId: publicVerifierId,
       payloadState,
       state,
@@ -103,22 +104,30 @@ class VerificationSessionsService {
   }
 
   public async getVerificationSessionsById(agentReq: Req, verificationSessionId: string) {
-    return await agentReq.agent.modules.openId4VcVerifier.getVerificationSessionById(verificationSessionId)
+    const verifier = agentReq.agent.modules.openid4vc.verifier
+    if (!verifier) {
+      throw new Error('OID4VC verifier module not initialized')
+    }
+    return await verifier.getVerificationSessionById(verificationSessionId)
   }
 
   public async getVerifiedAuthorizationResponse(request: Req, verificationSessionId: string) {
-    const verificationSession =
-      await request.agent.modules.openId4VcVerifier.getVerificationSessionById(verificationSessionId)
-    const verified = await request.agent.modules.openId4VcVerifier.getVerifiedAuthorizationResponse(
-      verificationSession.id,
-    )
-    console.log(verified.presentationExchange?.presentations)
-    console.log(verified.dcql?.presentationResult)
-
+    const verifier = request.agent.modules.openid4vc.verifier
+    if (!verifier) {
+      throw new Error('OID4VC verifier module not initialized')
+    }
+    const verificationSession = await verifier.getVerificationSessionById(verificationSessionId)
+    if (!verificationSession) {
+      throw new Error(`Verification session with id ${verificationSessionId} not found`)
+    }
+    const verified = await verifier.getVerifiedAuthorizationResponse(verificationSession.id)
+    if (!verified) {
+      throw new Error(`No verified response found for verification session with id ${verificationSessionId}`)
+    }
     const presentations = await Promise.all(
       (verified.presentationExchange?.presentations ?? Object.values(verified.dcql?.presentations ?? {}))
         .flat()
-        .map(async (presentation) => {
+        .map(async (presentation: any) => {
           if (presentation instanceof W3cJsonLdVerifiablePresentation) {
             return {
               pretty: presentation.toJson(),
@@ -145,6 +154,7 @@ class VerificationSessionsService {
                   issuerSignedNamespaces: Object.entries(doc.issuerSignedNamespaces).map(
                     ([nameSpace, nameSpacEntries]) => [
                       nameSpace,
+                      // TODO: Address it later to check whether the received Uint8Array is an image or not.
                       Object.entries(nameSpacEntries).map(([key, value]) =>
                         value instanceof Uint8Array
                           ? [`base64:${key}`, `data:image/jpeg;base64,${TypedArrayEncoder.toBase64(value)}`]
@@ -158,13 +168,6 @@ class VerificationSessionsService {
             }
           }
 
-          // if (
-          //   presentation instanceof W3cV2JwtVerifiablePresentation ||
-          //   presentation instanceof W3cV2SdJwtVerifiablePresentation
-          // ) {
-          //   throw new Error('W3C V2 presentations are not supported yet')
-          // }
-
           return {
             pretty: {
               ...presentation,
@@ -174,34 +177,31 @@ class VerificationSessionsService {
           }
         }) ?? [],
     )
-
-    const dcqlSubmission = verified.dcql
-      ? Object.keys(verified.dcql.presentations).map((key, index) => ({
-          queryCredentialId: key,
-          presentationIndex: index,
-        }))
+    const dcqlSubmission = verified?.dcql
+      ? Object.entries(verified.dcql.presentations).flatMap(([queryCredentialId, presentations]) =>
+          presentations.map((_, presentationIndex) => ({
+            queryCredentialId,
+            presentationIndex,
+          })),
+        )
       : undefined
 
-    console.log('presentations', presentations)
-
     return {
-      verificationSessionId: verificationSession.id,
-      responseStatus: verificationSession.state,
-      error: verificationSession.errorMessage,
+      verificationSessionId: verificationSession?.id,
+      responseStatus: verificationSession?.state,
+      error: verificationSession?.errorMessage,
       //authorizationRequest,
 
       presentations: presentations,
 
-      submission: verified.presentationExchange?.submission,
-      definition: verified.presentationExchange?.definition,
-      transactionDataSubmission: verified.transactionData,
+      submission: verified!.presentationExchange?.submission,
+      definition: verified!.presentationExchange?.definition,
+      transactionDataSubmission: verified!.transactionData,
 
       // dcqlQuery,
-      dcqlSubmission: verified.dcql
-        ? { ...verified.dcql.presentationResult, vpTokenMapping: dcqlSubmission }
+      dcqlSubmission: verified!.dcql
+        ? { ...verified!.dcql.presentationResult, vpTokenMapping: dcqlSubmission }
         : undefined,
     } as any
   }
 }
-
-export const verificationSessionService = new VerificationSessionsService()

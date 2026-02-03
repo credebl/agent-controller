@@ -1,19 +1,23 @@
 import { Agent } from '@credo-ts/core'
 import { OpenId4VcVerificationSessionState } from '@credo-ts/openid4vc'
+import { Request as Req } from 'express'
 import { Controller, Get, Path, Query, Route, Request, Security, Tags, Post, Body } from 'tsoa'
 import { injectable } from 'tsyringe'
-import ErrorHandlingService from '../../../errorHandlingService'
 
-import { verificationSessionService } from './verification-sessions.service'
 import { SCOPES } from '../../../enums'
-import { Request as Req } from 'express'
+import ErrorHandlingService from '../../../errorHandlingService'
 import { CreateAuthorizationRequest } from '../types/verifier.types'
+
+import { VerificationSessionsService } from './verification-sessions.service'
 
 @Tags('oid4vc verification sessions')
 @Route('/openid4vc/verification-sessions')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
 @injectable()
 export class VerificationSessionsController extends Controller {
+  public constructor(private verificationSessionService: VerificationSessionsService) {
+    super()
+  }
   /**
    * Create an authorization request, acting as a Relying Party (RP)
    */
@@ -23,7 +27,7 @@ export class VerificationSessionsController extends Controller {
     @Body() createAuthorizationRequest: CreateAuthorizationRequest,
   ) {
     try {
-      return await verificationSessionService.createProofRequest(request, createAuthorizationRequest)
+      return await this.verificationSessionService.createProofRequest(request, createAuthorizationRequest)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
@@ -42,7 +46,7 @@ export class VerificationSessionsController extends Controller {
     @Query('nonce') nonce?: string,
   ) {
     try {
-      return await verificationSessionService.findVerificationSessionsByQuery(
+      return await this.verificationSessionService.findVerificationSessionsByQuery(
         request,
         publicVerifierId,
         payloadState,
@@ -64,12 +68,11 @@ export class VerificationSessionsController extends Controller {
     @Path('verificationSessionId') verificationSessionId: string,
   ) {
     try {
-      return await verificationSessionService.getVerificationSessionsById(request, verificationSessionId)
+      return await this.verificationSessionService.getVerificationSessionsById(request, verificationSessionId)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
   }
-  //  TODO: Uncomment when the method is implemented: There was a problem resolving type of 'IDTokenPayload'.
   // /**
   //  * Get verification response by verification Session ID
   //  */
@@ -79,7 +82,7 @@ export class VerificationSessionsController extends Controller {
     @Path('verificationSessionId') verificationSessionId: string,
   ) {
     try {
-      return await verificationSessionService.getVerifiedAuthorizationResponse(request, verificationSessionId)
+      return await this.verificationSessionService.getVerifiedAuthorizationResponse(request, verificationSessionId)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }

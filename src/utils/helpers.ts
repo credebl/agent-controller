@@ -1,6 +1,10 @@
-import { JsonTransformer } from '@credo-ts/core'
-import { JsonEncoder } from '@credo-ts/core/build/utils/JsonEncoder'
+import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
+import type { Curve, EcCurve, EcType, OkpCurve, OkpType } from 'src/controllers/types'
+
+import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
 import { randomBytes } from 'crypto'
+
+import { curveToKty, keyAlgorithmToCurve } from './constant'
 
 export function objectToJson<T>(result: T) {
   const serialized = JsonTransformer.serialize(result)
@@ -25,35 +29,25 @@ export async function generateSecretKey(length: number = 32): Promise<string> {
   return secretKey
 }
 
-
 export function getCertificateValidityForSystem(IsRootCA = false) {
-  let options: { validityYears?: number, startFromCurrentMonth?: boolean };
+  let options: { validityYears?: number; startFromCurrentMonth?: boolean }
   if (IsRootCA) {
     options = {
-      validityYears:  parseInt(process.env.ROOT_CA_VALIDITY_YEARS ?? '3'),
-      startFromCurrentMonth: (process.env.ROOT_CA_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false
+      validityYears: parseInt(process.env.ROOT_CA_VALIDITY_YEARS ?? '3'),
+      startFromCurrentMonth: (process.env.ROOT_CA_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false,
     }
-
   } else {
     options = {
-      validityYears:  parseInt(process.env.DCS_VALIDITY_YEARS ?? '3'),
-      startFromCurrentMonth: (process.env.DCS_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false
+      validityYears: parseInt(process.env.DCS_VALIDITY_YEARS ?? '3'),
+      startFromCurrentMonth: (process.env.DCS_START_FROM_CURRENT_MONTH ?? 'true') === 'true' ? true : false,
     }
-
   }
 
-  return getCertificateValidity(options);
-
+  return getCertificateValidity(options)
 }
 
-export function getCertificateValidity(options?: {
-  validityYears?: number
-  startFromCurrentMonth?: boolean
-}) {
-  const {
-    validityYears = 3,
-    startFromCurrentMonth = false,
-  } = options || {}
+export function getCertificateValidity(options?: { validityYears?: number; startFromCurrentMonth?: boolean }) {
+  const { validityYears = 3, startFromCurrentMonth = false } = options || {}
 
   const now = new Date()
 
@@ -65,4 +59,36 @@ export function getCertificateValidity(options?: {
   const notAfter = new Date(Date.UTC(startYear + validityYears, startMonth, startDay, 0, 0, 0))
 
   return { notBefore, notAfter }
+}
+
+function normalizeToCurve(input: Curve | KeyAlgorithm): Curve | undefined {
+  // Already a Curve
+  if (input in curveToKty) {
+    return input as Curve
+  }
+
+  // Try mapping from KeyAlgorithm
+  return keyAlgorithmToCurve[input as KeyAlgorithm]
+}
+
+export function getTypeFromCurve(key: Curve | KeyAlgorithm): OkpType | EcType {
+  let keyTypeInfo: OkpType | EcType
+  const normalizedCurve = normalizeToCurve(key)
+  if (normalizedCurve && curveToKty[normalizedCurve] === 'OKP') {
+    keyTypeInfo = {
+      kty: 'OKP',
+      crv: normalizedCurve as OkpCurve,
+    }
+  } else if (normalizedCurve && curveToKty[normalizedCurve] === 'EC') {
+    keyTypeInfo = {
+      kty: 'EC',
+      crv: normalizedCurve as EcCurve,
+    }
+  } else {
+    keyTypeInfo = {
+      kty: 'EC',
+      crv: 'P-256',
+    }
+  }
+  return keyTypeInfo
 }

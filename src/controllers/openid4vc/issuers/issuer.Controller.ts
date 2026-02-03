@@ -1,27 +1,14 @@
-import {
-  Controller,
-  Delete,
-  Get,
-  Post,
-  Put,
-  Route,
-  Tags,
-  Path,
-  Query,
-  Body,
-  Security,
-  Request,
-  Example
-} from 'tsoa'
+import { Request as Req } from 'express'
+import { Controller, Delete, Get, Post, Put, Route, Tags, Path, Query, Body, Security, Request, Example } from 'tsoa'
 import { injectable } from 'tsyringe'
 
+import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
+import { OpenId4VcUpdateIssuerRecordOptionsExample } from '../examples/issuer.examples'
 import { CreateIssuerOptions, UpdateIssuerRecordOptions } from '../types/issuer.types'
-import { Request as Req } from 'express'
 
 import { issuerService } from './issuer.service'
-import { SCOPES } from '../../../enums'
-import { OpenId4VcUpdateIssuerRecordOptionsExample } from '../examples/issuer.examples'
+
 @Route('/openid4vc/issuer')
 @Tags('oid4vc issuers')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
@@ -31,9 +18,7 @@ export class IssuerController extends Controller {
    * Creates an issuer with issuer metadata.
    */
   @Post()
-   @Example(
-    OpenId4VcUpdateIssuerRecordOptionsExample.withScope.value
-  )
+  @Example(OpenId4VcUpdateIssuerRecordOptionsExample.withScope.value)
   public async createIssuer(@Request() request: Req, @Body() createIssuerOptions: CreateIssuerOptions) {
     try {
       return await issuerService.createIssuerAgent(request, createIssuerOptions)
@@ -94,15 +79,16 @@ export class IssuerController extends Controller {
     }
   }
 
+  // TODO: We can implement this method later
   /**
    * Deletes a specific issuer by record id.
    */
-  @Delete('{id}')
-  public async deleteIssuer(@Request() request: Req, @Path() id: string): Promise<void> {
-    try {
-      await issuerService.deleteIssuer(request, id)
-    } catch (error) {
-      throw ErrorHandlingService.handle(error)
-    }
-  }
+  // @Delete('{id}')
+  // public async deleteIssuer(@Request() request: Req, @Path() id: string): Promise<void> {
+  //   try {
+  //     await issuerService.deleteIssuer(request, id)
+  //   } catch (error) {
+  //     throw ErrorHandlingService.handle(error)
+  //   }
+  // }
 }
