@@ -1,4 +1,4 @@
-import type { Curve } from 'src/controllers/types'
+import type { Curve } from '../controllers/types'
 
 import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 

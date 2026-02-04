@@ -1,5 +1,5 @@
+import type { Curve, EcCurve, EcType, OkpCurve, OkpType } from '../controllers/types'
 import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
-import type { Curve, EcCurve, EcType, OkpCurve, OkpType } from 'src/controllers/types'
 
 import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
 import { randomBytes } from 'crypto'
