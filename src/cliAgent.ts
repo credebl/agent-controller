@@ -133,6 +133,8 @@ function requireEnv(name: string): string {
 }
 const expressApp = express()
 expressApp.disable('x-powered-by')
+expressApp.use(express.json({ limit: process.env.APP_JSON_BODY_SIZE ?? '5mb' }))
+expressApp.use(express.urlencoded({ limit: process.env.APP_URL_ENCODED_BODY_SIZE ?? '5mb', extended: true }))
 // TODO: add object
 const getModules = (
   networkConfig: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]],
@@ -275,7 +277,6 @@ const getModules = (
       getTrustedCertificatesForVerification: async (_agentContext, { certificateChain, verification }) => {
         //TODO: We need to trust the certificate tenant wise, for that we need to fetch those details from platform
         const certs: string[] = await getTrustedCerts()
-
         return certs
       },
     }),
