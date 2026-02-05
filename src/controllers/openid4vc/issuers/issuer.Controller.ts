@@ -83,12 +83,12 @@ export class IssuerController extends Controller {
   /**
    * Deletes a specific issuer by record id.
    */
-  // @Delete('{id}')
-  // public async deleteIssuer(@Request() request: Req, @Path() id: string): Promise<void> {
-  //   try {
-  //     await issuerService.deleteIssuer(request, id)
-  //   } catch (error) {
-  //     throw ErrorHandlingService.handle(error)
-  //   }
-  // }
+  @Delete('{id}')
+  public async deleteIssuer(@Request() request: Req, @Path() id: string): Promise<void> {
+    try {
+      await issuerService.deleteIssuer(request, id)
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
 }
