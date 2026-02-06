@@ -44,11 +44,11 @@ export class IssuerService {
     return await agentReq.agent.modules.openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId)
   }
 
-  // TODO: We can implement this method later
-  public async deleteIssuer(agentReq: Req, issuerId: string): Promise<void> {
+  public async deleteIssuer(agentReq: Req, issuerId: string) {
     const issuanceRepository = agentReq.agent.dependencyManager.resolve(OpenId4VcIssuerRepository)
-    const deleteIssuerResponse = await issuanceRepository.deleteById(agentReq.agent.context, issuerId)
-    return deleteIssuerResponse
+    return await issuanceRepository.deleteById(agentReq.agent.context, issuerId).then(() => {
+      return { message: 'Record deleted successfully' }
+    })
   }
 
   public async getIssuerAgentMetaData(agentReq: Req, issuerId: string) {
