@@ -3,6 +3,8 @@ import type { CreateIssuerOptions } from '../types/issuer.types'
 import type { Agent } from '@credo-ts/core'
 import type { Request as Req } from 'express'
 
+import { OpenId4VcIssuerRepository } from '@credo-ts/openid4vc'
+
 export class IssuerService {
   public async createIssuerAgent(
     agentReq: Req,
@@ -42,11 +44,11 @@ export class IssuerService {
     return await agentReq.agent.modules.openid4vc.issuer?.getIssuerByIssuerId(publicIssuerId)
   }
 
-  // TODO: We can implement this method later
-  // public async deleteIssuer(agentReq: Req, issuerId: string) {
-  //   const result = (agentReq.agent as Agent<RestAgentModules>).openid4vc.config.issuer.
-  //   return result
-  // }
+  public async deleteIssuer(agentReq: Req, issuerId: string) {
+    const issuanceRepository = agentReq.agent.dependencyManager.resolve(OpenId4VcIssuerRepository)
+    await issuanceRepository.deleteById(agentReq.agent.context, issuerId)
+    return { message: 'Record deleted successfully' }
+  }
 
   public async getIssuerAgentMetaData(agentReq: Req, issuerId: string) {
     return (await agentReq.agent.modules.openid4vc.issuer?.getIssuerMetadata(issuerId)) as any
