@@ -1,3 +1,5 @@
+import type { ResolveOpenId4VpAuthorizationRequestOptions } from '@credo-ts/openid4vc'
+
 export interface ResolveCredentialOfferBody {
   credentialOfferUri: string
 }
@@ -17,6 +19,7 @@ export interface AuthorizeRequestCredentialOffer {
 
 export interface ResolveProofRequest {
   proofRequestUri: string
+  options?: ResolveOpenId4VpAuthorizationRequestOptions
 }
 
 export interface AcceptProofRequest {

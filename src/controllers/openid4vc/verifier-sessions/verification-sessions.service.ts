@@ -15,6 +15,8 @@ import {
   ClientIdPrefix,
   CreateAuthorizationRequest,
   OpenId4VcIssuerX5cOptions,
+  OpenId4VCDCQLVerificationSessionRecord,
+  OpenId4VcIssuerX5c,
   ResponseModeEnum,
 } from '../types/verifier.types'
 
@@ -199,5 +201,14 @@ export class VerificationSessionsService {
         ? { ...verified!.dcql.presentationResult, vpTokenMapping: dcqlSubmission }
         : undefined,
     } as any
+  }
+
+  public async verifyDcqlProofRequest(agentReq: Req, verifydcqlProofRquest: OpenId4VCDCQLVerificationSessionRecord) {
+    const verifier = agentReq.agent.modules.openid4vc.verifier
+    if (!verifier) {
+      throw new Error('OID4VC verifier module not initialized')
+    }
+    const result = (await verifier.verifyAuthorizationResponse({ ...verifydcqlProofRquest })) as any
+    return result
   }
 }

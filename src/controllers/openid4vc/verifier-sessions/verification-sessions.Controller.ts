@@ -1,4 +1,3 @@
-import { Agent } from '@credo-ts/core'
 import { OpenId4VcVerificationSessionState } from '@credo-ts/openid4vc'
 import { Request as Req } from 'express'
 import { Controller, Get, Path, Query, Route, Request, Security, Tags, Post, Body } from 'tsoa'
@@ -6,7 +5,7 @@ import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
-import { CreateAuthorizationRequest } from '../types/verifier.types'
+import { CreateAuthorizationRequest, OpenId4VCDCQLVerificationSessionRecord } from '../types/verifier.types'
 
 import { VerificationSessionsService } from './verification-sessions.service'
 
@@ -83,6 +82,21 @@ export class VerificationSessionsController extends Controller {
   ) {
     try {
       return await this.verificationSessionService.getVerifiedAuthorizationResponse(request, verificationSessionId)
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
+   * Verify authorization response for a DCAPI proof request
+   */
+  @Post('/verify-authorization-response')
+  public async verifyDcqlProofRequest(
+    @Request() request: Req,
+    @Body() verifydcqlProofRquest: OpenId4VCDCQLVerificationSessionRecord,
+  ) {
+    try {
+      return await this.verificationSessionService.verifyDcqlProofRequest(request, verifydcqlProofRquest)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
