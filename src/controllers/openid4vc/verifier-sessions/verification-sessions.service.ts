@@ -203,7 +203,10 @@ export class VerificationSessionsService {
     } as any
   }
 
-  public async verifyDcqlProofRequest(agentReq: Req, verifydcqlProofRquest: OpenId4VCDCQLVerificationSessionRecord) {
+  public async verifyAuthorizationResponse(
+    agentReq: Req,
+    verifydcqlProofRquest: OpenId4VCDCQLVerificationSessionRecord,
+  ) {
     const verifier = agentReq.agent.modules.openid4vc.verifier
     if (!verifier) {
       throw new Error('OID4VC verifier module not initialized')

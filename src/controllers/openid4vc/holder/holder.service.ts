@@ -228,9 +228,10 @@ export class HolderService {
       },
       origin: body.options?.origin,
     })
-    const result: any = submissionResult.serverResponse || { status: 200, body: {} }
-    result['body'] = submissionResult
-    return result
+    return {
+      status: submissionResult.serverResponse?.status ?? 200,
+      body: submissionResult,
+    } as any
   }
 
   public async deleteCredential(agentReq: Req, { credentialId, credentialType }: DeleteCredentialBody) {

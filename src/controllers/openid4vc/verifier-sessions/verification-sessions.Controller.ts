@@ -96,7 +96,7 @@ export class VerificationSessionsController extends Controller {
     @Body() verifydcqlProofRquest: OpenId4VCDCQLVerificationSessionRecord,
   ) {
     try {
-      return await this.verificationSessionService.verifyDcqlProofRequest(request, verifydcqlProofRquest)
+      return await this.verificationSessionService.verifyAuthorizationResponse(request, verifydcqlProofRquest)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
