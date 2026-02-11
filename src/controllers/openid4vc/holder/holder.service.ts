@@ -228,8 +228,16 @@ export class HolderService {
       },
       origin: body.options?.origin,
     })
+    if (submissionResult.serverResponse) {
+      const { serverResponse, ...rest } = submissionResult
+
+      return {
+        ...serverResponse,
+        body: rest,
+      } as any
+    }
     return {
-      status: submissionResult.serverResponse?.status ?? 200,
+      status: 200,
       body: submissionResult,
     } as any
   }
