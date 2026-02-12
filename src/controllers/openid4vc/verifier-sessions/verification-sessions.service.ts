@@ -17,6 +17,8 @@ import {
   OpenId4VcIssuerX5cOptions,
   OpenId4VCDCQLVerificationSessionRecord,
   OpenId4VcIssuerX5c,
+  ClientIdPrefix,
+  OpenId4VcIssuerX5cOptions,
   ResponseModeEnum,
 } from '../types/verifier.types'
 
