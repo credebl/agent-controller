@@ -72,6 +72,15 @@ export type OpenId4VcIssuerX5c = {
   keyId?: string
 }
 
+export type OpenId4VcIssuerX5cOptions = OpenId4VcIssuerX5c & {
+  clientIdPrefix?: ClientIdPrefix
+}
+
+export enum ClientIdPrefix {
+  X509SanDns = 'x509_san_dns',
+  X509Hash = 'x509_hash',
+}
+
 export interface CreateAuthorizationRequest {
   verifierId: string
   presentationExchange?: PresentationDefinition
@@ -79,7 +88,7 @@ export interface CreateAuthorizationRequest {
 
   responseMode?: ResponseModeEnum
 
-  requestSigner: OpenId4VcJwtIssuerDid | OpenId4VcIssuerX5c
+  requestSigner: OpenId4VcJwtIssuerDid | OpenId4VcIssuerX5cOptions
   expectedOrigins?: string[]
 }
 

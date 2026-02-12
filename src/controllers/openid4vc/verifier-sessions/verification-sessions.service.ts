@@ -1,19 +1,9 @@
-import type { RestAgentModules, RestMultiTenantAgentModules } from '../../../cliAgent'
-
 import {
-  Agent,
-  ClaimFormat,
-  DidKey,
-  JsonEncoder,
   JsonTransformer,
-  Jwt,
-  Mdoc,
   MdocDeviceResponse,
-  RecordNotFoundError,
   TypedArrayEncoder,
   W3cJsonLdVerifiablePresentation,
   W3cJwtVerifiablePresentation,
-  W3cPresentation,
   X509Service,
 } from '@credo-ts/core'
 import { OpenId4VcJwtIssuerDid, OpenId4VcVerificationSessionState } from '@credo-ts/openid4vc'
@@ -21,7 +11,12 @@ import { Request as Req } from 'express'
 import { injectable } from 'tsyringe'
 
 import { SignerMethod } from '../../../enums'
-import { CreateAuthorizationRequest, OpenId4VcIssuerX5c, ResponseModeEnum } from '../types/verifier.types'
+import {
+  ClientIdPrefix,
+  CreateAuthorizationRequest,
+  OpenId4VcIssuerX5cOptions,
+  ResponseModeEnum,
+} from '../types/verifier.types'
 
 @injectable()
 export class VerificationSessionsService {
@@ -56,12 +51,13 @@ export class VerificationSessionsService {
 
       requestSigner = { method: 'did', didUrl: verifierDidUrl } as any
     } else {
-      requestSigner = dto.requestSigner as OpenId4VcIssuerX5c
+      requestSigner = dto.requestSigner as OpenId4VcIssuerX5cOptions
 
       parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
         encodedCertificate: requestSigner.x5c[0],
       })
       requestSigner.issuer = parsedCertificate.sanUriNames[0]
+      requestSigner.clientIdPrefix = dto.requestSigner.clientIdPrefix ?? ClientIdPrefix.X509Hash
     }
     const options: any = {
       requestSigner,
