@@ -43,6 +43,7 @@ export class VerificationSessionsController extends Controller {
     @Query('payloadState') payloadState?: string,
     @Query('state') state?: OpenId4VcVerificationSessionState,
     @Query('authorizationRequestUri') authorizationRequestUri?: string,
+    @Query('authorizationRequestId') authorizationRequestId?: string,
     @Query('nonce') nonce?: string,
   ) {
     try {
@@ -53,6 +54,7 @@ export class VerificationSessionsController extends Controller {
         state,
         authorizationRequestUri,
         nonce,
+        authorizationRequestId,
       )
     } catch (error) {
       throw ErrorHandlingService.handle(error)

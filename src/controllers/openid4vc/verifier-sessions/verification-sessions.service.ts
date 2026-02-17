@@ -89,6 +89,7 @@ export class VerificationSessionsService {
     state?: OpenId4VcVerificationSessionState,
     authorizationRequestUri?: string,
     nonce?: string,
+    authorizationRequestId?: string,
   ) {
     return await agentReq.agent.modules.openid4vc.verifier?.findVerificationSessionsByQuery({
       verifierId: publicVerifierId,
@@ -96,6 +97,7 @@ export class VerificationSessionsService {
       state,
       authorizationRequestUri,
       nonce,
+      authorizationRequestId,
     })
   }
 
