@@ -12,9 +12,7 @@ import { injectable } from 'tsyringe'
 
 import { SignerMethod } from '../../../enums'
 import {
-  ClientIdPrefix,
   CreateAuthorizationRequest,
-  OpenId4VcIssuerX5cOptions,
   OpenId4VCDCQLVerificationSessionRecord,
   OpenId4VcIssuerX5c,
   ClientIdPrefix,
