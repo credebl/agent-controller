@@ -200,12 +200,14 @@ export class HolderService {
   public async resolveProofRequest(agentReq: Req, body: ResolveProofRequest) {
     return (await agentReq.agent.modules.openid4vc.holder.resolveOpenId4VpAuthorizationRequest(
       body.proofRequestUri,
+      body.options,
     )) as any
   }
 
   public async acceptPresentationRequest(agentReq: Req, body: ResolveProofRequest) {
     const resolved = await agentReq.agent.modules.openid4vc.holder.resolveOpenId4VpAuthorizationRequest(
       body.proofRequestUri,
+      body.options,
     )
     // const presentationExchangeService = agent.dependencyManager.resolve(DifPresentationExchangeService)
 
@@ -224,10 +226,20 @@ export class HolderService {
       dcql: {
         credentials: dcqlCredentials as DcqlCredentialsForRequest,
       },
+      origin: body.options?.origin,
     })
-    const result: any = submissionResult.serverResponse
-    result['authorizationResponsePayload'] = submissionResult.authorizationResponsePayload
-    return result
+    if (submissionResult.serverResponse) {
+      const { serverResponse, ...rest } = submissionResult
+
+      return {
+        ...serverResponse,
+        body: rest,
+      } as any
+    }
+    return {
+      status: 200,
+      body: submissionResult,
+    } as any
   }
 
   public async deleteCredential(agentReq: Req, { credentialId, credentialType }: DeleteCredentialBody) {

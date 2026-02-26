@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
 import type { DifPresentationExchangeDefinitionV2 } from '@credo-ts/core'
-import type { SubmissionRequirement, Format, Issuance, InputDescriptorV2 } from '@sphereon/pex-models'
+import type { Format, Issuance, InputDescriptorV2 } from '@sphereon/pex-models'
 
 export enum ResponseModeEnum {
   DIRECT_POST = 'direct_post',
@@ -108,4 +108,10 @@ export class OpenId4VcSiopCreateVerifierOptions {
 
 export class OpenId4VcUpdateVerifierRecordOptions {
   clientMetadata?: OpenId4VcSiopVerifierClientMetadata
+}
+
+export interface OpenId4VCDCQLVerificationSessionRecord {
+  verificationSessionId: string
+  authorizationResponse: Record<string, unknown>
+  origin?: string
 }
