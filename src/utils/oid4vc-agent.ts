@@ -72,7 +72,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
         credentials: [
           {
             payload: {
-              vct: credentialConfiguration.vct,
+              vct: credentialConfiguration.vct as string,
               authorized_user: authorization.accessToken.payload.sub,
             },
             holder: {
