@@ -14,7 +14,6 @@ import { SignerMethod } from '../../../enums'
 import {
   CreateAuthorizationRequest,
   OpenId4VCDCQLVerificationSessionRecord,
-  OpenId4VcIssuerX5c,
   ClientIdPrefix,
   OpenId4VcIssuerX5cOptions,
   ResponseModeEnum,
