@@ -95,35 +95,46 @@ export function getTypeFromCurve(key: Curve | KeyAlgorithm): OkpType | EcType {
 }
 
 async function fetchPlatformToken(platformBaseUrl: string, clientId: string, clientSecret: string, label: string): Promise<string> {
+  if (!platformBaseUrl) throw new Error(`[${label}] platformBaseUrl is required`)
+  if (!clientId) throw new Error(`[${label}] clientId is required`)
+  if (!clientSecret) throw new Error(`[${label}] clientSecret is required`)
+
   const tokenUrl = `${platformBaseUrl}/v1/orgs/${clientId}/token`
   console.log(`[${label}] fetching token from:`, tokenUrl)
 
+  let tokenResponse
   try {
-    const tokenResponse = await axios.post<any>(
+    tokenResponse = await axios.post<any>(
       tokenUrl,
       { clientSecret },
       { headers: { 'Content-Type': 'application/json', accept: 'application/json' } },
     )
-
-    console.log(`[${label}] token response status:`, tokenResponse.status)
-    console.log(`[${label}] token response data:`, JSON.stringify(tokenResponse.data, null, 2))
-
-    const token: string = tokenResponse.data.data.access_token
-    if (!token) throw new Error('Token not found in platform response')
-
-    return token
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error(`[${label}] token request failed:`, {
+        url: tokenUrl,
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
         message: error.message,
       })
-      throw new Error(`Failed to fetch token from platform: ${error.response?.status} ${JSON.stringify(error.response?.data)}`)
+      throw new Error(
+        `[${label}] platform token request failed with status ${error.response?.status ?? 'no response'}: ${JSON.stringify(error.response?.data ?? error.message)}`,
+      )
     }
     throw error
   }
+
+  console.log(`[${label}] token response status:`, tokenResponse.status)
+  console.log(`[${label}] token response data:`, JSON.stringify(tokenResponse.data, null, 2))
+
+  const token: string = tokenResponse.data?.data?.access_token
+  if (!token) {
+    console.error(`[${label}] unexpected token response shape:`, JSON.stringify(tokenResponse.data, null, 2))
+    throw new Error(`[${label}] access_token not found in platform response`)
+  }
+
+  return token
 }
 
 async function fetchTrustServiceCertificates(trustServiceUrl: string, token: string, ecosystemIds: string[], label: string): Promise<string[]> {
