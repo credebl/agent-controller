@@ -2982,6 +2982,34 @@
 			"DidRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
+			"OrgTokenResponse": {
+				"properties": {
+					"token": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"token"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OrgTokenRequest": {
+				"properties": {
+					"clientId": {
+						"type": "string"
+					},
+					"clientSecret": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"clientId",
+					"clientSecret"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"AgentInfo": {
 				"properties": {
 					"label": {
@@ -6854,6 +6882,124 @@
 						]
 					}
 				],
+				"parameters": []
+			}
+		},
+		"/v1/orgs/{orgId}/token": {
+			"post": {
+				"operationId": "GetOrgToken",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OrgTokenResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Generate an organization token by forwarding credentials to the platform",
+				"tags": [
+					"Auth"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "orgId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/OrgTokenRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/v1/orgs/test/dedicated-x509-certificates": {
+			"get": {
+				"operationId": "TestFetchDedicatedX509Certificates",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Auth"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
+		"/v1/orgs/test/shared-agent-x509-certificates": {
+			"get": {
+				"operationId": "TestFetchSharedAgentX509Certificates",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"Auth"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
+		"/v1/orgs/test/trusted-certs": {
+			"get": {
+				"operationId": "TestGetTrustedCerts",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"type": "string"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "[TEMP] Manually trigger getTrustedCerts to test agent type detection and trust list fetch",
+				"tags": [
+					"Auth"
+				],
+				"security": [],
 				"parameters": []
 			}
 		},
