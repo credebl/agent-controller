@@ -1,5 +1,12 @@
 import type { SdJwtVcHolderBinding } from '@credo-ts/core'
+import type { DisclosureFrame } from '../controllers/types'
+import { Agent, CredoError } from '@credo-ts/core'
+import { container } from 'tsyringe'
+
+import { fetchDedicatedX509Certificates, fetchSharedAgentX509Certificates } from './helpers'
 import type {
+  OpenId4VcCredentialHolderBinding,
+  OpenId4VcCredentialHolderDidBinding,
   OpenId4VciCredentialRequestToCredentialMapper,
   OpenId4VciSignMdocCredentials,
   OpenId4VciSignSdJwtCredentials,
@@ -163,17 +170,98 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
   }
 }
 
-export async function getTrustedCerts() {
+function assertDidBasedHolderBinding(
+  holderBinding: OpenId4VcCredentialHolderBinding,
+): asserts holderBinding is OpenId4VcCredentialHolderDidBinding {
+  if (holderBinding.method !== 'did') {
+    throw new CredoError('Only did based holder bindings supported for this credential type')
+  }
+}
+
+export interface OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions {
+  /**
+   * The id of the `credential_supported` entry that is present in the issuer
+   * metadata. This id is used to identify the credential that is being offered.
+   *
+   * @example "ExampleCredentialSdJwtVc"
+   */
+  credentialSupportedId: string
+
+  /**
+   * The format of the credential that is being offered.
+   * MUST match the format of the `credential_supported` entry.
+   *
+   * @example {@link OpenId4VciCredentialFormatProfile.SdJwtVc}
+   */
+  format: OpenId4VciCredentialFormatProfile
+
+  /**
+   * The payload of the credential that will be issued.
+   *
+   * If `vct` claim is included, it MUST match the `vct` claim from the issuer metadata.
+   * If `vct` claim is not included, it will be added automatically.
+   *
+   * @example
+   * {
+   *   "first_name": "John",
+   *   "last_name": "Doe",
+   *   "age": {
+   *      "over_18": true,
+   *      "over_21": true,
+   *      "over_65": false
+   *   }
+   * }
+   */
+  payload: {
+    vct?: string
+    [key: string]: unknown
+  }
+
+  /**
+   * Disclosure frame indicating which fields of the credential can be selectively disclosed.
+   *
+   * @example
+   * {
+   *   "first_name": false,
+   *   "last_name": false,
+   *   "age": {
+   *      "over_18": true,
+   *      "over_21": true,
+   *      "over_65": true
+   *   }
+   * }
+   */
+  disclosureFrame: DisclosureFrame
+}
+
+export async function getTrustedCerts(tenantId?: string): Promise<string[]> {
   try {
-    const response = await fetch(`${process.env.TRUST_LIST_URL}`)
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+    const agent = container.resolve(Agent)
+    if (!agent) {
+      console.error('[getTrustedCerts] agent not available in container')
+      return []
     }
-    const data = await response.json()
-    return data as string[]
+
+    const isDedicated = !('tenants' in agent.modules)
+    console.log('[getTrustedCerts] agent type:', isDedicated ? 'dedicated' : 'shared')
+
+    let certs: string[]
+    if (isDedicated) {
+      certs = await fetchDedicatedX509Certificates()
+    } else {
+      certs = await fetchSharedAgentX509Certificates(tenantId)
+    }
+
+    if (!Array.isArray(certs) || certs.length === 0) {
+      console.warn('[getTrustedCerts] no certificates returned')
+      return []
+    }
+// Remove this log after testing to avoid logging sensitive certificate information
+    console.log('[getTrustedCerts] fetched certificates count:', certs.length)
+    console.log("certs::::::::::::::::::::::::::", certs)
+    return certs
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Error fetching data:', error)
+    console.error('[getTrustedCerts] failed:', error instanceof Error ? error.message : error)
     return []
   }
 }

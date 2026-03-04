@@ -274,9 +274,12 @@ const getModules = (
     }),
     openId4VcHolderModule: new OpenId4VcHolderModule(),
     x509: new X509Module({
-      getTrustedCertificatesForVerification: async (_agentContext, { certificateChain, verification }) => {
+      getTrustedCertificatesForVerification: async (agentContext, { certificateChain: _certificateChain, verification: _verification }) => {
         //TODO: We need to trust the certificate tenant wise, for that we need to fetch those details from platform
-        const certs: string[] = await getTrustedCerts()
+        const tenantId = agentContext.contextCorrelationId
+        console.log('[getTrustedCertificatesForVerification] tenantId from agentContext:', tenantId)
+        const certs: string[] = await getTrustedCerts(tenantId)
+
         return certs
       },
     }),
