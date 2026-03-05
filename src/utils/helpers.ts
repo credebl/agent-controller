@@ -94,7 +94,12 @@ export function getTypeFromCurve(key: Curve | KeyAlgorithm): OkpType | EcType {
   return keyTypeInfo
 }
 
-async function fetchPlatformToken(platformBaseUrl: string, clientId: string, clientSecret: string, label: string): Promise<string> {
+async function fetchPlatformToken(
+  platformBaseUrl: string,
+  clientId: string,
+  clientSecret: string,
+  label: string,
+): Promise<string> {
   if (!platformBaseUrl) throw new Error(`[${label}] platformBaseUrl is required`)
   if (!clientId) throw new Error(`[${label}] clientId is required`)
   if (!clientSecret) throw new Error(`[${label}] clientSecret is required`)
@@ -137,7 +142,12 @@ async function fetchPlatformToken(platformBaseUrl: string, clientId: string, cli
   return token
 }
 
-async function fetchTrustServiceCertificates(trustServiceUrl: string, token: string, ecosystemIds: string[], label: string): Promise<string[]> {
+async function fetchTrustServiceCertificates(
+  trustServiceUrl: string,
+  token: string,
+  ecosystemIds: string[],
+  label: string,
+): Promise<string[]> {
   const certsUrl = `${trustServiceUrl}/api/x509-certificates/ecosystems`
   console.log(`[${label}] fetching certificates from:`, certsUrl, 'ecosystemIds:', ecosystemIds)
 
@@ -166,7 +176,9 @@ async function fetchTrustServiceCertificates(trustServiceUrl: string, token: str
         data: error.response?.data,
         message: error.message,
       })
-      throw new Error(`Failed to fetch certificates from trust-service: ${error.response?.status} ${JSON.stringify(error.response?.data)}`)
+      throw new Error(
+        `Failed to fetch certificates from trust-service: ${error.response?.status} ${JSON.stringify(error.response?.data)}`,
+      )
     }
     throw error
   }
@@ -201,7 +213,7 @@ export async function fetchSharedAgentX509Certificates(tenantId?: string): Promi
   if (!clientSecret) throw new Error('PLATFORM_SHARED_AGENT_CLIENT_SECRET is not configured')
   if (!resolvedTenantId) throw new Error('tenantId not provided and PLATFORM_SHARED_AGENT_TENANT_ID is not configured')
   if (!trustServiceUrl) throw new Error('TRUST_SERVICE_URL is not configured')
-    console.log(`[${label}] starting certificate fetch for tenantId:`, resolvedTenantId)
+  console.log(`[${label}] starting certificate fetch for tenantId:`, resolvedTenantId)
 
   console.log(`[${label}] using tenantId:`, resolvedTenantId, tenantId ? '(from agent context)' : '(from .env)')
 
@@ -212,10 +224,9 @@ export async function fetchSharedAgentX509Certificates(tenantId?: string): Promi
 
   let ecosystemIds: string[]
   try {
-    const ecosystemResponse = await axios.get<{ statusCode: number; message: string; data: string[] }>(
-      ecosystemsUrl,
-      { headers: { accept: 'application/json', Authorization: `Bearer ${token}` } },
-    )
+    const ecosystemResponse = await axios.get<{ statusCode: number; message: string; data: string[] }>(ecosystemsUrl, {
+      headers: { accept: 'application/json', Authorization: `Bearer ${token}` },
+    })
 
     console.log(`[${label}] ecosystem response status:`, ecosystemResponse.status)
     console.log(`[${label}] ecosystem response data:`, JSON.stringify(ecosystemResponse.data, null, 2))
@@ -234,7 +245,9 @@ export async function fetchSharedAgentX509Certificates(tenantId?: string): Promi
         data: error.response?.data,
         message: error.message,
       })
-      throw new Error(`Failed to fetch ecosystem IDs from platform: ${error.response?.status} ${JSON.stringify(error.response?.data)}`)
+      throw new Error(
+        `Failed to fetch ecosystem IDs from platform: ${error.response?.status} ${JSON.stringify(error.response?.data)}`,
+      )
     }
     throw error
   }

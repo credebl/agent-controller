@@ -1,20 +1,15 @@
 import type { OutOfBandInvitationProps, OutOfBandRecordWithInvitationProps } from '../../examples'
 import type { RecipientKeyOption, CreateInvitationOptions, AgentMessageType } from '../../types'
-import type {
-  PeerDidNumAlgo2CreateOptions,
-} from '@credo-ts/core'
+import type { PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
-import {
-  createPeerDidDocumentFromServices,
-  JsonTransformer,
-  PeerDidNumAlgo,
-} from '@credo-ts/core'
+import { createPeerDidDocumentFromServices, JsonTransformer, PeerDidNumAlgo } from '@credo-ts/core'
 
 import {
   DidCommConnectionRecordProps,
   DidCommRouting,
   DidCommOutOfBandInvitation,
-  DidCommMessage} from '@credo-ts/didcomm'
+  DidCommMessage,
+} from '@credo-ts/didcomm'
 import { Request as Req } from 'express'
 import { Body, Controller, Delete, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
@@ -94,8 +89,7 @@ export class OutOfBandController extends Controller {
       let invitationDid: string | undefined
       if (config?.invitationDid) {
         invitationDid = config?.invitationDid
-      } 
-      else {
+      } else {
         const didRouting = await request.agent.modules.didcomm.mediationRecipient.getRouting({})
         const { didDocument, keys } = createPeerDidDocumentFromServices(
           [
@@ -113,7 +107,7 @@ export class OutOfBandController extends Controller {
           method: 'peer',
           options: {
             numAlgo: PeerDidNumAlgo.MultipleInceptionKeyWithoutDoc,
-            keys
+            keys,
           },
         })
 
@@ -159,9 +153,9 @@ export class OutOfBandController extends Controller {
     @Body()
     config: {
       recordId: string
-      message: Record<string, unknown>;
-      domain: string,
-      routing?: DidCommRouting;
+      message: Record<string, unknown>
+      domain: string
+      routing?: DidCommRouting
     },
   ) {
     try {
@@ -193,8 +187,14 @@ export class OutOfBandController extends Controller {
     const { invitation, ...config } = invitationRequest
 
     try {
-      const invite = new DidCommOutOfBandInvitation({ ...invitation, handshakeProtocols: invitation.handshake_protocols })
-      const { outOfBandRecord, connectionRecord } = await request.agent.modules.didcomm.oob.receiveInvitation(invite, config)
+      const invite = new DidCommOutOfBandInvitation({
+        ...invitation,
+        handshakeProtocols: invitation.handshake_protocols,
+      })
+      const { outOfBandRecord, connectionRecord } = await request.agent.modules.didcomm.oob.receiveInvitation(
+        invite,
+        config,
+      )
 
       return {
         outOfBandRecord: outOfBandRecord.toJSON(),

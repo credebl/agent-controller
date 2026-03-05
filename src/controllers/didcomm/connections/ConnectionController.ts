@@ -134,8 +134,7 @@ export class ConnectionController extends Controller {
     try {
       const outOfBandRecord = await request.agent.modules.didcomm.connections.findByInvitationDid(invitationId)
 
-      if (!outOfBandRecord)
-        throw new NotFoundError(`connection with invitationId "${invitationId}" not found.`)
+      if (!outOfBandRecord) throw new NotFoundError(`connection with invitationId "${invitationId}" not found.`)
 
       return outOfBandRecord
     } catch (error) {

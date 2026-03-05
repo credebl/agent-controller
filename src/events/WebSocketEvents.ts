@@ -1,4 +1,4 @@
-import {Server} from 'ws'
+import { Server } from 'ws'
 
 export const sendWebSocketEvent = async (server: Server, data: unknown) => {
   server.clients.forEach((client) => {

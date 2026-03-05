@@ -43,7 +43,7 @@ export class AuthController extends Controller {
 
     return response.data
   }
-// TODO: Remove these test endpoints after manual testing is done
+  // TODO: Remove these test endpoints after manual testing is done
   @Get('/test/dedicated-x509-certificates')
   public async testFetchDedicatedX509Certificates(@Request() _request: Req): Promise<string[]> {
     return fetchDedicatedX509Certificates()

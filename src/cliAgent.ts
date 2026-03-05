@@ -175,14 +175,14 @@ const getModules = (
         new IndyVdrIndyDidRegistrar(),
         new KeyDidRegistrar(),
         new JwkDidRegistrar(),
-        new PolygonDidRegistrar()
+        new PolygonDidRegistrar(),
       ],
       resolvers: [
         new IndyVdrIndyDidResolver(),
         new KeyDidResolver(),
         new WebDidResolver(),
         new JwkDidResolver(),
-        new PolygonDidResolver()
+        new PolygonDidResolver(),
       ],
     }),
 
@@ -273,7 +273,10 @@ const getModules = (
     }),
     openId4VcHolderModule: new OpenId4VcHolderModule(),
     x509: new X509Module({
-      getTrustedCertificatesForVerification: async (agentContext, { certificateChain: _certificateChain, verification: _verification }) => {
+      getTrustedCertificatesForVerification: async (
+        agentContext,
+        { certificateChain: _certificateChain, verification: _verification },
+      ) => {
         //TODO: We need to trust the certificate tenant wise, for that we need to fetch those details from platform
         const tenantId = agentContext.contextCorrelationId
         console.log('[getTrustedCertificatesForVerification] tenantId from agentContext:', tenantId)
