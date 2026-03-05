@@ -30,6 +30,7 @@ import { indyVdr } from '@hyperledger/indy-vdr-nodejs'
 import { askar } from '@openwallet-foundation/askar-nodejs'
 
 import { TsLogger } from './logger'
+import { PolygonModule } from '@ayanworks/credo-polygon-w3c-module'
 
 export const setupAgent = async ({
   endpoints,
@@ -126,13 +127,13 @@ export const setupAgent = async ({
           ],
         },
       }),
-      // polygon: new PolygonModule({
-      //   didContractAddress: '',
-      //   schemaManagerContractAddress: '',
-      //   fileServerToken: '',
-      //   rpcUrl: '',
-      //   serverUrl: '',
-      // }),
+      polygon: new PolygonModule({
+        didContractAddress: '',
+        schemaManagerContractAddress: '',
+        fileServerToken: '',
+        rpcUrl: '',
+        serverUrl: '',
+      }),
     },
     dependencies: agentDependencies,
   })
