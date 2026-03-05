@@ -61,10 +61,10 @@
   dependencies:
     static-eval "2.0.2"
 
-"@ayanworks/credo-polygon-w3c-module@2.0.0":
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/@ayanworks/credo-polygon-w3c-module/-/credo-polygon-w3c-module-2.0.0.tgz#8682b3dfeffe166c7da718afac9739db825ef626"
-  integrity sha512-6ZJH/TtieyIQ1mxOj00JyixZ56wi2G7nhDgZEWYkQiEcY1x3IRNR75iRLTOK23NTn2tLneC6Kl5niWEg7BsCjg==
+"@ayanworks/credo-polygon-w3c-module@^2.0.0":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@ayanworks/credo-polygon-w3c-module/-/credo-polygon-w3c-module-2.0.1.tgz#dcdfb0489624cf5a994f907801a17ae98e632682"
+  integrity sha512-jNQYoG+eNxkJB29OuTNAJoSgekFFDqWErXX78XrGpKPrHu5SdrRTV49oDp4xFvSDk2kJyUQaEffkRfedlLgD9g==
   dependencies:
     "@ayanworks/polygon-did-registrar" "2.2.0"
     "@ayanworks/polygon-did-resolver" "1.0.2"
