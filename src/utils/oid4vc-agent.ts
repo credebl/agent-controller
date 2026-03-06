@@ -103,6 +103,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       const parsedCertificate = X509Service.parseCertificate(agentContext, {
         encodedCertificate: issuerx509certificate[0],
       })
+      console.log(`\n credential validityInfo for mdoc: ${JSON.stringify(credential.payload.validityInfo)} \n`)
       parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
       return {
         type: 'credentials',
@@ -111,6 +112,11 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
           issuerCertificate: parsedCertificate,
           holderKey: holderBindingDetails.jwk,
           ...credential.payload,
+          validityInfo: {
+            ...credential.payload.validityInfo,
+            validFrom: new Date(credential.payload.validityInfo.validFrom),
+            validUntil: new Date(credential.payload.validityInfo.validUntil),
+          },
           docType: credentialConfiguration.doctype,
         })),
       } satisfies OpenId4VciSignMdocCredentials
@@ -171,7 +177,7 @@ export async function getTrustedCerts() {
     }
     const data = await response.json()
     return data as string[]
-  } catch (error) {
+      } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error fetching data:', error)
     return []
