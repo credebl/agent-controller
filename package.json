@@ -39,7 +39,7 @@
     "validate": "yarn lint && yarn check-types && yarn check-format"
   },
   "dependencies": {
-    "@ayanworks/credo-polygon-w3c-module": "^2.0.0",
+    "@ayanworks/credo-polygon-w3c-module": "2.0.2-alpha-20260313061926",
     "@credo-ts/anoncreds": "0.6.2",
     "@credo-ts/askar": "0.6.2",
     "@credo-ts/core": "0.6.2",

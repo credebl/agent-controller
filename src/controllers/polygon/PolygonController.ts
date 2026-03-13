@@ -40,60 +40,58 @@ export class Polygon extends Controller {
    *
    * @returns Schema JSON
    */
-  // TODO: Fix the schema creation issue, caused by not able to find the `did` based on the key-name.
-  // Right now, the key-id is assumed to be the base58publicKey. But its not. Need to fix it
-  // @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
-  // @Post('create-schema')
-  // public async createSchema(
-  //   @Request() request: Req,
-  //   @Body()
-  //   createSchemaRequest: {
-  //     did: string
-  //     schemaName: string
-  //     schema: Record<string, unknown>
-  //   },
-  // ): Promise<unknown> {
-  //   try {
-  //     const { did, schemaName, schema } = createSchemaRequest
-  //     if (!did || !schemaName || !schema) {
-  //       throw new BadRequestError('One or more parameters are empty or undefined.')
-  //     }
+  @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
+  @Post('create-schema')
+  public async createSchema(
+    @Request() request: Req,
+    @Body()
+    createSchemaRequest: {
+      did: string
+      schemaName: string
+      schema: Record<string, unknown>
+    },
+  ): Promise<unknown> {
+    try {
+      const { did, schemaName, schema } = createSchemaRequest
+      if (!did || !schemaName || !schema) {
+        throw new BadRequestError('One or more parameters are empty or undefined.')
+      }
 
-  //     const schemaResponse = await request.agent.modules.polygon.createSchema({
-  //       did,
-  //       schemaName,
-  //       schema,
-  //     })
-  //     if (schemaResponse.schemaState?.state === CredentialEnum.Failed) {
-  //       const reason = schemaResponse.schemaState?.reason?.toLowerCase()
-  //       if (reason && reason.includes('insufficient') && reason.includes('funds')) {
-  //         throw new UnprocessableEntityError(
-  //           'Insufficient funds to the address, Please add funds to perform this operation',
-  //         )
-  //       } else {
-  //         throw new Error(schemaResponse.schemaState?.reason)
-  //       }
-  //     }
-  //     const schemaServerConfig = fs.readFileSync('config.json', 'utf-8')
-  //     const configJson = JSON.parse(schemaServerConfig)
-  //     if (!configJson.schemaFileServerURL) {
-  //       throw new Error('Please provide valid schema file server URL')
-  //     }
+      const schemaResponse = await request.agent.modules.polygon.createSchema({
+        did,
+        schemaName,
+        schema,
+      })
+      if (schemaResponse.schemaState?.state === CredentialEnum.Failed) {
+        const reason = schemaResponse.schemaState?.reason?.toLowerCase()
+        if (reason && reason.includes('insufficient') && reason.includes('funds')) {
+          throw new UnprocessableEntityError(
+            'Insufficient funds to the address, Please add funds to perform this operation',
+          )
+        } else {
+          throw new Error(schemaResponse.schemaState?.reason)
+        }
+      }
+      const schemaServerConfig = fs.readFileSync('config.json', 'utf-8')
+      const configJson = JSON.parse(schemaServerConfig)
+      if (!configJson.schemaFileServerURL) {
+        throw new Error('Please provide valid schema file server URL')
+      }
 
-  //     if (!schemaResponse?.schemaId) {
-  //       throw new BadRequestError('Error in getting schema response or Invalid schema response')
-  //     }
-  //     const schemaPayload: SchemaMetadata = {
-  //       schemaUrl: configJson.schemaFileServerURL + schemaResponse?.schemaId,
-  //       did: schemaResponse?.did,
-  //       schemaId: schemaResponse?.schemaId,
-  //       schemaTxnHash: schemaResponse?.resourceTxnHash,
-  //     }
-  //     return schemaPayload
-  //   } catch (error) {
-  //     throw ErrorHandlingService.handle(error)
-  //   }
-  // }
+      if (!schemaResponse?.schemaId) {
+        throw new BadRequestError('Error in getting schema response or Invalid schema response')
+      }
+      const schemaPayload: SchemaMetadata = {
+        schemaUrl: configJson.schemaFileServerURL + schemaResponse?.schemaId,
+        did: schemaResponse?.did,
+        schemaId: schemaResponse?.schemaId,
+        schemaTxnHash: schemaResponse?.resourceTxnHash,
+      }
+      return schemaPayload
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
 
   /**
    * Estimate transaction
