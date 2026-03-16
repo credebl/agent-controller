@@ -256,9 +256,6 @@ export async function getTrustedCerts(tenantId?: string): Promise<string[]> {
       console.warn('[getTrustedCerts] no certificates returned')
       return []
     }
-// Remove this log after testing to avoid logging sensitive certificate information
-    console.log('[getTrustedCerts] fetched certificates count:', certs.length)
-    console.log("certs::::::::::::::::::::::::::", certs)
     return certs
   } catch (error) {
     console.error('[getTrustedCerts] failed:', error instanceof Error ? error.message : error)
