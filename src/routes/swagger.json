@@ -390,6 +390,133 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"Record_string.unknown_": {
+				"properties": {},
+				"additionalProperties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"DidOperation.Create": {
+				"enum": [
+					"createDID"
+				],
+				"type": "string"
+			},
+			"CreateDidOperationOptions": {
+				"properties": {
+					"serviceEndpoint": {
+						"type": "string"
+					},
+					"operation": {
+						"$ref": "#/components/schemas/DidOperation.Create"
+					}
+				},
+				"required": [
+					"operation"
+				],
+				"type": "object"
+			},
+			"DidOperation.Update": {
+				"enum": [
+					"updateDIDDoc"
+				],
+				"type": "string"
+			},
+			"Record_string.any_": {
+				"properties": {},
+				"additionalProperties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"DidDocument": {
+				"$ref": "#/components/schemas/Record_string.any_"
+			},
+			"UpdateDidOperationOptions": {
+				"properties": {
+					"did": {
+						"type": "string"
+					},
+					"didDocument": {
+						"$ref": "#/components/schemas/DidDocument"
+					},
+					"operation": {
+						"$ref": "#/components/schemas/DidOperation.Update"
+					}
+				},
+				"required": [
+					"did",
+					"didDocument",
+					"operation"
+				],
+				"type": "object"
+			},
+			"DidOperation.Deactivate": {
+				"enum": [
+					"deactivate"
+				],
+				"type": "string"
+			},
+			"DeactivateDidOperationOptions": {
+				"properties": {
+					"did": {
+						"type": "string"
+					},
+					"operation": {
+						"$ref": "#/components/schemas/DidOperation.Deactivate"
+					}
+				},
+				"required": [
+					"did",
+					"operation"
+				],
+				"type": "object"
+			},
+			"DidOperation.AddResource": {
+				"enum": [
+					"addResource"
+				],
+				"type": "string"
+			},
+			"AddResourceDidOperationOptions": {
+				"properties": {
+					"did": {
+						"type": "string"
+					},
+					"resource": {
+						"additionalProperties": false,
+						"type": "object"
+					},
+					"resourceId": {
+						"type": "string"
+					},
+					"operation": {
+						"$ref": "#/components/schemas/DidOperation.AddResource"
+					}
+				},
+				"required": [
+					"did",
+					"resource",
+					"resourceId",
+					"operation"
+				],
+				"type": "object"
+			},
+			"DidOperationOptions": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/CreateDidOperationOptions"
+					},
+					{
+						"$ref": "#/components/schemas/UpdateDidOperationOptions"
+					},
+					{
+						"$ref": "#/components/schemas/DeactivateDidOperationOptions"
+					},
+					{
+						"$ref": "#/components/schemas/AddResourceDidOperationOptions"
+					}
+				]
+			},
 			"JwtObject": {
 				"properties": {
 					"alg": {
@@ -1148,12 +1275,6 @@
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"Record_string.unknown_": {
-				"properties": {},
-				"additionalProperties": {},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
 			},
 			"OpenId4VcVerificationSessionRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
@@ -2193,12 +2314,6 @@
 				],
 				"type": "object"
 			},
-			"Record_string.any_": {
-				"properties": {},
-				"additionalProperties": {},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
-			},
 			"MetadataValue": {
 				"$ref": "#/components/schemas/Record_string.any_"
 			},
@@ -2934,9 +3049,6 @@
 				],
 				"type": "string"
 			},
-			"DidDocument": {
-				"$ref": "#/components/schemas/Record_string.any_"
-			},
 			"DidCreate": {
 				"properties": {
 					"keyType": {
@@ -3639,6 +3751,191 @@
 						}
 					}
 				}
+			}
+		},
+		"/polygon/create-keys": {
+			"post": {
+				"operationId": "CreateKeyPair",
+				"responses": {
+					"200": {
+						"description": "Secp256k1KeyPair",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"address": {
+											"type": "string"
+										},
+										"publicKeyBase58": {
+											"type": "string"
+										},
+										"privateKey": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"address",
+										"publicKeyBase58",
+										"privateKey"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create Secp256k1 key pair for polygon DID",
+				"tags": [
+					"Polygon"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated",
+							"Basewallet"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/polygon/create-schema": {
+			"post": {
+				"operationId": "CreateSchema",
+				"responses": {
+					"200": {
+						"description": "Schema JSON",
+						"content": {
+							"application/json": {
+								"schema": {}
+							}
+						}
+					}
+				},
+				"description": "Create polygon based W3C schema",
+				"tags": [
+					"Polygon"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"schema": {
+										"$ref": "#/components/schemas/Record_string.unknown_"
+									},
+									"schemaName": {
+										"type": "string"
+									},
+									"did": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"schema",
+									"schemaName",
+									"did"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/polygon/estimate-transaction": {
+			"post": {
+				"operationId": "EstimateTransaction",
+				"responses": {
+					"200": {
+						"description": "Transaction Object",
+						"content": {
+							"application/json": {
+								"schema": {}
+							}
+						}
+					}
+				},
+				"description": "Estimate transaction",
+				"tags": [
+					"Polygon"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated",
+							"Basewallet"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/DidOperationOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/polygon/{did}/{schemaId}": {
+			"get": {
+				"operationId": "GetSchemaById",
+				"responses": {
+					"200": {
+						"description": "Schema Object",
+						"content": {
+							"application/json": {
+								"schema": {}
+							}
+						}
+					}
+				},
+				"description": "Fetch schema details",
+				"tags": [
+					"Polygon"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "did",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "schemaId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/openid4vc/verification-sessions/create-presentation-request": {

@@ -65,6 +65,7 @@ import { setupServer } from './server'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
 import { getMixedCredentialRequestToCredentialMapper, getTrustedCerts } from './utils/oid4vc-agent'
+import { PolygonDidRegistrar, PolygonDidResolver, PolygonModule } from '@ayanworks/credo-polygon-w3c-module'
 
 export type Transports = 'ws' | 'http'
 export type InboundTransport = {
@@ -174,15 +175,14 @@ const getModules = (
         new IndyVdrIndyDidRegistrar(),
         new KeyDidRegistrar(),
         new JwkDidRegistrar(),
-        // TODO: We can enable polygon later
-        // , new PolygonDidRegistrar()
+        new PolygonDidRegistrar(),
       ],
       resolvers: [
         new IndyVdrIndyDidResolver(),
         new KeyDidResolver(),
         new WebDidResolver(),
         new JwkDidResolver(),
-        // , new PolygonDidResolver()
+        new PolygonDidResolver(),
       ],
     }),
 
@@ -237,17 +237,16 @@ const getModules = (
     }),
 
     questionAnswer: new QuestionAnswerModule(),
-    // Todo: We can remove this polygon module for time being
-    // polygon: new PolygonModule({
-    //   didContractAddress: didRegistryContractAddress
-    //     ? didRegistryContractAddress
-    //     : (process.env.DID_CONTRACT_ADDRESS as string),
-    //   schemaManagerContractAddress:
-    //     schemaManagerContractAddress || (process.env.SCHEMA_MANAGER_CONTRACT_ADDRESS as string),
-    //   fileServerToken: fileServerToken ? fileServerToken : (process.env.FILE_SERVER_TOKEN as string),
-    //   rpcUrl: rpcUrl ? rpcUrl : (process.env.RPC_URL as string),
-    //   serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
-    // }),
+    polygon: new PolygonModule({
+      didContractAddress: didRegistryContractAddress
+        ? didRegistryContractAddress
+        : (process.env.DID_CONTRACT_ADDRESS as string),
+      schemaManagerContractAddress:
+        schemaManagerContractAddress || (process.env.SCHEMA_MANAGER_CONTRACT_ADDRESS as string),
+      fileServerToken: fileServerToken ? fileServerToken : (process.env.FILE_SERVER_TOKEN as string),
+      rpcUrl: rpcUrl ? rpcUrl : (process.env.RPC_URL as string),
+      serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
+    }),
     openid4vc: new OpenId4VcModule({
       app: expressApp,
       issuer: {
@@ -274,7 +273,10 @@ const getModules = (
     }),
     openId4VcHolderModule: new OpenId4VcHolderModule(),
     x509: new X509Module({
-      getTrustedCertificatesForVerification: async (agentContext, { certificateChain: _certificateChain, verification: _verification }) => {
+      getTrustedCertificatesForVerification: async (
+        agentContext,
+        { certificateChain: _certificateChain, verification: _verification },
+      ) => {
         //TODO: We need to trust the certificate tenant wise, for that we need to fetch those details from platform
         const tenantId = agentContext.contextCorrelationId
         console.log('[getTrustedCertificatesForVerification] tenantId from agentContext:', tenantId)

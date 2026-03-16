@@ -61,26 +61,26 @@
   dependencies:
     static-eval "2.0.2"
 
-"@ayanworks/credo-polygon-w3c-module@2.0.0":
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/@ayanworks/credo-polygon-w3c-module/-/credo-polygon-w3c-module-2.0.0.tgz#8682b3dfeffe166c7da718afac9739db825ef626"
-  integrity sha512-6ZJH/TtieyIQ1mxOj00JyixZ56wi2G7nhDgZEWYkQiEcY1x3IRNR75iRLTOK23NTn2tLneC6Kl5niWEg7BsCjg==
+"@ayanworks/credo-polygon-w3c-module@2.0.2":
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/@ayanworks/credo-polygon-w3c-module/-/credo-polygon-w3c-module-2.0.2.tgz#5d52bbbc8ecb990d19056c7eec69aa31b1f4a477"
+  integrity sha512-RtXl06kGy7w8axH60Wqj402rH748S9KottDVEwkXhSb9OrXMYy30vrNLercy25+NeGd8lpK5g1oscpLPW70Zzg==
   dependencies:
-    "@ayanworks/polygon-did-registrar" "2.2.0"
-    "@ayanworks/polygon-did-resolver" "1.0.2"
-    "@ayanworks/polygon-schema-manager" "2.2.0"
+    "@ayanworks/polygon-did-registrar" "2.2.1"
+    "@ayanworks/polygon-did-resolver" "1.0.3"
+    "@ayanworks/polygon-schema-manager" "2.2.1"
     "@credo-ts/askar" "^0.6.1"
     "@credo-ts/core" "^0.6.1"
     did-resolver "^4.1.0"
     ethers "^6.16.0"
 
-"@ayanworks/polygon-did-registrar@2.2.0":
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/@ayanworks/polygon-did-registrar/-/polygon-did-registrar-2.2.0.tgz#87c09b8965a81ee8b896fb4efc74a37b3e43e626"
-  integrity sha512-E6z3fkpfhs8SyN4c3UMnGcmfWMC9dxXJlqLPMfXIsGCFM5G2ZiQuI7pnFyd2hnGpZ818VeIFFYkojm68LNpdyw==
+"@ayanworks/polygon-did-registrar@2.2.1":
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/@ayanworks/polygon-did-registrar/-/polygon-did-registrar-2.2.1.tgz#131824f34baeedb93989a9e3f65b69a2c022144c"
+  integrity sha512-lpDe3p0tcPB4eOKCQGtl67PxK8MjR1CGRKOn4qGwySRxH9hBJq8AF0l+Lbi9Zisqnm3eo8nv/EiBLnwpsdwAdA==
   dependencies:
-    "@ayanworks/polygon-did-registry-contract" "4.0.0"
-    "@ayanworks/polygon-did-resolver" "1.0.2"
+    "@ayanworks/polygon-did-registry-contract" "4.0.1"
+    "@ayanworks/polygon-did-resolver" "1.0.3"
     "@ethersproject/basex" "^5.8.0"
     "@ethersproject/signing-key" "^5.8.0"
     "@ethersproject/transactions" "^5.8.0"
@@ -89,28 +89,28 @@
     ethers "^6.16.0"
     uuid "^13.0.0"
 
-"@ayanworks/polygon-did-registry-contract@4.0.0":
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/@ayanworks/polygon-did-registry-contract/-/polygon-did-registry-contract-4.0.0.tgz#33d3fb6534700e1dc91b6e757c4276d8a91242df"
-  integrity sha512-18iePYxKMa0MY7xHxBKjeL3AIaiPy9YT+WSlreVDqF4XUGGWqh4TaUtMPx89i3NprcTFiYOVVhC0KhbsitBgnA==
+"@ayanworks/polygon-did-registry-contract@4.0.1":
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/@ayanworks/polygon-did-registry-contract/-/polygon-did-registry-contract-4.0.1.tgz#104ca2cec0f88cf616529ba11099d47d653958d9"
+  integrity sha512-gBUtZOme6PIhLWE2hwJ006jNKm2fbYTaFKyR7uazgDrJUGNCZ+w9VM2ETByzVWBGuWyANWUJyoJm50GfGp+5wg==
 
-"@ayanworks/polygon-did-resolver@1.0.2":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/@ayanworks/polygon-did-resolver/-/polygon-did-resolver-1.0.2.tgz#5aee0d2f54f0374b9e3de9af413d66bda12e39b2"
-  integrity sha512-y4irODbWS96W5zk/+M22bD0qjRBDaCbU7D6W37/132BZJdcXEUPmLD4tMNUQ8wFmc1aPION+EMrqUPOyCos+kw==
+"@ayanworks/polygon-did-resolver@1.0.3":
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/@ayanworks/polygon-did-resolver/-/polygon-did-resolver-1.0.3.tgz#f0c0ef86b04194234096c79b3abe6631ce08d128"
+  integrity sha512-ZkiWFNxJRvMJhw6oJAhbCXiLLV4ntroE/lVve+ZBQM9U1XHEAORWZfjEJZpfWwhAIQu7gQgaR80hIuucZ0wuWw==
   dependencies:
-    "@ayanworks/polygon-did-registry-contract" "4.0.0"
+    "@ayanworks/polygon-did-registry-contract" "4.0.1"
     did-resolver "^4.1.0"
     ethers "^6.16.0"
 
-"@ayanworks/polygon-schema-manager@2.2.0":
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/@ayanworks/polygon-schema-manager/-/polygon-schema-manager-2.2.0.tgz#59cea872f50ef8862180cd982581b855385bc7a0"
-  integrity sha512-1ZwKxGE2M5CK9PSlO6MOuk63PpWiXS3IiwM5V4Lluf4AN+eejquP/cAqicyjthoiMQ/h28FDIdFqsQOFz8fC1A==
+"@ayanworks/polygon-schema-manager@2.2.1":
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/@ayanworks/polygon-schema-manager/-/polygon-schema-manager-2.2.1.tgz#22e56f86df36ad117cc86de86b1e0c4ba051f005"
+  integrity sha512-s75ouYENY46PVSE77+Jl1UVXfmTobuMm0yV+qx/DnHiUT2XgamvFBqh9DzJrKzSjws/dSxmHsVuVlbX0h3uyOQ==
   dependencies:
-    "@ayanworks/polygon-did-registry-contract" "4.0.0"
-    "@ayanworks/polygon-did-resolver" "1.0.2"
-    axios "^1.6.3"
+    "@ayanworks/polygon-did-registry-contract" "4.0.1"
+    "@ayanworks/polygon-did-resolver" "1.0.3"
+    axios "^1.13.5"
     did-resolver "^4.1.0"
     ethers "^6.16.0"
     keccak256 "^1.0.6"
@@ -3408,7 +3408,16 @@ available-typed-arrays@^1.0.7:
   dependencies:
     possible-typed-array-names "^1.0.0"
 
-axios@^1.6.3, axios@^1.9.0:
+axios@^1.13.5:
+  version "1.13.6"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-1.13.6.tgz#c3f92da917dc209a15dd29936d20d5089b6b6c98"
+  integrity sha512-ChTCHMouEe2kn713WHbQGcuYrr6fXTBiu460OTwWrWob16g1bXn4vtz07Ope7ewMozJAnEquLk5lWQWtBig9DQ==
+  dependencies:
+    follow-redirects "^1.15.11"
+    form-data "^4.0.5"
+    proxy-from-env "^1.1.0"
+
+axios@^1.9.0:
   version "1.13.2"
   resolved "https://registry.yarnpkg.com/axios/-/axios-1.13.2.tgz#9ada120b7b5ab24509553ec3e40123521117f687"
   integrity sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==
@@ -4838,7 +4847,7 @@ flatted@^3.2.9:
   resolved "https://registry.yarnpkg.com/flatted/-/flatted-3.3.3.tgz#67c8fad95454a7c7abebf74bb78ee74a44023358"
   integrity sha512-GX+ysw4PBCz0PzosHDepZGANEuFCMLrnRTiEy9McGjmkCQYwRq4A/X786G/fjM/+OjsWSU1ZrY5qyARZmO/uwg==
 
-follow-redirects@^1.15.6:
+follow-redirects@^1.15.11, follow-redirects@^1.15.6:
   version "1.15.11"
   resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.11.tgz#777d73d72a92f8ec4d2e410eb47352a56b8e8340"
   integrity sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==
@@ -4858,7 +4867,7 @@ foreground-child@^3.1.0:
     cross-spawn "^7.0.6"
     signal-exit "^4.0.1"
 
-form-data@^4.0.0, form-data@^4.0.4:
+form-data@^4.0.0, form-data@^4.0.4, form-data@^4.0.5:
   version "4.0.5"
   resolved "https://registry.yarnpkg.com/form-data/-/form-data-4.0.5.tgz#b49e48858045ff4cbf6b03e1805cebcad3679053"
   integrity sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==

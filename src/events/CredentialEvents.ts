@@ -8,37 +8,40 @@ import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
 
 export const credentialEvents = async (agent: Agent, config: ServerConfig) => {
-  agent.events.on(DidCommCredentialEventTypes.DidCommCredentialStateChanged, async (event: DidCommCredentialStateChangedEvent) => {
-    const record = event.payload.credentialExchangeRecord
+  agent.events.on(
+    DidCommCredentialEventTypes.DidCommCredentialStateChanged,
+    async (event: DidCommCredentialStateChangedEvent) => {
+      const record = event.payload.credentialExchangeRecord
 
-    const body: Record<string, unknown> = {
-      ...record.toJSON(),
-      ...event.metadata,
-      outOfBandId: null,
-      credentialData: null,
-    }
+      const body: Record<string, unknown> = {
+        ...record.toJSON(),
+        ...event.metadata,
+        outOfBandId: null,
+        credentialData: null,
+      }
 
-    if (record?.connectionId) {
-      const connectionRecord = await agent.modules.connections.findById(record.connectionId!)
-      body.outOfBandId = connectionRecord?.outOfBandId
-    }
+      if (record?.connectionId) {
+        const connectionRecord = await agent.modules.connections.findById(record.connectionId!)
+        body.outOfBandId = connectionRecord?.outOfBandId
+      }
 
-    const data = await agent.modules.credentials.getFormatData(record.id)
-    body.credentialData = data
+      const data = await agent.modules.credentials.getFormatData(record.id)
+      body.credentialData = data
 
-    if (config.webhookUrl) {
-      await sendWebhookEvent(config.webhookUrl + '/credentials', body, agent.config.logger)
-    }
+      if (config.webhookUrl) {
+        await sendWebhookEvent(config.webhookUrl + '/credentials', body, agent.config.logger)
+      }
 
-    if (config.socketServer) {
-      // Always emit websocket event to clients (could be 0)
-      sendWebSocketEvent(config.socketServer, {
-        ...event,
-        payload: {
-          ...event.payload,
-          credentialRecord: body,
-        },
-      })
-    }
-  })
+      if (config.socketServer) {
+        // Always emit websocket event to clients (could be 0)
+        sendWebSocketEvent(config.socketServer, {
+          ...event,
+          payload: {
+            ...event.payload,
+            credentialRecord: body,
+          },
+        })
+      }
+    },
+  )
 }
