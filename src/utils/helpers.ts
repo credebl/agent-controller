@@ -253,3 +253,49 @@ export async function checkX509Certificates(
 
   return checkTrustCertificatesExist(trustListUrl, x509Certificates, label, resolvedTenantId, token)
 }
+type Namespaces = Record<string, any>
+
+export function processIsoImages(namespaces: Namespaces): Namespaces {
+  const IMAGE_FIELDS = ['portrait', 'enrolment_portrait_image']
+
+  for (const [nsKey, nsValue] of Object.entries(namespaces)) {
+    if (!nsKey.includes('org.iso')) continue
+
+    for (const field of IMAGE_FIELDS) {
+      const value = nsValue[field]
+
+      if (value && typeof value === 'string') {
+        nsValue[field] = safeBase64DataUrlToUint8Array(value)
+      }
+    }
+  }
+
+  return namespaces
+}
+
+function safeBase64DataUrlToUint8Array(dataUrl: string): Uint8Array | string {
+  try {
+    if (typeof dataUrl !== 'string') return dataUrl
+
+    // Must contain base64 data
+    if (!dataUrl.includes('base64,')) return dataUrl
+
+    const parts = dataUrl.split(',')
+    if (parts.length < 2) return dataUrl
+
+    const base64 = parts[1]
+
+    // Node.js safe decode (will throw if invalid)
+    const buffer = Buffer.from(base64, 'base64')
+
+    // Extra validation: ensure it decoded something meaningful
+    if (!buffer || buffer.length === 0) {
+      return dataUrl
+    }
+
+    return new Uint8Array(buffer)
+  } catch (err) {
+    // fallback → keep original string
+    return dataUrl
+  }
+}
