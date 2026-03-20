@@ -10,6 +10,7 @@ import { ClaimFormat, X509ModuleConfig } from '@credo-ts/core'
 import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
 import { SignerMethod } from '../enums/enum'
+import { processIsoImages } from './helpers'
 
 export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredentialRequestToCredentialMapper {
   return async ({
@@ -105,6 +106,8 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       })
       console.log(`\n credential validityInfo for mdoc: ${JSON.stringify(credential.payload.validityInfo)} \n`)
       parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
+      const updatedNamespaces = processIsoImages(credential.payload.namespaces)
+      credential.payload.namespaces = updatedNamespaces
       return {
         type: 'credentials',
         format: ClaimFormat.MsoMdoc,
