@@ -27,6 +27,7 @@ WORKDIR /app
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/* && \
     cd /tmp && npm install tar@7.5.11 cross-spawn@7.0.6 glob@10.5.0 minimatch@9.0.7 2>/dev/null && \
     NPM_MODS=/usr/local/lib/node_modules/npm/node_modules && \
+    rm -rf "$NPM_MODS/tar" "$NPM_MODS/cross-spawn" "$NPM_MODS/glob" "$NPM_MODS/minimatch" && \
     cp -r node_modules/tar $NPM_MODS/ && \
     cp -r node_modules/cross-spawn $NPM_MODS/ && \
     cp -r node_modules/glob $NPM_MODS/ && \
@@ -47,6 +48,7 @@ COPY --from=builder /app/patches ./patches
 RUN rm -rf /app/node_modules/ngrok \
            /app/node_modules/tar && \
     cd /tmp && npm install glob@10.5.0 2>/dev/null && \
+    rm -rf /app/node_modules/@tsoa/cli/node_modules/glob && \
     cp -r node_modules/glob /app/node_modules/@tsoa/cli/node_modules/ && \
     rm -rf /tmp/node_modules /tmp/package*.json && \
     chown -R node:node /app
