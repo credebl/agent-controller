@@ -1,11 +1,33 @@
 import type { Curve, EcCurve, EcType, OkpCurve, OkpType } from '../controllers/types'
 import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
-import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
+import { JsonEncoder, JsonTransformer, X509Certificate } from '@credo-ts/core'
 import axios from 'axios'
 import { randomBytes } from 'crypto'
 
 import { curveToKty, keyAlgorithmToCurve } from './constant'
+const TOKEN_EXPIRY_BUFFER_SECONDS = 60
+const tokenCache = new Map<string, { token: string; expiresAt: number }>()
+
+function getTokenExpiry(token: string): number {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf-8'))
+    return typeof payload.exp === 'number' ? payload.exp : 0
+  } catch {
+    return 0
+  }
+}
+
+function getCachedToken(clientId: string): string | null {
+  const cached = tokenCache.get(clientId)
+  if (!cached) return null
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  if (nowSeconds < cached.expiresAt - TOKEN_EXPIRY_BUFFER_SECONDS) {
+    return cached.token
+  }
+  tokenCache.delete(clientId)
+  return null
+}
 
 export function objectToJson<T>(result: T) {
   const serialized = JsonTransformer.serialize(result)
@@ -104,6 +126,12 @@ async function fetchPlatformToken(
   if (!clientId) throw new Error(`[${label}] clientId is required`)
   if (!clientSecret) throw new Error(`[${label}] clientSecret is required`)
 
+  const cachedToken = getCachedToken(clientId)
+  if (cachedToken) {
+    console.log(`[${label}] using cached token for clientId:`, clientId)
+    return cachedToken
+  }
+
   const tokenUrl = `${platformBaseUrl}/v1/orgs/${clientId}/token`
   console.log(`[${label}] fetching token from:`, tokenUrl)
 
@@ -139,52 +167,59 @@ async function fetchPlatformToken(
     throw new Error(`[${label}] access_token not found in platform response`)
   }
 
+  const expiresAt = getTokenExpiry(token)
+  tokenCache.set(clientId, { token, expiresAt })
+  console.log(`[${label}] token cached for clientId:`, clientId, '| expires at:', new Date(expiresAt * 1000).toISOString())
+
   return token
 }
 
-async function fetchTrustServiceCertificates(
+async function checkTrustCertificatesExist(
   trustServiceUrl: string,
   token: string,
-  ecosystemIds: string[],
+  x509: string[],
   label: string,
-): Promise<string[]> {
-  const certsUrl = `${trustServiceUrl}/api/x509-certificates/ecosystems`
-  console.log(`[${label}] fetching certificates from:`, certsUrl, 'ecosystemIds:', ecosystemIds)
+  tenantId?: string,
+): Promise<boolean> {
+  const matchUrl = `${trustServiceUrl}/api/x509-certificates/match`
+  console.log(`[${label}] calling match API:`, matchUrl)
 
   try {
-    const certResponse = await axios.get(certsUrl, {
-      params: { ecosystemIds: ecosystemIds.join(',') },
-      headers: { accept: 'application/json', Authorization: `Bearer ${token}` },
-    })
+    const matchResponse = await axios.post<boolean>(
+      matchUrl,
+      { x509, ...(tenantId && { tenantId }) },
+      { headers: { 'Content-Type': 'application/json', accept: 'application/json', Authorization: `Bearer ${token}` } },
+    )
 
-    console.log(`[${label}] certificates response status:`, certResponse.status)
-    console.log(`[${label}] certificates response data:`, JSON.stringify(certResponse.data, null, 2))
+    console.log(`[${label}] match response status:`, matchResponse.status)
+    console.log(`[${label}] match response data:`, matchResponse.data)
 
-    if (!Array.isArray(certResponse.data) || certResponse.data.length === 0) {
-      throw new Error('No certificates returned from trust-service')
+    if (!matchResponse.data) {
+      console.warn(`[${label}] certificate chain not trusted${tenantId ? ` for tenantId: ${tenantId}` : ''}`)
+      return false
     }
 
-    const certificates: string[] = certResponse.data.map((cert: { certificateData: string }) => cert.certificateData)
-    console.log(`[${label}] extracted certificates count:`, certificates.length)
-
-    return certificates
+    return matchResponse.data
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error(`[${label}] certificates request failed:`, {
+      console.error(`[${label}] match request failed:`, {
+        url: matchUrl,
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
         message: error.message,
       })
       throw new Error(
-        `Failed to fetch certificates from trust-service: ${error.response?.status} ${JSON.stringify(error.response?.data)}`,
+        `[${label}] trust-service match request failed with status ${error.response?.status ?? 'no response'}: ${JSON.stringify(error.response?.data ?? error.message)}`,
       )
     }
     throw error
   }
 }
 
-export async function fetchDedicatedX509Certificates(): Promise<string[]> {
+export async function checkDedicatedX509Certificates(certificateChain: X509Certificate[]): Promise<boolean> {
+  const label = 'checkDedicatedX509Certificates'
+
   const platformBaseUrl = process.env.PLATFORM_BASE_URL
   const clientId = process.env.PLATFORM_DEDICATED_CLIENT_ID
   const clientSecret = process.env.PLATFORM_DEDICATED_CLIENT_SECRET
@@ -195,12 +230,19 @@ export async function fetchDedicatedX509Certificates(): Promise<string[]> {
   if (!clientSecret) throw new Error('PLATFORM_DEDICATED_CLIENT_SECRET is not configured')
   if (!trustServiceUrl) throw new Error('TRUST_SERVICE_URL is not configured')
 
-  const token = await fetchPlatformToken(platformBaseUrl, clientId, clientSecret, 'fetchDedicatedX509Certificates')
-  return fetchTrustServiceCertificates(trustServiceUrl, token, [], 'fetchDedicatedX509Certificates')
+  if (!certificateChain || certificateChain.length === 0) {
+    throw new Error(`[${label}] certificate chain is required but was not provided`)
+  }
+
+  const token = await fetchPlatformToken(platformBaseUrl, clientId, clientSecret, label)
+  const x509 = certificateChain.map((cert) => cert.toString('base64'))
+  console.log(`[${label}] certificate chain length:`, x509.length)
+
+  return checkTrustCertificatesExist(trustServiceUrl, token, x509, label)
 }
 
-export async function fetchSharedAgentX509Certificates(tenantId?: string): Promise<string[]> {
-  const label = 'fetchSharedAgentX509Certificates'
+export async function checkSharedAgentX509Certificates(tenantId?: string, certificateChain?: X509Certificate[]): Promise<boolean> {
+  const label = 'checkSharedAgentX509Certificates'
 
   const platformBaseUrl = process.env.PLATFORM_BASE_URL
   const clientId = process.env.PLATFORM_SHARED_AGENT_CLIENT_ID
@@ -213,44 +255,17 @@ export async function fetchSharedAgentX509Certificates(tenantId?: string): Promi
   if (!clientSecret) throw new Error('PLATFORM_SHARED_AGENT_CLIENT_SECRET is not configured')
   if (!resolvedTenantId) throw new Error('tenantId not provided and PLATFORM_SHARED_AGENT_TENANT_ID is not configured')
   if (!trustServiceUrl) throw new Error('TRUST_SERVICE_URL is not configured')
-  console.log(`[${label}] starting certificate fetch for tenantId:`, resolvedTenantId)
 
   console.log(`[${label}] using tenantId:`, resolvedTenantId, tenantId ? '(from agent context)' : '(from .env)')
 
-  const token = await fetchPlatformToken(platformBaseUrl, clientId, clientSecret, label)
-
-  const ecosystemsUrl = `${platformBaseUrl}/v1/orgs/tenant/${resolvedTenantId}/ecosystems`
-  console.log(`[${label}] fetching ecosystem IDs from:`, ecosystemsUrl)
-
-  let ecosystemIds: string[]
-  try {
-    const ecosystemResponse = await axios.get<{ statusCode: number; message: string; data: string[] }>(ecosystemsUrl, {
-      headers: { accept: 'application/json', Authorization: `Bearer ${token}` },
-    })
-
-    console.log(`[${label}] ecosystem response status:`, ecosystemResponse.status)
-    console.log(`[${label}] ecosystem response data:`, JSON.stringify(ecosystemResponse.data, null, 2))
-
-    ecosystemIds = ecosystemResponse.data.data
-    if (!Array.isArray(ecosystemIds) || ecosystemIds.length === 0) {
-      throw new Error(`No ecosystem IDs found for tenant: ${resolvedTenantId}`)
-    }
-
-    console.log(`[${label}] ecosystem IDs:`, ecosystemIds)
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error(`[${label}] ecosystem IDs request failed:`, {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      })
-      throw new Error(
-        `Failed to fetch ecosystem IDs from platform: ${error.response?.status} ${JSON.stringify(error.response?.data)}`,
-      )
-    }
-    throw error
+  if (!certificateChain || certificateChain.length === 0) {
+    throw new Error(`[${label}] certificate chain is required but was not provided`)
   }
 
-  return fetchTrustServiceCertificates(trustServiceUrl, token, ecosystemIds, label)
+  const token = await fetchPlatformToken(platformBaseUrl, clientId, clientSecret, label)
+
+  const x509 = certificateChain.map((cert) => cert.toString('base64'))
+  console.log(`[${label}] certificate chain length:`, x509.length)
+
+  return checkTrustCertificatesExist(trustServiceUrl, token, x509, label, resolvedTenantId)
 }

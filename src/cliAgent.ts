@@ -28,6 +28,7 @@ import {
   LogLevel,
   Agent,
   X509Module,
+  X509Certificate,
   JwkDidRegistrar,
   JwkDidResolver,
 } from '@credo-ts/core'
@@ -272,14 +273,25 @@ const getModules = (
     x509: new X509Module({
       getTrustedCertificatesForVerification: async (
         agentContext,
-        { certificateChain: _certificateChain, verification: _verification },
+        { certificateChain, verification: _verification },
       ) => {
         //TODO: We need to trust the certificate tenant wise, for that we need to fetch those details from platform
         const tenantId = agentContext.contextCorrelationId
         console.log('[getTrustedCertificatesForVerification] tenantId from agentContext:', tenantId)
-        const certs: string[] = await getTrustedCerts(tenantId)
 
-        return certs
+        try {
+          const isTrusted = await getTrustedCerts(tenantId, certificateChain)
+
+          if (!isTrusted) {
+            console.warn('[getTrustedCertificatesForVerification] certificate chain not trusted, returning empty')
+            return []
+          }
+
+          return certificateChain.map((cert: X509Certificate) => cert.toString('pem'))
+        } catch (error) {
+          console.error('[getTrustedCertificatesForVerification] unexpected error:', error instanceof Error ? error.message : error)
+          return []
+        }
       },
     }),
   }
