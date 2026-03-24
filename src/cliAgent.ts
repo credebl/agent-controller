@@ -28,6 +28,7 @@ import {
   LogLevel,
   Agent,
   X509Module,
+  X509Certificate,
   JwkDidRegistrar,
   JwkDidResolver,
 } from '@credo-ts/core'
