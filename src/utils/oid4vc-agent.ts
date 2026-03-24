@@ -3,7 +3,7 @@ import type { DisclosureFrame } from '../controllers/types'
 import { Agent, CredoError } from '@credo-ts/core'
 import { container } from 'tsyringe'
 
-import { fetchDedicatedX509Certificates, fetchSharedAgentX509Certificates } from './helpers'
+import { checkDedicatedX509Certificates, checkSharedAgentX509Certificates, fetchDedicatedX509Certificates } from './helpers'
 import type {
   OpenId4VcCredentialHolderBinding,
   OpenId4VcCredentialHolderDidBinding,
@@ -234,31 +234,26 @@ export interface OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions {
   disclosureFrame: DisclosureFrame
 }
 
-export async function getTrustedCerts(tenantId?: string): Promise<string[]> {
-  try {
-    const agent = container.resolve(Agent)
-    if (!agent) {
-      console.error('[getTrustedCerts] agent not available in container')
-      return []
-    }
-
-    const isDedicated = !('tenants' in agent.modules)
-    console.log('[getTrustedCerts] agent type:', isDedicated ? 'dedicated' : 'shared')
-
-    let certs: string[]
-    if (isDedicated) {
-      certs = await fetchDedicatedX509Certificates()
-    } else {
-      certs = await fetchSharedAgentX509Certificates(tenantId)
-    }
-
-    if (!Array.isArray(certs) || certs.length === 0) {
-      console.warn('[getTrustedCerts] no certificates returned')
-      return []
-    }
-    return certs
-  } catch (error) {
-    console.error('[getTrustedCerts] failed:', error instanceof Error ? error.message : error)
-    return []
+export async function getTrustedCerts(tenantId?: string, certificateChain?: X509Certificate[]): Promise<boolean> {
+  const agent = container.resolve(Agent)
+  if (!agent) {
+    throw new Error('[getTrustedCerts] agent not available in container')
   }
+
+  if (!certificateChain || certificateChain.length === 0) {
+    throw new Error('[getTrustedCerts] certificate chain is required but was not provided')
+  }
+
+  const isDedicated = !('tenants' in agent.modules)
+  console.log('[getTrustedCerts] agent type:', isDedicated ? 'dedicated' : 'shared')
+
+  const isTrusted = isDedicated
+    ? await checkDedicatedX509Certificates(certificateChain)
+    : await checkSharedAgentX509Certificates(tenantId, certificateChain)
+
+  if (!isTrusted) {
+    console.warn('[getTrustedCerts] certificate chain not trusted', isDedicated ? '' : `for tenantId: ${tenantId}`)
+  }
+
+  return isTrusted
 }
