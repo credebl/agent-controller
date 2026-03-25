@@ -368,22 +368,10 @@ export class DidController extends Controller {
     return body
   }
 
-  private async importDid(agent: AgentType, didMethod: string, did: string, seed: string, privateKey?: string, _keyId?: string) {
-    // TODO: Remove comments afterwards
-    // await agent.dids.import({
-    // did: `${didMethod}:${did}`,
-    // overwrite: true,
-    // privateKeys: [
-    // {
-    // keyType: KeyAlgorithm.Ed25519,
-    // privateKey: TypedArrayEncoder.fromString(seed),
-    // },
-    // ],
-    // })
+  private async importDid(agent: AgentType, didMethod: string, did: string, seed: string, privateKey?: string, keyId?: string) {
+    let _keyId: string;
 
-    let keyId: string;
-
-    if (!_keyId) {
+    if (!keyId) {
       const { privateJwk } = privateKey ? transformPrivateKeyToPrivateJwk({
         type: {
           crv: 'Ed25519',
@@ -405,9 +393,9 @@ export class DidController extends Controller {
       }
   
       const key = await agent.kms.importKey({ privateJwk })
-      keyId = key.keyId
+      _keyId = key.keyId
     } else {
-      keyId = _keyId
+      _keyId = keyId
     }
 
 
@@ -416,7 +404,7 @@ export class DidController extends Controller {
       did: completeDid,
       keys: [
         {
-          kmsKeyId: keyId,
+          kmsKeyId: _keyId,
           didDocumentRelativeKeyId: verkey,
         },
       ],
