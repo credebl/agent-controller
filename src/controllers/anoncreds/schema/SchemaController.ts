@@ -26,7 +26,10 @@ export class SchemaController extends Controller {
    */
   @Example(SchemaExample)
   @Get('/:schemaId')
-  public async getSchemaById(@Request() request: Req, @Path('schemaId') schemaId: SchemaId): Promise<SchemaResponseDTO> {
+  public async getSchemaById(
+    @Request() request: Req,
+    @Path('schemaId') schemaId: SchemaId,
+  ): Promise<SchemaResponseDTO> {
     try {
       const schemBySchemaId = await request.agent.modules.anoncreds.getSchema(schemaId)
 
@@ -58,7 +61,10 @@ export class SchemaController extends Controller {
    */
   @Post('/')
   @Example(CreateSchemaSuccessful)
-  public async createSchema(@Request() request: Req, @Body() schema: CreateSchemaInput): Promise<RegisterSchemaReturn | RegisterSchemaReturnStateFinished> {
+  public async createSchema(
+    @Request() request: Req,
+    @Body() schema: CreateSchemaInput,
+  ): Promise<RegisterSchemaReturn | RegisterSchemaReturnStateFinished> {
     try {
       const { issuerId, name, version, attributes } = schema
 

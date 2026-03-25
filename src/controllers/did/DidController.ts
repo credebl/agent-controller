@@ -202,7 +202,7 @@ export class DidController extends Controller {
       if (createDidOptions.did) {
         // Hint: Bcovrin uses seed as private key when creating key. But seed is written as a NYM transaction
         // Triage: Make sure what to use, seed or privateKey when accepting from API itself
-        await this.importDid(agent, didMethod, createDidOptions.did, "", createDidOptions.seed)
+        await this.importDid(agent, didMethod, createDidOptions.did, '', createDidOptions.seed)
         const getDid = await agent.dids.getCreatedDids({
           method: createDidOptions.method,
           did: `did:${createDidOptions.method}:${createDidOptions.network}:${createDidOptions.did}`,
@@ -226,7 +226,7 @@ export class DidController extends Controller {
           seed: createDidOptions.seed,
         })
         const { did } = res?.data || {}
-        await this.importDid(agent, didMethod, did, "", createDidOptions.seed)
+        await this.importDid(agent, didMethod, did, '', createDidOptions.seed)
         const didRecord = await agent.dids.getCreatedDids({
           method: DidMethod.Indy,
           did: `did:${DidMethod.Indy}:${Network.Bcovrin_Testnet}:${res.data.did}`,
@@ -272,7 +272,7 @@ export class DidController extends Controller {
           didDocument: didDocument,
         }
       } else {
-        const {keyId, ...key} = await this.createIndicioKey(agent, createDidOptions)
+        const { keyId, ...key } = await this.createIndicioKey(agent, createDidOptions)
         const INDICIO_NYM_URL = process.env.INDICIO_NYM_URL as string
         const res = await axios.post(INDICIO_NYM_URL, key)
         if (res.data.statusCode === 200) {
@@ -337,7 +337,7 @@ export class DidController extends Controller {
     }).privateJwk
 
     const key = await agent.kms.importKey({
-      privateJwk
+      privateJwk,
     })
 
     const verificationKey = Kms.PublicJwk.fromPublicJwk(key.publicJwk) as Kms.PublicJwk<Kms.Ed25519PublicJwk>
@@ -353,14 +353,14 @@ export class DidController extends Controller {
         network: 'testnet',
         did,
         verkey: TypedArrayEncoder.toBase58(publicKeyBytes),
-        keyId: key.keyId
+        keyId: key.keyId,
       }
     } else if (createDidOptions.network === Network.Indicio_Demonet) {
       body = {
         network: 'demonet',
         did,
         verkey: TypedArrayEncoder.toBase58(publicKeyBytes),
-        keyId: key.keyId
+        keyId: key.keyId,
       }
     } else {
       throw new BadRequestError('Please provide a valid did method')
@@ -368,36 +368,46 @@ export class DidController extends Controller {
     return body
   }
 
-  private async importDid(agent: AgentType, didMethod: string, did: string, seed: string, privateKey?: string, keyId?: string) {
-    let _keyId: string;
+  private async importDid(
+    agent: AgentType,
+    didMethod: string,
+    did: string,
+    seed: string,
+    privateKey?: string,
+    keyId?: string,
+  ) {
+    let _keyId: string
 
     if (!keyId) {
-      const { privateJwk } = privateKey ? transformPrivateKeyToPrivateJwk({
-        type: {
-          crv: 'Ed25519',
-          kty: 'OKP',
-        },
-        privateKey: TypedArrayEncoder.fromString(privateKey),
-      }) : seed ? transformSeedToPrivateJwk({
-        seed: TypedArrayEncoder.fromString(seed),
-        type: {
-          crv: 'Ed25519',
-          kty: 'OKP',
-        }
-      }) : {
-        privateJwk: undefined
-      }
+      const { privateJwk } = privateKey
+        ? transformPrivateKeyToPrivateJwk({
+            type: {
+              crv: 'Ed25519',
+              kty: 'OKP',
+            },
+            privateKey: TypedArrayEncoder.fromString(privateKey),
+          })
+        : seed
+          ? transformSeedToPrivateJwk({
+              seed: TypedArrayEncoder.fromString(seed),
+              type: {
+                crv: 'Ed25519',
+                kty: 'OKP',
+              },
+            })
+          : {
+              privateJwk: undefined,
+            }
 
       if (!privateJwk) {
-        throw new Error("Either privateKey or seed is required")
+        throw new Error('Either privateKey or seed is required')
       }
-  
+
       const key = await agent.kms.importKey({ privateJwk })
       _keyId = key.keyId
     } else {
       _keyId = keyId
     }
-
 
     const completeDid = `${didMethod}:${did}`
     await agent.dids.import({

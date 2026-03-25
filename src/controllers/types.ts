@@ -1,5 +1,12 @@
 import type { RecordId } from './examples'
-import type { AnonCredsDidCommCredentialFormat, LegacyIndyCredentialFormat, RegisterSchemaReturnStateAction, RegisterSchemaReturnStateFailed, RegisterSchemaReturnStateFinished, RegisterSchemaReturnStateWait } from '@credo-ts/anoncreds'
+import type {
+  AnonCredsDidCommCredentialFormat,
+  LegacyIndyCredentialFormat,
+  RegisterSchemaReturnStateAction,
+  RegisterSchemaReturnStateFailed,
+  RegisterSchemaReturnStateFinished,
+  RegisterSchemaReturnStateWait,
+} from '@credo-ts/anoncreds'
 import type {
   DidResolutionMetadata,
   DidDocumentMetadata,
@@ -495,20 +502,24 @@ export type EcType = {
 }
 
 export interface SchemaResponseDTO {
-  schemaId: string;
+  schemaId: string
   schema?: {
-    issuerId: string;
-    name: string;
-    version: string;
-    attrNames: string[];
-  };
-  resolutionMetadata: Record<string, unknown>; // Use Record or explicitly define what you need
-  schemaMetadata: Record<string, unknown>;
+    issuerId: string
+    name: string
+    version: string
+    attrNames: string[]
+  }
+  resolutionMetadata: Record<string, unknown> // Use Record or explicitly define what you need
+  schemaMetadata: Record<string, unknown>
 }
 
 export interface RegisterSchemaReturn {
-  jobId?: string;
-  schemaState: RegisterSchemaReturnStateWait | RegisterSchemaReturnStateAction | RegisterSchemaReturnStateFinished | RegisterSchemaReturnStateFailed;
-  schemaMetadata: Record<string, unknown>;
-  registrationMetadata: Record<string, unknown>;
+  jobId?: string
+  schemaState:
+    | RegisterSchemaReturnStateWait
+    | RegisterSchemaReturnStateAction
+    | RegisterSchemaReturnStateFinished
+    | RegisterSchemaReturnStateFailed
+  schemaMetadata: Record<string, unknown>
+  registrationMetadata: Record<string, unknown>
 }

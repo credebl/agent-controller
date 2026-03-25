@@ -48,7 +48,7 @@ export enum IndicioAcceptanceMechanism {
   For_Session = 'for_session',
   On_File = 'on_file',
   Product_Eula = 'product_eula',
-  Service_Agreement = 'service_agreement'
+  Service_Agreement = 'service_agreement',
 }
 
 export enum EndorserMode {
