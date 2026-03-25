@@ -3723,6 +3723,213 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"AnonCredsCredentialDefinition": {
+				"properties": {
+					"issuerId": {
+						"type": "string"
+					},
+					"schemaId": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string",
+						"enum": [
+							"CL"
+						],
+						"nullable": false
+					},
+					"tag": {
+						"type": "string"
+					},
+					"value": {
+						"properties": {
+							"revocation": {},
+							"primary": {
+								"$ref": "#/components/schemas/Record_string.unknown_"
+							}
+						},
+						"required": [
+							"primary"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"issuerId",
+					"schemaId",
+					"type",
+					"tag",
+					"value"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"GetCredentialDefinitionReturn": {
+				"properties": {
+					"credentialDefinition": {
+						"$ref": "#/components/schemas/AnonCredsCredentialDefinition"
+					},
+					"credentialDefinitionId": {
+						"type": "string"
+					},
+					"resolutionMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"credentialDefinitionMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					}
+				},
+				"required": [
+					"credentialDefinitionId",
+					"resolutionMetadata",
+					"credentialDefinitionMetadata"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CredentialDefinitionId": {
+				"type": "string",
+				"example": "WgWxqztrNooG92RXvxSTWv:3:CL:20:tag"
+			},
+			"RegisterCredentialDefinitionReturnStateWait": {
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"wait"
+						],
+						"nullable": false
+					},
+					"credentialDefinition": {
+						"$ref": "#/components/schemas/AnonCredsCredentialDefinition"
+					},
+					"credentialDefinitionId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"state"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegisterCredentialDefinitionReturnStateAction": {
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"action"
+						],
+						"nullable": false
+					},
+					"action": {
+						"type": "string"
+					},
+					"credentialDefinitionId": {
+						"type": "string"
+					},
+					"credentialDefinition": {
+						"$ref": "#/components/schemas/AnonCredsCredentialDefinition"
+					}
+				},
+				"required": [
+					"state",
+					"action",
+					"credentialDefinitionId",
+					"credentialDefinition"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegisterCredentialDefinitionReturnStateFinished": {
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"finished"
+						],
+						"nullable": false
+					},
+					"credentialDefinition": {
+						"$ref": "#/components/schemas/AnonCredsCredentialDefinition"
+					},
+					"credentialDefinitionId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"state",
+					"credentialDefinition",
+					"credentialDefinitionId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegisterCredentialDefinitionReturnStateFailed": {
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"failed"
+						],
+						"nullable": false
+					},
+					"reason": {
+						"type": "string"
+					},
+					"credentialDefinition": {
+						"$ref": "#/components/schemas/AnonCredsCredentialDefinition"
+					},
+					"credentialDefinitionId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"state",
+					"reason"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CredentialDefinitionStates": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/RegisterCredentialDefinitionReturnStateWait"
+					},
+					{
+						"$ref": "#/components/schemas/RegisterCredentialDefinitionReturnStateAction"
+					},
+					{
+						"$ref": "#/components/schemas/RegisterCredentialDefinitionReturnStateFinished"
+					},
+					{
+						"$ref": "#/components/schemas/RegisterCredentialDefinitionReturnStateFailed"
+					}
+				]
+			},
+			"RegisterCredentialDefinitionReturn": {
+				"properties": {
+					"jobId": {
+						"type": "string"
+					},
+					"credentialDefinitionState": {
+						"$ref": "#/components/schemas/CredentialDefinitionStates"
+					},
+					"credentialDefinitionMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"registrationMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					}
+				},
+				"required": [
+					"credentialDefinitionState",
+					"credentialDefinitionMetadata",
+					"registrationMetadata"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"OpenId4VcVerifierRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_",
 				"description": "For OID4VC you need to expos metadata files. Each issuer needs to host this metadata. This is not the case for DIDComm where we can just have one /didcomm endpoint.\nSo we create a record per openid issuer/verifier that you want, and each tenant can create multiple issuers/verifiers which have different endpoints\nand metadata files"
@@ -7759,6 +7966,189 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/CreateSchemaInput"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/anoncreds/credential-definitions/{credentialDefinitionId}": {
+			"get": {
+				"operationId": "GetCredentialDefinitionById",
+				"responses": {
+					"200": {
+						"description": "CredDef",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GetCredentialDefinitionReturn"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"ver": "1.0",
+											"id": "WgWxqztrNooG92RXvxSTWv:3:CL:20:tag",
+											"schemaId": "351936",
+											"type": "CL",
+											"tag": "definition",
+											"value": {
+												"primary": {
+													"n": "string",
+													"s": "string",
+													"r": {
+														"master_secret": "string",
+														"string": "string"
+													},
+													"rctxt": "string",
+													"z": "string"
+												},
+												"revocation": {
+													"g": "1 string",
+													"g_dash": "string",
+													"h": "string",
+													"h0": "string",
+													"h1": "string",
+													"h2": "string",
+													"htilde": "string",
+													"h_cap": "string",
+													"u": "string",
+													"pk": "string",
+													"y": "string"
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Retrieve credential definition by credential definition id",
+				"tags": [
+					"Anoncreds - Credential Definitions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "credentialDefinitionId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/CredentialDefinitionId"
+						}
+					}
+				]
+			}
+		},
+		"/anoncreds/credential-definitions": {
+			"post": {
+				"operationId": "CreateCredentialDefinition",
+				"responses": {
+					"200": {
+						"description": "CredDef",
+						"content": {
+							"application/json": {
+								"schema": {
+									"anyOf": [
+										{
+											"$ref": "#/components/schemas/RegisterCredentialDefinitionReturn"
+										},
+										{
+											"$ref": "#/components/schemas/CredentialDefinitionStates"
+										}
+									]
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"ver": "1.0",
+											"id": "WgWxqztrNooG92RXvxSTWv:3:CL:20:tag",
+											"schemaId": "351936",
+											"type": "CL",
+											"tag": "definition",
+											"value": {
+												"primary": {
+													"n": "string",
+													"s": "string",
+													"r": {
+														"master_secret": "string",
+														"string": "string"
+													},
+													"rctxt": "string",
+													"z": "string"
+												},
+												"revocation": {
+													"g": "1 string",
+													"g_dash": "string",
+													"h": "string",
+													"h0": "string",
+													"h1": "string",
+													"h2": "string",
+													"htilde": "string",
+													"h_cap": "string",
+													"u": "string",
+													"pk": "string",
+													"y": "string"
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					"202": {
+						"description": "Wait for action to complete"
+					}
+				},
+				"description": "Creates a new credential definition.",
+				"tags": [
+					"Anoncreds - Credential Definitions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"endorserDid": {
+										"type": "string"
+									},
+									"endorse": {
+										"type": "boolean"
+									},
+									"tag": {
+										"type": "string"
+									},
+									"schemaId": {
+										"$ref": "#/components/schemas/SchemaId"
+									},
+									"issuerId": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"tag",
+									"schemaId",
+									"issuerId"
+								],
+								"type": "object"
 							}
 						}
 					}

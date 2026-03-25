@@ -1,7 +1,12 @@
 import type { RecordId } from './examples'
 import type {
+  AnonCredsCredentialDefinition,
   AnonCredsDidCommCredentialFormat,
   LegacyIndyCredentialFormat,
+  RegisterCredentialDefinitionReturnStateAction,
+  RegisterCredentialDefinitionReturnStateFailed,
+  RegisterCredentialDefinitionReturnStateFinished,
+  RegisterCredentialDefinitionReturnStateWait,
   RegisterSchemaReturnStateAction,
   RegisterSchemaReturnStateFailed,
   RegisterSchemaReturnStateFinished,
@@ -521,5 +526,25 @@ export interface RegisterSchemaReturn {
     | RegisterSchemaReturnStateFinished
     | RegisterSchemaReturnStateFailed
   schemaMetadata: Record<string, unknown>
+  registrationMetadata: Record<string, unknown>
+}
+
+export interface GetCredentialDefinitionReturn {
+  credentialDefinition?: AnonCredsCredentialDefinition
+  credentialDefinitionId: string
+  resolutionMetadata: Record<string, unknown>
+  credentialDefinitionMetadata: Record<string, unknown>
+}
+
+export type CredentialDefinitionStates =
+  | RegisterCredentialDefinitionReturnStateWait
+  | RegisterCredentialDefinitionReturnStateAction
+  | RegisterCredentialDefinitionReturnStateFinished
+  | RegisterCredentialDefinitionReturnStateFailed
+
+export interface RegisterCredentialDefinitionReturn {
+  jobId?: string
+  credentialDefinitionState: CredentialDefinitionStates
+  credentialDefinitionMetadata: Record<string, unknown>
   registrationMetadata: Record<string, unknown>
 }
