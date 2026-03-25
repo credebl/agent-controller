@@ -1,5 +1,5 @@
 import type { RecordId } from './examples'
-import type { AnonCredsDidCommCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
+import type { AnonCredsDidCommCredentialFormat, LegacyIndyCredentialFormat, RegisterSchemaReturnStateAction, RegisterSchemaReturnStateFailed, RegisterSchemaReturnStateFinished, RegisterSchemaReturnStateWait } from '@credo-ts/anoncreds'
 import type {
   DidResolutionMetadata,
   DidDocumentMetadata,
@@ -492,4 +492,23 @@ export type OkpType = {
 export type EcType = {
   kty: 'EC'
   crv: 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
+}
+
+export interface SchemaResponseDTO {
+  schemaId: string;
+  schema?: {
+    issuerId: string;
+    name: string;
+    version: string;
+    attrNames: string[];
+  };
+  resolutionMetadata: Record<string, unknown>; // Use Record or explicitly define what you need
+  schemaMetadata: Record<string, unknown>;
+}
+
+export interface RegisterSchemaReturn {
+  jobId?: string;
+  schemaState: RegisterSchemaReturnStateWait | RegisterSchemaReturnStateAction | RegisterSchemaReturnStateFinished | RegisterSchemaReturnStateFailed;
+  schemaMetadata: Record<string, unknown>;
+  registrationMetadata: Record<string, unknown>;
 }

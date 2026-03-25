@@ -12,14 +12,17 @@
   "indyLedger": [
     {
       "genesisTransactions": "https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis",
+      "isProduction": false,
       "indyNamespace": "indicio:testnet"
     },
     {
       "genesisTransactions": "https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis",
+      "isProduction": false,
       "indyNamespace": "indicio:demonet"
     },
     {
-      "genesisTransactions": "https://raw.githubusercontent.com/bcgov/von-network/main/BCovrin/genesis_test",
+      "genesisTransactions": "https://test.bcovrin.vonx.io/genesis",
+      "isProduction": false,
       "indyNamespace": "bcovrin:testnet"
     }
   ],

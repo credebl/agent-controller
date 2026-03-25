@@ -3477,6 +3477,252 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"SchemaResponseDTO": {
+				"properties": {
+					"schemaId": {
+						"type": "string"
+					},
+					"schema": {
+						"properties": {
+							"attrNames": {
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							},
+							"version": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"issuerId": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"attrNames",
+							"version",
+							"name",
+							"issuerId"
+						],
+						"type": "object"
+					},
+					"resolutionMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"schemaMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					}
+				},
+				"required": [
+					"schemaId",
+					"resolutionMetadata",
+					"schemaMetadata"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SchemaId": {
+				"type": "string",
+				"example": "WgWxqztrNooG92RXvxSTWv:2:schema_name:1.0"
+			},
+			"AnonCredsSchema": {
+				"properties": {
+					"issuerId": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"version": {
+						"type": "string"
+					},
+					"attrNames": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"issuerId",
+					"name",
+					"version",
+					"attrNames"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegisterSchemaReturnStateWait": {
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"wait"
+						],
+						"nullable": false
+					},
+					"schema": {
+						"$ref": "#/components/schemas/AnonCredsSchema"
+					},
+					"schemaId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"state"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegisterSchemaReturnStateAction": {
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"action"
+						],
+						"nullable": false
+					},
+					"action": {
+						"type": "string"
+					},
+					"schema": {
+						"$ref": "#/components/schemas/AnonCredsSchema"
+					},
+					"schemaId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"state",
+					"action",
+					"schema",
+					"schemaId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegisterSchemaReturnStateFinished": {
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"finished"
+						],
+						"nullable": false
+					},
+					"schema": {
+						"$ref": "#/components/schemas/AnonCredsSchema"
+					},
+					"schemaId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"state",
+					"schema",
+					"schemaId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegisterSchemaReturnStateFailed": {
+				"properties": {
+					"state": {
+						"type": "string",
+						"enum": [
+							"failed"
+						],
+						"nullable": false
+					},
+					"reason": {
+						"type": "string"
+					},
+					"schema": {
+						"$ref": "#/components/schemas/AnonCredsSchema"
+					},
+					"schemaId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"state",
+					"reason"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RegisterSchemaReturn": {
+				"properties": {
+					"jobId": {
+						"type": "string"
+					},
+					"schemaState": {
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/RegisterSchemaReturnStateWait"
+							},
+							{
+								"$ref": "#/components/schemas/RegisterSchemaReturnStateAction"
+							},
+							{
+								"$ref": "#/components/schemas/RegisterSchemaReturnStateFinished"
+							},
+							{
+								"$ref": "#/components/schemas/RegisterSchemaReturnStateFailed"
+							}
+						]
+					},
+					"schemaMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"registrationMetadata": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					}
+				},
+				"required": [
+					"schemaState",
+					"schemaMetadata",
+					"registrationMetadata"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CreateSchemaInput": {
+				"properties": {
+					"issuerId": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"version": {
+						"type": "string"
+					},
+					"attributes": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"endorse": {
+						"type": "boolean"
+					},
+					"endorserDid": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"issuerId",
+					"name",
+					"version",
+					"attributes"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"OpenId4VcVerifierRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_",
 				"description": "For OID4VC you need to expos metadata files. Each issuer needs to host this metadata. This is not the case for DIDComm where we can just have one /didcomm endpoint.\nSo we create a record per openid issuer/verifier that you want, and each tenant can create multiple issuers/verifiers which have different endpoints\nand metadata files"
@@ -7396,6 +7642,123 @@
 									},
 									{}
 								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"/anoncreds/schemas/{schemaId}": {
+			"get": {
+				"operationId": "GetSchemaById",
+				"responses": {
+					"200": {
+						"description": "get schema by Id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SchemaResponseDTO"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"ver": "1.0",
+											"id": "WgWxqztrNooG92RXvxSTWv:2:schema_name:1.0",
+											"name": "schema",
+											"version": "1.0",
+											"attrNames": [
+												"string"
+											],
+											"seqNo": 351936
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Get schema by schemaId",
+				"tags": [
+					"Anoncreds - Schemas"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "schemaId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/SchemaId"
+						}
+					}
+				]
+			}
+		},
+		"/anoncreds/schemas": {
+			"post": {
+				"operationId": "CreateSchema",
+				"responses": {
+					"200": {
+						"description": "get schema",
+						"content": {
+							"application/json": {
+								"schema": {
+									"anyOf": [
+										{
+											"$ref": "#/components/schemas/RegisterSchemaReturn"
+										},
+										{
+											"$ref": "#/components/schemas/RegisterSchemaReturnStateFinished"
+										}
+									]
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"state": "finished",
+											"schema": {
+												"issuerId": "did:indy:bcovrin:testnet:LRCUFcizUL74AGgLqdJHK7",
+												"name": "Test Schema",
+												"version": "1.0.0",
+												"attrNames": [
+													"Name",
+													"Age"
+												]
+											},
+											"schemaId": "LRCUFcizUL74AGgLqdJHK7:2:Test Schema:1.0.0"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Create schema",
+				"tags": [
+					"Anoncreds - Schemas"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateSchemaInput"
 							}
 						}
 					}

@@ -44,7 +44,11 @@ export enum NetworkTypes {
 
 export enum IndicioAcceptanceMechanism {
   Wallet_Agreement = 'wallet_agreement',
-  Accept = 'accept',
+  At_Submission = 'at_submission',
+  For_Session = 'for_session',
+  On_File = 'on_file',
+  Product_Eula = 'product_eula',
+  Service_Agreement = 'service_agreement'
 }
 
 export enum EndorserMode {
