@@ -390,6 +390,8 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
 
   if (statusListServerUrl) {
     process.env.STATUS_LIST_SERVER_URL = statusListServerUrl
+  } else {
+    throw new Error('statusListServerUrl is required in the configuration')
   }
   if (statusListApiKey) {
     process.env.STATUS_LIST_API_KEY = statusListApiKey
