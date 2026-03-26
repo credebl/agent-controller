@@ -3,7 +3,11 @@ import { StatusList, getListFromStatusListJWT } from '@sd-jwt/jwt-status-list';
 
 // We evaluate this at request-time instead of statically so cliAgent config is available
 export function getServerUrl() {
-    return process.env.STATUS_LIST_SERVER_URL || 'http://localhost:3000';
+    const url = process.env.STATUS_LIST_SERVER_URL;
+    if (!url) {
+        throw new Error('STATUS_LIST_SERVER_URL is not configured');
+    }
+    return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
 function getApiKeyHeaders() {
@@ -61,7 +65,9 @@ export async function checkAndCreateStatusList(agent: any, listId: string, issue
     const uri = `${getServerUrl()}/status-lists/${listId}`;
 
     try {
-        const res = await fetch(uri);
+        const res = await fetch(uri, {
+            headers: getApiKeyHeaders()
+        });
 
         if (res.status === 404) {
             console.log(`Status list ${listId} not found, creating a new one...`);
@@ -91,7 +97,8 @@ export async function checkAndCreateStatusList(agent: any, listId: string, issue
 
             console.log(`Successfully created and published new status list ${listId}`);
         } else if (!res.ok) {
-            throw new Error(`Failed to check status list ${listId}: ${res.statusText}`);
+            const errBody = await res.text().catch(() => '');
+            throw new Error(`Failed to check status list ${listId} at ${uri}: ${res.status} ${res.statusText} ${errBody}`);
         }
     } catch (error) {
         console.error(`Error in checkAndCreateStatusList:`, error);
@@ -103,8 +110,13 @@ export async function revokeCredentialInStatusList(agent: any, listId: string, i
     const uri = `${getServerUrl()}/status-lists/${listId}`;
 
     // 1. Fetch current
-    const res = await fetch(uri);
-    if (!res.ok) throw new Error(`Failed to fetch status list to revoke: ${res.statusText}`);
+    const res = await fetch(uri, {
+        headers: getApiKeyHeaders()
+    });
+    if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`Failed to fetch status list to revoke at ${uri}: ${res.status} ${res.statusText} ${errBody}`);
+    }
 
     const currentJwt = await res.text();
     const statusList = getListFromStatusListJWT(currentJwt);
