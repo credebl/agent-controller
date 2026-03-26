@@ -31,6 +31,7 @@ import {
   X509Module,
   JwkDidRegistrar,
   JwkDidResolver,
+  SdJwtVcModule,
 } from '@credo-ts/core'
 import {
   DidCommHttpOutboundTransport,
@@ -120,6 +121,9 @@ export interface AriesRestConfig {
   schemaFileServerURL?: string
   apiKey: string
   updateJwtSecret?: boolean
+  statusListServerUrl?: string
+  statusListApiKey?: string
+  statusListDefaultSize?: number
 }
 
 export async function readRestConfig(path: string) {
@@ -252,6 +256,7 @@ const getModules = (
       rpcUrl: rpcUrl ? rpcUrl : (process.env.RPC_URL as string),
       serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
     }),
+    sdJwtVc: new SdJwtVcModule(),
     openid4vc: new OpenId4VcModule({
       app: expressApp,
       issuer: {
@@ -377,8 +382,21 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     walletScheme,
     apiKey,
     updateJwtSecret,
+    statusListServerUrl,
+    statusListApiKey,
+    statusListDefaultSize,
     ...afjConfig
   } = restConfig
+
+  if (statusListServerUrl) {
+    process.env.STATUS_LIST_SERVER_URL = statusListServerUrl
+  }
+  if (statusListApiKey) {
+    process.env.STATUS_LIST_API_KEY = statusListApiKey
+  }
+  if (statusListDefaultSize) {
+    process.env.STATUS_LIST_DEFAULT_SIZE = String(statusListDefaultSize)
+  }
 
   const logger = new TsLogger(logLevel ?? LogLevel.error)
 

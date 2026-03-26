@@ -4,10 +4,7 @@ import type { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 import { Kms } from '@credo-ts/core'
 import { OpenId4VciCreateCredentialOfferOptions, OpenId4VciSignCredentials } from '@credo-ts/openid4vc'
 
-export enum SignerMethod {
-  Did = 'did',
-  X5c = 'x5c',
-}
+import { SignerMethod } from '../../../enums/enum'
 
 export interface OpenId4VciOfferCredentials {
   credentialSupportedId: string
@@ -17,6 +14,11 @@ export interface OpenId4VciOfferCredentials {
     did?: string
     x5c?: string[]
     keyId?: string
+  }
+  statusListDetails?: {
+    listId: string
+    index: number
+    listSize?: number
   }
 }
 
@@ -72,6 +74,11 @@ export interface OpenId4VcIssuanceSessionsCreateOffer {
     authorizationServerUrl: string
   }
   issuanceMetadata?: Record<string, unknown>
+  statusListDetails?: {
+    listId: string
+    index: number
+    listSize?: number
+  }
 }
 
 export interface X509GenericRecordContent {
