@@ -97,10 +97,6 @@ class IssuanceSessionsService {
       options.issuanceMetadata.StatusListInfo = offerStatusInfo
     }
 
-    if (offerStatusInfo.length > 0) {
-      options.issuanceMetadata.StatusListInfo = offerStatusInfo
-    }
-
     const issuerModule = agentReq.agent.modules.openid4vc.issuer
 
     if (!issuerModule) {
