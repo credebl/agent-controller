@@ -1,6 +1,7 @@
-import { Agent, JwsProtectedHeaderOptions, JwsService, JwtPayload } from '@credo-ts/core';
+import { Agent, JwsProtectedHeaderOptions, JwsService, JwtPayload, VerificationMethod } from '@credo-ts/core';
 import { StatusList, getListFromStatusListJWT } from '@sd-jwt/jwt-status-list';
 import { STATUS_LISTS_PATH } from './constant';
+import { getAlgFromVerificationMethod, getVerificationMethod, fetchWithTimeout } from './helpers';
 
 const statusListLocks = new Map<string, Promise<void>>();
 
@@ -36,7 +37,7 @@ async function getKmsKeyIdForDid(agent: Agent, did: string, verificationMethodId
     return verificationMethodId;
 }
 
-async function signStatusList(agent: Agent, verificationMethodId: string, statusList: StatusList, listId: string, issuerDid: string): Promise<string> {
+async function signStatusList(agent: Agent, verificationMethod: VerificationMethod, statusList: StatusList, listId: string, issuerDid: string): Promise<string> {
     const payload = new JwtPayload({
         iss: issuerDid,
         sub: `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`,
@@ -49,13 +50,15 @@ async function signStatusList(agent: Agent, verificationMethodId: string, status
         }
     });
 
-    const header: JwsProtectedHeaderOptions = {
-        alg: 'EdDSA',
-        typ: 'statuslist+jwt',
-    };
-
+    const alg = getAlgFromVerificationMethod(verificationMethod);
     const jwsService = agent.dependencyManager.resolve(JwsService);
-    const kmsKeyId = await getKmsKeyIdForDid(agent, issuerDid, verificationMethodId);
+    const kmsKeyId = await getKmsKeyIdForDid(agent, issuerDid, verificationMethod.id);
+
+    const header: JwsProtectedHeaderOptions = {
+        alg: alg as any,
+        typ: 'statuslist+jwt',
+        kid: verificationMethod.id,
+    };
 
     return jwsService.createJwsCompact(agent.context, {
         keyId: kmsKeyId,
@@ -65,10 +68,21 @@ async function signStatusList(agent: Agent, verificationMethodId: string, status
 }
 
 export async function checkAndCreateStatusList(agent: Agent, listId: string, issuerDid: string, listSize?: number) {
-    const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`;
+    const previousLock = statusListLocks.get(listId) || Promise.resolve();
+
+    let releaseLock: () => void;
+    const currentLock = new Promise<void>((resolve) => {
+        releaseLock = resolve;
+    });
+
+    statusListLocks.set(listId, currentLock);
 
     try {
-        const res = await fetch(uri, {
+        await previousLock;
+
+        const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`;
+
+        const res = await fetchWithTimeout(uri, {
             headers: getApiKeyHeaders()
         });
 
@@ -78,22 +92,20 @@ export async function checkAndCreateStatusList(agent: Agent, listId: string, iss
             const statusList = new StatusList(new Array(size).fill(0), 1);
 
             const didDocument = await agent.dids.resolve(issuerDid);
-            const verificationMethod = didDocument.didDocument?.verificationMethod?.[0];
+            const verificationMethod = didDocument.didDocument ? getVerificationMethod(didDocument.didDocument) : undefined;
 
             if (!verificationMethod) {
-                throw new Error(`Could not find verification method for DID ${issuerDid}`);
+                throw new Error(`Could not find suitable verification method (assertionMethod) for DID ${issuerDid}`);
             }
 
-            const keyId = verificationMethod.id;
-
-            const jwt = await signStatusList(agent, keyId, statusList, listId, issuerDid);
-            const postRes = await fetch(`${getServerUrl()}/${STATUS_LISTS_PATH}`, {
+            const jwt = await signStatusList(agent, verificationMethod, statusList, listId, issuerDid);
+            const postRes = await fetchWithTimeout(`${getServerUrl()}/${STATUS_LISTS_PATH}`, {
                 method: 'POST',
                 headers: getApiKeyHeaders(),
                 body: JSON.stringify({ id: listId, jwt }),
             });
 
-            if (!postRes.ok) {
+            if (!postRes.ok && postRes.status !== 409) {
                 const errBody = await postRes.text();
                 throw new Error(`Failed to create list on server: ${postRes.status} ${errBody}`);
             }
@@ -106,6 +118,11 @@ export async function checkAndCreateStatusList(agent: Agent, listId: string, iss
     } catch (error) {
         console.error(`Error in checkAndCreateStatusList:`, error);
         throw error;
+    } finally {
+        releaseLock!();
+        if (statusListLocks.get(listId) === currentLock) {
+            statusListLocks.delete(listId);
+        }
     }
 }
 
@@ -124,7 +141,7 @@ export async function revokeCredentialInStatusList(agent: Agent, listId: string,
 
         const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`;
 
-        const res = await fetch(uri, {
+        const res = await fetchWithTimeout(uri, {
             headers: getApiKeyHeaders(),
         });
         if (!res.ok) {
@@ -138,13 +155,12 @@ export async function revokeCredentialInStatusList(agent: Agent, listId: string,
         statusList.setStatus(index, 1);
 
         const didDocument = await agent.dids.resolve(issuerDid);
-        const verificationMethod = didDocument.didDocument?.verificationMethod?.[0];
-        if (!verificationMethod) throw new Error(`Could not find verification method for DID ${issuerDid}`);
-        const keyId = verificationMethod.id;
+        const verificationMethod = didDocument.didDocument ? getVerificationMethod(didDocument.didDocument) : undefined;
+        if (!verificationMethod) throw new Error(`Could not find suitable verification method (assertionMethod) for DID ${issuerDid}`);
 
-        const newJwt = await signStatusList(agent, keyId, statusList, listId, issuerDid);
+        const newJwt = await signStatusList(agent, verificationMethod, statusList, listId, issuerDid);
 
-        const patchRes = await fetch(`${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`, {
+        const patchRes = await fetchWithTimeout(`${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`, {
             method: 'PATCH',
             headers: getApiKeyHeaders(),
             body: JSON.stringify({ jwt: newJwt }),

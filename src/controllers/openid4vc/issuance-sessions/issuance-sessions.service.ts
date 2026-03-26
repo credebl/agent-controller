@@ -9,7 +9,6 @@ import { BadRequestError, NotFoundError } from '../../../errors/errors'
 
 import { checkAndCreateStatusList, getServerUrl, revokeCredentialInStatusList } from '../../../utils/statusListService'
 import { STATUS_LISTS_PATH } from '../../../utils/constant'
-
 class IssuanceSessionsService {
   public async createCredentialOffer(options: OpenId4VcIssuanceSessionsCreateOffer, agentReq: Req) {
     const { credentials, publicIssuerId } = options
@@ -93,6 +92,10 @@ class IssuanceSessionsService {
     options.issuanceMetadata ||= {}
     options.issuanceMetadata.credentials = mappedCredentials
     options.issuanceMetadata.isRevocable = options.isRevocable
+
+    if (offerStatusInfo.length > 0) {
+      options.issuanceMetadata.StatusListInfo = offerStatusInfo
+    }
 
     if (offerStatusInfo.length > 0) {
       options.issuanceMetadata.StatusListInfo = offerStatusInfo
