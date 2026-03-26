@@ -28,7 +28,6 @@ import {
   LogLevel,
   Agent,
   X509Module,
-  X509Certificate,
   JwkDidRegistrar,
   JwkDidResolver,
 } from '@credo-ts/core'
@@ -66,7 +65,8 @@ import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network,
 import { setupServer } from './server'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
-import { getMixedCredentialRequestToCredentialMapper, getTrustedCerts } from './utils/oid4vc-agent'
+import { getMixedCredentialRequestToCredentialMapper, getX509CertsByClientToken, getX509CertsByUrl } from './utils/oid4vc-agent'
+import { AuthTypes, getAuthType } from './utils/auth'
 import { PolygonDidRegistrar, PolygonDidResolver, PolygonModule } from '@ayanworks/credo-polygon-w3c-module'
 
 export type Transports = 'ws' | 'http'
@@ -280,14 +280,15 @@ const getModules = (
         console.log('[getTrustedCertificatesForVerification] tenantId from agentContext:', tenantId)
 
         try {
-          const isTrusted = await getTrustedCerts(tenantId, certificateChain)
+          const authType = getAuthType()
+          console.log('[getTrustedCertificatesForVerification] authType:', authType)
 
-          if (!isTrusted) {
-            console.warn('[getTrustedCertificatesForVerification] certificate chain not trusted, returning empty')
-            return []
+          if (authType === AuthTypes.ClientAuth) {
+            return await getX509CertsByClientToken(tenantId, certificateChain)
           }
 
-          return certificateChain.map((cert: X509Certificate) => cert.toString('pem'))
+          // NoAuth: return all certs from the static trust list URL
+          return await getX509CertsByUrl()
         } catch (error) {
           console.error('[getTrustedCertificatesForVerification] unexpected error:', error instanceof Error ? error.message : error)
           return []

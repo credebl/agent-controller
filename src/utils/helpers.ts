@@ -5,7 +5,7 @@ import { JsonEncoder, JsonTransformer, X509Certificate } from '@credo-ts/core'
 import axios from 'axios'
 import { randomBytes } from 'crypto'
 
-import { curveToKty, keyAlgorithmToCurve } from './constant'
+import { TRUST_SERVICE_ENV_KEYS, TRUST_SERVICE_ROUTES, curveToKty, keyAlgorithmToCurve } from './constant'
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60
 const tokenCache = new Map<string, { token: string; expiresAt: number }>()
 
@@ -117,12 +117,12 @@ export function getTypeFromCurve(key: Curve | KeyAlgorithm): OkpType | EcType {
 }
 
 async function fetchPlatformToken(
-  platformBaseUrl: string,
+  clientTokenBaseUrl: string,
   clientId: string,
   clientSecret: string,
   label: string,
 ): Promise<string> {
-  if (!platformBaseUrl) throw new Error(`[${label}] platformBaseUrl is required`)
+  if (!clientTokenBaseUrl) throw new Error(`[${label}] clientTokenBaseUrl is required`)
   if (!clientId) throw new Error(`[${label}] clientId is required`)
   if (!clientSecret) throw new Error(`[${label}] clientSecret is required`)
 
@@ -132,7 +132,7 @@ async function fetchPlatformToken(
     return cachedToken
   }
 
-  const tokenUrl = `${platformBaseUrl}/v1/orgs/${clientId}/token`
+  const tokenUrl = `${clientTokenBaseUrl}/v1/orgs/${clientId}/token`
   console.log(`[${label}] fetching token from:`, tokenUrl)
 
   let tokenResponse
@@ -176,30 +176,33 @@ async function fetchPlatformToken(
 
 async function checkTrustCertificatesExist(
   trustServiceUrl: string,
-  token: string,
   x509: string[],
   label: string,
   tenantId?: string,
+  token?: string,
 ): Promise<boolean> {
-  const matchUrl = `${trustServiceUrl}/api/x509-certificates/match`
+  const matchUrl = `${trustServiceUrl}${TRUST_SERVICE_ROUTES.MATCH_CERTIFICATES}`
   console.log(`[${label}] calling match API:`, matchUrl)
 
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {}
+
   try {
-    const matchResponse = await axios.post<boolean>(
+    const matchResponse = await axios.post<{ matched: boolean }>(
       matchUrl,
       { x509, ...(tenantId && { tenantId }) },
-      { headers: { 'Content-Type': 'application/json', accept: 'application/json', Authorization: `Bearer ${token}` } },
+      { headers: { 'Content-Type': 'application/json', accept: 'application/json', ...authHeaders } },
     )
 
     console.log(`[${label}] match response status:`, matchResponse.status)
-    console.log(`[${label}] match response data:`, matchResponse.data)
 
-    if (!matchResponse.data) {
+    const isTrusted = matchResponse.data?.matched === true
+    console.log(`[${label}] isTrusted:`, isTrusted)
+
+    if (!isTrusted) {
       console.warn(`[${label}] certificate chain not trusted${tenantId ? ` for tenantId: ${tenantId}` : ''}`)
-      return false
     }
 
-    return matchResponse.data
+    return isTrusted
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error(`[${label}] match request failed:`, {
@@ -217,55 +220,37 @@ async function checkTrustCertificatesExist(
   }
 }
 
-export async function checkDedicatedX509Certificates(certificateChain: X509Certificate[]): Promise<boolean> {
-  const label = 'checkDedicatedX509Certificates'
+export async function checkX509Certificates(
+  x509Certificates: string[],
+  isDedicated: boolean,
+  tenantId?: string,
+): Promise<boolean> {
+  const label = 'checkX509Certificates'
 
-  const platformBaseUrl = process.env.PLATFORM_BASE_URL
-  const clientId = process.env.PLATFORM_DEDICATED_CLIENT_ID
-  const clientSecret = process.env.PLATFORM_DEDICATED_CLIENT_SECRET
-  const trustServiceUrl = process.env.TRUST_SERVICE_URL
-
-  if (!platformBaseUrl) throw new Error('PLATFORM_BASE_URL is not configured')
-  if (!clientId) throw new Error('PLATFORM_DEDICATED_CLIENT_ID is not configured')
-  if (!clientSecret) throw new Error('PLATFORM_DEDICATED_CLIENT_SECRET is not configured')
-  if (!trustServiceUrl) throw new Error('TRUST_SERVICE_URL is not configured')
-
-  if (!certificateChain || certificateChain.length === 0) {
+  if (!x509Certificates || x509Certificates.length === 0) {
     throw new Error(`[${label}] certificate chain is required but was not provided`)
   }
 
-  const token = await fetchPlatformToken(platformBaseUrl, clientId, clientSecret, label)
-  const x509 = certificateChain.map((cert) => cert.toString('base64'))
-  console.log(`[${label}] certificate chain length:`, x509.length)
+  const clientTokenBaseUrl = process.env.CLIENT_TOKEN_BASE_URL
+  const clientId = process.env[TRUST_SERVICE_ENV_KEYS.CLIENT_ID]
+  const clientSecret = process.env[TRUST_SERVICE_ENV_KEYS.CLIENT_SECRET]
+  const trustListUrl = process.env[TRUST_SERVICE_ENV_KEYS.TRUST_LIST_URL]
 
-  return checkTrustCertificatesExist(trustServiceUrl, token, x509, label)
-}
+  if (!clientTokenBaseUrl) throw new Error(`[${label}] CLIENT_TOKEN_BASE_URL is not configured`)
+  if (!clientId) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.CLIENT_ID} is not configured`)
+  if (!clientSecret) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.CLIENT_SECRET} is not configured`)
+  if (!trustListUrl) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.TRUST_LIST_URL} is not configured`)
 
-export async function checkSharedAgentX509Certificates(tenantId?: string, certificateChain?: X509Certificate[]): Promise<boolean> {
-  const label = 'checkSharedAgentX509Certificates'
-
-  const platformBaseUrl = process.env.PLATFORM_BASE_URL
-  const clientId = process.env.PLATFORM_SHARED_AGENT_CLIENT_ID
-  const clientSecret = process.env.PLATFORM_SHARED_AGENT_CLIENT_SECRET
-  const resolvedTenantId = tenantId ?? process.env.PLATFORM_SHARED_AGENT_TENANT_ID
-  const trustServiceUrl = process.env.TRUST_SERVICE_URL
-
-  if (!platformBaseUrl) throw new Error('PLATFORM_BASE_URL is not configured')
-  if (!clientId) throw new Error('PLATFORM_SHARED_AGENT_CLIENT_ID is not configured')
-  if (!clientSecret) throw new Error('PLATFORM_SHARED_AGENT_CLIENT_SECRET is not configured')
-  if (!resolvedTenantId) throw new Error('tenantId not provided and PLATFORM_SHARED_AGENT_TENANT_ID is not configured')
-  if (!trustServiceUrl) throw new Error('TRUST_SERVICE_URL is not configured')
-
-  console.log(`[${label}] using tenantId:`, resolvedTenantId, tenantId ? '(from agent context)' : '(from .env)')
-
-  if (!certificateChain || certificateChain.length === 0) {
-    throw new Error(`[${label}] certificate chain is required but was not provided`)
+  let resolvedTenantId: string | undefined
+  if (!isDedicated) {
+    resolvedTenantId = tenantId
+    if (!resolvedTenantId) throw new Error(`[${label}] tenantId is required for shared agent but was not provided`)
+    console.log(`[${label}] using tenantId:`, resolvedTenantId)
   }
 
-  const token = await fetchPlatformToken(platformBaseUrl, clientId, clientSecret, label)
+  console.log(`[${label}] agent type: ${isDedicated ? 'dedicated' : 'shared'}, certificates:`, x509Certificates)
 
-  const x509 = certificateChain.map((cert) => cert.toString('base64'))
-  console.log(`[${label}] certificate chain length:`, x509.length)
+  const token = await fetchPlatformToken(clientTokenBaseUrl, clientId, clientSecret, label)
 
-  return checkTrustCertificatesExist(trustServiceUrl, token, x509, label, resolvedTenantId)
+  return checkTrustCertificatesExist(trustListUrl, x509Certificates, label, resolvedTenantId, token)
 }

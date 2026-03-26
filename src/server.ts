@@ -18,6 +18,7 @@ import { ValidateError } from 'tsoa'
 import { container } from 'tsyringe'
 
 import { setDynamicApiKey } from './authentication'
+import { validateAuthConfig } from './utils/auth'
 import { ErrorMessages } from './enums'
 import { BaseError } from './errors/errors'
 import { basicMessageEvents } from './events/BasicMessageEvents'
@@ -41,6 +42,7 @@ export const setupServer = async (
 ) => {
   await otelSDK.start()
   agent.config.logger.info('OpenTelemetry SDK started')
+  validateAuthConfig()
   container.registerInstance(Agent, agent as Agent)
   fs.writeFileSync('config.json', JSON.stringify(config, null, 2))
 
