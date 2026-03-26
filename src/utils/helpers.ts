@@ -1,11 +1,11 @@
 import type { Curve, EcCurve, EcType, OkpCurve, OkpType } from '../controllers/types'
 import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
-import { JsonEncoder, JsonTransformer, X509Certificate } from '@credo-ts/core'
+import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
 import axios from 'axios'
 import { randomBytes } from 'crypto'
 
-import { TRUST_SERVICE_ENV_KEYS, TRUST_SERVICE_ROUTES, curveToKty, keyAlgorithmToCurve } from './constant'
+import { TRUST_SERVICE_ENV_KEYS, curveToKty, keyAlgorithmToCurve } from './constant'
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60
 const tokenCache = new Map<string, { token: string; expiresAt: number }>()
 
@@ -117,12 +117,12 @@ export function getTypeFromCurve(key: Curve | KeyAlgorithm): OkpType | EcType {
 }
 
 async function fetchPlatformToken(
-  clientTokenBaseUrl: string,
+  tokenUrl: string,
   clientId: string,
   clientSecret: string,
   label: string,
 ): Promise<string> {
-  if (!clientTokenBaseUrl) throw new Error(`[${label}] clientTokenBaseUrl is required`)
+  if (!tokenUrl) throw new Error(`[${label}] tokenUrl is required`)
   if (!clientId) throw new Error(`[${label}] clientId is required`)
   if (!clientSecret) throw new Error(`[${label}] clientSecret is required`)
 
@@ -132,14 +132,13 @@ async function fetchPlatformToken(
     return cachedToken
   }
 
-  const tokenUrl = `${clientTokenBaseUrl}/v1/orgs/${clientId}/token`
   console.log(`[${label}] fetching token from:`, tokenUrl)
 
   let tokenResponse
   try {
     tokenResponse = await axios.post<any>(
       tokenUrl,
-      { clientSecret },
+      { clientId, clientSecret },
       { headers: { 'Content-Type': 'application/json', accept: 'application/json' } },
     )
   } catch (error) {
@@ -181,7 +180,7 @@ async function checkTrustCertificatesExist(
   tenantId?: string,
   token?: string,
 ): Promise<boolean> {
-  const matchUrl = `${trustServiceUrl}${TRUST_SERVICE_ROUTES.MATCH_CERTIFICATES}`
+  const matchUrl = trustServiceUrl
   console.log(`[${label}] calling match API:`, matchUrl)
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {}
@@ -231,12 +230,12 @@ export async function checkX509Certificates(
     throw new Error(`[${label}] certificate chain is required but was not provided`)
   }
 
-  const clientTokenBaseUrl = process.env.CLIENT_TOKEN_BASE_URL
+  const tokenUrl = process.env[TRUST_SERVICE_ENV_KEYS.TOKEN_URL]
   const clientId = process.env[TRUST_SERVICE_ENV_KEYS.CLIENT_ID]
   const clientSecret = process.env[TRUST_SERVICE_ENV_KEYS.CLIENT_SECRET]
   const trustListUrl = process.env[TRUST_SERVICE_ENV_KEYS.TRUST_LIST_URL]
 
-  if (!clientTokenBaseUrl) throw new Error(`[${label}] CLIENT_TOKEN_BASE_URL is not configured`)
+  if (!tokenUrl) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.TOKEN_URL} is not configured`)
   if (!clientId) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.CLIENT_ID} is not configured`)
   if (!clientSecret) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.CLIENT_SECRET} is not configured`)
   if (!trustListUrl) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.TRUST_LIST_URL} is not configured`)
@@ -250,7 +249,7 @@ export async function checkX509Certificates(
 
   console.log(`[${label}] agent type: ${isDedicated ? 'dedicated' : 'shared'}, certificates:`, x509Certificates)
 
-  const token = await fetchPlatformToken(clientTokenBaseUrl, clientId, clientSecret, label)
+  const token = await fetchPlatformToken(tokenUrl, clientId, clientSecret, label)
 
   return checkTrustCertificatesExist(trustListUrl, x509Certificates, label, resolvedTenantId, token)
 }

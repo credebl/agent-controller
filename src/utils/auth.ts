@@ -5,7 +5,7 @@ export interface NoAuth {
 
 export interface ClientAuth {
   type: 'ClientAuth'
-  clientTokenBaseUrl: string
+  trustServiceTokenUrl: string
   trustListUrl: string
   trustServiceClientId: string
   trustServiceClientSecret: string
@@ -45,7 +45,7 @@ export function validateAuthConfig(): void {
       if (!process.env.TRUST_LIST_URL) throw new Error('[validateAuthConfig] TRUST_LIST_URL is required for NoAuth')
     },
     ClientAuth: () => {
-      if (!process.env.CLIENT_TOKEN_BASE_URL) throw new Error('[validateAuthConfig] CLIENT_TOKEN_BASE_URL is required for ClientAuth')
+      if (!process.env.TRUST_SERVICE_TOKEN_URL) throw new Error('[validateAuthConfig] TRUST_SERVICE_TOKEN_URL is required for ClientAuth')
       if (!process.env.TRUST_LIST_URL) throw new Error('[validateAuthConfig] TRUST_LIST_URL is required for ClientAuth')
       if (!process.env.TRUST_SERVICE_CLIENT_ID) throw new Error('[validateAuthConfig] TRUST_SERVICE_CLIENT_ID is required for ClientAuth')
       if (!process.env.TRUST_SERVICE_CLIENT_SECRET) throw new Error('[validateAuthConfig] TRUST_SERVICE_CLIENT_SECRET is required for ClientAuth')

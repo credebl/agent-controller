@@ -279,8 +279,7 @@ const getModules = (
         const tenantId = agentContext.contextCorrelationId
         console.log('[getTrustedCertificatesForVerification] tenantId from agentContext:', tenantId)
 
-        try {
-          const authType = getAuthType()
+        const authType = getAuthType()
           console.log('[getTrustedCertificatesForVerification] authType:', authType)
 
           if (authType === AuthTypes.ClientAuth) {
@@ -289,10 +288,6 @@ const getModules = (
 
           // NoAuth: return all certs from the static trust list URL
           return await getX509CertsByUrl()
-        } catch (error) {
-          console.error('[getTrustedCertificatesForVerification] unexpected error:', error instanceof Error ? error.message : error)
-          return []
-        }
       },
     }),
   }

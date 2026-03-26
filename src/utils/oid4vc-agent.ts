@@ -1,10 +1,4 @@
 import type { SdJwtVcHolderBinding } from '@credo-ts/core'
-import type { DisclosureFrame } from '../controllers/types'
-import { Agent, CredoError } from '@credo-ts/core'
-import { container } from 'tsyringe'
-
-import { checkX509Certificates } from './helpers'
-import { validateAuthConfig } from './auth'
 import type {
   OpenId4VcCredentialHolderBinding,
   OpenId4VcCredentialHolderDidBinding,
@@ -13,11 +7,18 @@ import type {
   OpenId4VciSignSdJwtCredentials,
 } from '@credo-ts/openid4vc'
 
-import { DidsApi, X509Certificate, X509Service } from '@credo-ts/core'
-import { ClaimFormat, X509ModuleConfig } from '@credo-ts/core'
+import { Agent, ClaimFormat, CredoError, DidsApi, LogLevel, X509Certificate, X509ModuleConfig, X509Service } from '@credo-ts/core'
 import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
+import { container } from 'tsyringe'
+
+import type { DisclosureFrame } from '../controllers/types'
 
 import { SignerMethod } from '../enums/enum'
+import { validateAuthConfig } from './auth'
+import { checkX509Certificates } from './helpers'
+import { TsLogger } from './logger'
+
+const logger = new TsLogger(LogLevel.info)
 
 export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredentialRequestToCredentialMapper {
   return async ({
@@ -244,22 +245,31 @@ async function verifyX509CertificateTrust(
   return checkX509Certificates(x509Certificates, isDedicated, tenantId)
 }
 
-export async function getTrustedCerts(tenantId?: string, certificateChain?: X509Certificate[]): Promise<boolean> {
+export async function getTrustedCerts(params: {
+  certificateChain: X509Certificate[]
+  tenantId?: string
+}): Promise<boolean> {
+  const { tenantId, certificateChain } = params
+
   const agent = container.resolve(Agent)
   if (!agent) {
     throw new Error('[getTrustedCerts] agent not available in container')
   }
 
-  if (!certificateChain || certificateChain.length === 0) {
+  if (certificateChain.length === 0) {
     throw new Error('[getTrustedCerts] certificate chain is required but was not provided')
   }
 
   const isDedicated = !('tenants' in agent.modules)
-  console.log('[getTrustedCerts] agent type:', isDedicated ? 'dedicated' : 'shared')
+  logger.info(`[getTrustedCerts] agent type: ${isDedicated ? 'dedicated' : 'shared'}`)
+
+  if (!isDedicated && !tenantId) {
+    throw new Error('[getTrustedCerts] tenantId is required for shared agents')
+  }
 
   const isTrusted = await verifyX509CertificateTrust(certificateChain, isDedicated, tenantId)
   if (!isTrusted) {
-    console.warn('[getTrustedCerts] certificate chain not trusted', isDedicated ? '' : `for tenantId: ${tenantId}`)
+    logger.warn(`[getTrustedCerts] certificate chain not trusted${isDedicated ? '' : ` for tenantId: ${tenantId}`}`)
   }
 
   return isTrusted
@@ -273,10 +283,10 @@ export async function getX509CertsByClientToken(
   tenantId: string,
   certificateChain: X509Certificate[],
 ): Promise<string[]> {
-  const isTrusted = await getTrustedCerts(tenantId, certificateChain)
+  const isTrusted = await getTrustedCerts({ certificateChain, tenantId })
 
   if (!isTrusted) {
-    console.warn('[getX509CertsByClientToken] certificate chain not trusted for tenantId:', tenantId)
+    logger.warn(`[getX509CertsByClientToken] certificate chain not trusted for tenantId: ${tenantId}`)
     return []
   }
 
@@ -287,7 +297,7 @@ export async function getX509CertsByUrl(): Promise<string[]> {
   const trustListUrl = process.env.TRUST_LIST_URL
   if (!trustListUrl) throw new Error('[getX509CertsByUrl] TRUST_LIST_URL is not configured')
 
-  console.log('[getX509CertsByUrl] fetching trust list from:', trustListUrl)
+  logger.info(`[getX509CertsByUrl] fetching trust list from: ${trustListUrl}`)
 
   const response = await fetch(trustListUrl)
 
@@ -301,7 +311,7 @@ export async function getX509CertsByUrl(): Promise<string[]> {
     throw new Error('[getX509CertsByUrl] trust list is empty or invalid')
   }
 
-  console.log('[getX509CertsByUrl] fetched certificates count:', data.length)
+  logger.info(`[getX509CertsByUrl] fetched certificates count: ${data.length}`)
 
   return data as string[]
 }

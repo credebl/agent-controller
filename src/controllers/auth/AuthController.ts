@@ -28,13 +28,13 @@ export class AuthController extends Controller {
     @Path('orgId') orgId: string,
     @Body() body: OrgTokenRequest,
   ): Promise<OrgTokenResponse> {
-    const clientTokenBaseUrl = process.env.CLIENT_TOKEN_BASE_URL
-    if (!clientTokenBaseUrl) {
-      throw new BadRequestError('CLIENT_TOKEN_BASE_URL is not configured')
+    const trustServiceTokenUrl = process.env.TRUST_SERVICE_TOKEN_URL
+    if (!trustServiceTokenUrl) {
+      throw new BadRequestError('TRUST_SERVICE_TOKEN_URL is not configured')
     }
 
     const response = await axios.post<OrgTokenResponse>(
-      `${clientTokenBaseUrl}/v1/orgs/${orgId}/token`,
+      `${trustServiceTokenUrl}/v1/orgs/${orgId}/token`,
       { clientId: body.clientId, clientSecret: body.clientSecret },
       { headers: { 'Content-Type': 'application/json', accept: 'application/json' } },
     )
