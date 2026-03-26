@@ -1,11 +1,5 @@
 import type { DisclosureFrame } from '../controllers/types'
 import type { SdJwtVcHolderBinding } from '@credo-ts/core'
-import type { DisclosureFrame } from '../controllers/types'
-import { Agent, CredoError } from '@credo-ts/core'
-import { container } from 'tsyringe'
-
-import { checkX509Certificates } from './helpers'
-import { validateAuthConfig } from './auth'
 import type {
   OpenId4VcCredentialHolderBinding,
   OpenId4VcCredentialHolderDidBinding,
