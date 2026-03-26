@@ -1,9 +1,4 @@
 import type { SdJwtVcHolderBinding } from '@credo-ts/core'
-import type { DisclosureFrame } from '../controllers/types'
-import { Agent, CredoError } from '@credo-ts/core'
-import { container } from 'tsyringe'
-
-import { fetchDedicatedX509Certificates, fetchSharedAgentX509Certificates } from './helpers'
 import type {
   OpenId4VcCredentialHolderBinding,
   OpenId4VcCredentialHolderDidBinding,
@@ -12,11 +7,18 @@ import type {
   OpenId4VciSignSdJwtCredentials,
 } from '@credo-ts/openid4vc'
 
-import { DidsApi, X509Certificate, X509Service } from '@credo-ts/core'
-import { ClaimFormat, X509ModuleConfig } from '@credo-ts/core'
+import { Agent, ClaimFormat, CredoError, DidsApi, LogLevel, X509Certificate, X509ModuleConfig, X509Service } from '@credo-ts/core'
 import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
+import { container } from 'tsyringe'
+
+import type { DisclosureFrame } from '../controllers/types'
 
 import { SignerMethod } from '../enums/enum'
+import { validateAuthConfig } from './auth'
+import { checkX509Certificates } from './helpers'
+import { TsLogger } from './logger'
+
+const logger = new TsLogger(LogLevel.info)
 
 export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredentialRequestToCredentialMapper {
   return async ({
@@ -234,31 +236,84 @@ export interface OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions {
   disclosureFrame: DisclosureFrame
 }
 
-export async function getTrustedCerts(tenantId?: string): Promise<string[]> {
-  try {
-    const agent = container.resolve(Agent)
-    if (!agent) {
-      console.error('[getTrustedCerts] agent not available in container')
-      return []
-    }
+async function verifyX509CertificateTrust(
+  certificateChain: X509Certificate[],
+  isDedicated: boolean,
+  tenantId?: string,
+): Promise<boolean> {
+  const x509Certificates = certificateChain.map((cert) => cert.toString('base64'))
+  return checkX509Certificates(x509Certificates, isDedicated, tenantId)
+}
 
-    const isDedicated = !('tenants' in agent.modules)
-    console.log('[getTrustedCerts] agent type:', isDedicated ? 'dedicated' : 'shared')
+export async function getTrustedCerts(params: {
+  certificateChain: X509Certificate[]
+  tenantId?: string
+}): Promise<boolean> {
+  const { tenantId, certificateChain } = params
 
-    let certs: string[]
-    if (isDedicated) {
-      certs = await fetchDedicatedX509Certificates()
-    } else {
-      certs = await fetchSharedAgentX509Certificates(tenantId)
-    }
+  const agent = container.resolve(Agent)
+  if (!agent) {
+    throw new Error('[getTrustedCerts] agent not available in container')
+  }
 
-    if (!Array.isArray(certs) || certs.length === 0) {
-      console.warn('[getTrustedCerts] no certificates returned')
-      return []
-    }
-    return certs
-  } catch (error) {
-    console.error('[getTrustedCerts] failed:', error instanceof Error ? error.message : error)
+  if (certificateChain.length === 0) {
+    throw new Error('[getTrustedCerts] certificate chain is required but was not provided')
+  }
+
+  const isDedicated = !('tenants' in agent.modules)
+  logger.info(`[getTrustedCerts] agent type: ${isDedicated ? 'dedicated' : 'shared'}`)
+
+  if (!isDedicated && !tenantId) {
+    throw new Error('[getTrustedCerts] tenantId is required for shared agents')
+  }
+
+  const isTrusted = await verifyX509CertificateTrust(certificateChain, isDedicated, tenantId)
+  if (!isTrusted) {
+    logger.warn(`[getTrustedCerts] certificate chain not trusted${isDedicated ? '' : ` for tenantId: ${tenantId}`}`)
+  }
+
+  return isTrusted
+}
+
+/**
+ * ClientAuth flow: verifies the certificate chain against the trust-service using a platform token.
+ * Returns the PEM certs if trusted, empty array if not.
+ */
+export async function getX509CertsByClientToken(
+  tenantId: string,
+  certificateChain: X509Certificate[],
+): Promise<string[]> {
+  const isTrusted = await getTrustedCerts({ certificateChain, tenantId })
+
+  if (!isTrusted) {
+    logger.warn(`[getX509CertsByClientToken] certificate chain not trusted for tenantId: ${tenantId}`)
     return []
   }
+
+  return certificateChain.map((cert) => cert.toString('pem'))
 }
+
+export async function getX509CertsByUrl(): Promise<string[]> {
+  const trustListUrl = process.env.TRUST_LIST_URL
+  if (!trustListUrl) throw new Error('[getX509CertsByUrl] TRUST_LIST_URL is not configured')
+
+  logger.info(`[getX509CertsByUrl] fetching trust list from: ${trustListUrl}`)
+
+  const response = await fetch(trustListUrl)
+
+  if (!response.ok) {
+    throw new Error(`[getX509CertsByUrl] failed to fetch trust list: HTTP ${response.status}`)
+  }
+
+  const data = await response.json()
+
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error('[getX509CertsByUrl] trust list is empty or invalid')
+  }
+
+  logger.info(`[getX509CertsByUrl] fetched certificates count: ${data.length}`)
+
+  return data as string[]
+}
+
+export { validateAuthConfig }

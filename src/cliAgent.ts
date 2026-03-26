@@ -65,7 +65,8 @@ import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network,
 import { setupServer } from './server'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
-import { getMixedCredentialRequestToCredentialMapper, getTrustedCerts } from './utils/oid4vc-agent'
+import { getMixedCredentialRequestToCredentialMapper, getX509CertsByClientToken, getX509CertsByUrl } from './utils/oid4vc-agent'
+import { AuthTypes, getAuthType } from './utils/auth'
 import { PolygonDidRegistrar, PolygonDidResolver, PolygonModule } from '@ayanworks/credo-polygon-w3c-module'
 
 export type Transports = 'ws' | 'http'
@@ -272,14 +273,21 @@ const getModules = (
     x509: new X509Module({
       getTrustedCertificatesForVerification: async (
         agentContext,
-        { certificateChain: _certificateChain, verification: _verification },
+        { certificateChain, verification: _verification },
       ) => {
         //TODO: We need to trust the certificate tenant wise, for that we need to fetch those details from platform
         const tenantId = agentContext.contextCorrelationId
         console.log('[getTrustedCertificatesForVerification] tenantId from agentContext:', tenantId)
-        const certs: string[] = await getTrustedCerts(tenantId)
 
-        return certs
+        const authType = getAuthType()
+          console.log('[getTrustedCertificatesForVerification] authType:', authType)
+
+          if (authType === AuthTypes.ClientAuth) {
+            return await getX509CertsByClientToken(tenantId, certificateChain)
+          }
+
+          // NoAuth: return all certs from the static trust list URL
+          return await getX509CertsByUrl()
       },
     }),
   }

@@ -5,7 +5,29 @@ import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
 import axios from 'axios'
 import { randomBytes } from 'crypto'
 
-import { curveToKty, keyAlgorithmToCurve } from './constant'
+import { TRUST_SERVICE_ENV_KEYS, curveToKty, keyAlgorithmToCurve } from './constant'
+const TOKEN_EXPIRY_BUFFER_SECONDS = 60
+const tokenCache = new Map<string, { token: string; expiresAt: number }>()
+
+function getTokenExpiry(token: string): number {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf-8'))
+    return typeof payload.exp === 'number' ? payload.exp : 0
+  } catch {
+    return 0
+  }
+}
+
+function getCachedToken(clientId: string): string | null {
+  const cached = tokenCache.get(clientId)
+  if (!cached) return null
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  if (nowSeconds < cached.expiresAt - TOKEN_EXPIRY_BUFFER_SECONDS) {
+    return cached.token
+  }
+  tokenCache.delete(clientId)
+  return null
+}
 
 export function objectToJson<T>(result: T) {
   const serialized = JsonTransformer.serialize(result)
@@ -95,23 +117,28 @@ export function getTypeFromCurve(key: Curve | KeyAlgorithm): OkpType | EcType {
 }
 
 async function fetchPlatformToken(
-  platformBaseUrl: string,
+  tokenUrl: string,
   clientId: string,
   clientSecret: string,
   label: string,
 ): Promise<string> {
-  if (!platformBaseUrl) throw new Error(`[${label}] platformBaseUrl is required`)
+  if (!tokenUrl) throw new Error(`[${label}] tokenUrl is required`)
   if (!clientId) throw new Error(`[${label}] clientId is required`)
   if (!clientSecret) throw new Error(`[${label}] clientSecret is required`)
 
-  const tokenUrl = `${platformBaseUrl}/v1/orgs/${clientId}/token`
+  const cachedToken = getCachedToken(clientId)
+  if (cachedToken) {
+    console.log(`[${label}] using cached token for clientId:`, clientId)
+    return cachedToken
+  }
+
   console.log(`[${label}] fetching token from:`, tokenUrl)
 
   let tokenResponse
   try {
     tokenResponse = await axios.post<any>(
       tokenUrl,
-      { clientSecret },
+      { clientId, clientSecret },
       { headers: { 'Content-Type': 'application/json', accept: 'application/json' } },
     )
   } catch (error) {
@@ -139,118 +166,90 @@ async function fetchPlatformToken(
     throw new Error(`[${label}] access_token not found in platform response`)
   }
 
+  const expiresAt = getTokenExpiry(token)
+  tokenCache.set(clientId, { token, expiresAt })
+  console.log(`[${label}] token cached for clientId:`, clientId, '| expires at:', new Date(expiresAt * 1000).toISOString())
+
   return token
 }
 
-async function fetchTrustServiceCertificates(
+async function checkTrustCertificatesExist(
   trustServiceUrl: string,
-  token: string,
-  ecosystemIds: string[],
+  x509: string[],
   label: string,
-): Promise<string[]> {
-  const certsUrl = `${trustServiceUrl}/api/x509-certificates/ecosystems`
-  console.log(`[${label}] fetching certificates from:`, certsUrl, 'ecosystemIds:', ecosystemIds)
+  tenantId?: string,
+  token?: string,
+): Promise<boolean> {
+  const matchUrl = trustServiceUrl
+  console.log(`[${label}] calling match API:`, matchUrl)
+
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {}
 
   try {
-    const certResponse = await axios.get(certsUrl, {
-      params: { ecosystemIds: ecosystemIds.join(',') },
-      headers: { accept: 'application/json', Authorization: `Bearer ${token}` },
-    })
+    const matchResponse = await axios.post<{ matched: boolean }>(
+      matchUrl,
+      { x509, ...(tenantId && { tenantId }) },
+      { headers: { 'Content-Type': 'application/json', accept: 'application/json', ...authHeaders } },
+    )
 
-    console.log(`[${label}] certificates response status:`, certResponse.status)
-    console.log(`[${label}] certificates response data:`, JSON.stringify(certResponse.data, null, 2))
+    console.log(`[${label}] match response status:`, matchResponse.status)
 
-    if (!Array.isArray(certResponse.data) || certResponse.data.length === 0) {
-      throw new Error('No certificates returned from trust-service')
+    const isTrusted = matchResponse.data?.matched === true
+    console.log(`[${label}] isTrusted:`, isTrusted)
+
+    if (!isTrusted) {
+      console.warn(`[${label}] certificate chain not trusted${tenantId ? ` for tenantId: ${tenantId}` : ''}`)
     }
 
-    const certificates: string[] = certResponse.data.map((cert: { certificateData: string }) => cert.certificateData)
-    console.log(`[${label}] extracted certificates count:`, certificates.length)
-
-    return certificates
+    return isTrusted
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error(`[${label}] certificates request failed:`, {
+      console.error(`[${label}] match request failed:`, {
+        url: matchUrl,
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
         message: error.message,
       })
       throw new Error(
-        `Failed to fetch certificates from trust-service: ${error.response?.status} ${JSON.stringify(error.response?.data)}`,
+        `[${label}] trust-service match request failed with status ${error.response?.status ?? 'no response'}: ${JSON.stringify(error.response?.data ?? error.message)}`,
       )
     }
     throw error
   }
 }
 
-export async function fetchDedicatedX509Certificates(): Promise<string[]> {
-  const platformBaseUrl = process.env.PLATFORM_BASE_URL
-  const clientId = process.env.PLATFORM_DEDICATED_CLIENT_ID
-  const clientSecret = process.env.PLATFORM_DEDICATED_CLIENT_SECRET
-  const trustServiceUrl = process.env.TRUST_SERVICE_URL
+export async function checkX509Certificates(
+  x509Certificates: string[],
+  isDedicated: boolean,
+  tenantId?: string,
+): Promise<boolean> {
+  const label = 'checkX509Certificates'
 
-  if (!platformBaseUrl) throw new Error('PLATFORM_BASE_URL is not configured')
-  if (!clientId) throw new Error('PLATFORM_DEDICATED_CLIENT_ID is not configured')
-  if (!clientSecret) throw new Error('PLATFORM_DEDICATED_CLIENT_SECRET is not configured')
-  if (!trustServiceUrl) throw new Error('TRUST_SERVICE_URL is not configured')
-
-  const token = await fetchPlatformToken(platformBaseUrl, clientId, clientSecret, 'fetchDedicatedX509Certificates')
-  return fetchTrustServiceCertificates(trustServiceUrl, token, [], 'fetchDedicatedX509Certificates')
-}
-
-export async function fetchSharedAgentX509Certificates(tenantId?: string): Promise<string[]> {
-  const label = 'fetchSharedAgentX509Certificates'
-
-  const platformBaseUrl = process.env.PLATFORM_BASE_URL
-  const clientId = process.env.PLATFORM_SHARED_AGENT_CLIENT_ID
-  const clientSecret = process.env.PLATFORM_SHARED_AGENT_CLIENT_SECRET
-  const resolvedTenantId = tenantId ?? process.env.PLATFORM_SHARED_AGENT_TENANT_ID
-  const trustServiceUrl = process.env.TRUST_SERVICE_URL
-
-  if (!platformBaseUrl) throw new Error('PLATFORM_BASE_URL is not configured')
-  if (!clientId) throw new Error('PLATFORM_SHARED_AGENT_CLIENT_ID is not configured')
-  if (!clientSecret) throw new Error('PLATFORM_SHARED_AGENT_CLIENT_SECRET is not configured')
-  if (!resolvedTenantId) throw new Error('tenantId not provided and PLATFORM_SHARED_AGENT_TENANT_ID is not configured')
-  if (!trustServiceUrl) throw new Error('TRUST_SERVICE_URL is not configured')
-  console.log(`[${label}] starting certificate fetch for tenantId:`, resolvedTenantId)
-
-  console.log(`[${label}] using tenantId:`, resolvedTenantId, tenantId ? '(from agent context)' : '(from .env)')
-
-  const token = await fetchPlatformToken(platformBaseUrl, clientId, clientSecret, label)
-
-  const ecosystemsUrl = `${platformBaseUrl}/v1/orgs/tenant/${resolvedTenantId}/ecosystems`
-  console.log(`[${label}] fetching ecosystem IDs from:`, ecosystemsUrl)
-
-  let ecosystemIds: string[]
-  try {
-    const ecosystemResponse = await axios.get<{ statusCode: number; message: string; data: string[] }>(ecosystemsUrl, {
-      headers: { accept: 'application/json', Authorization: `Bearer ${token}` },
-    })
-
-    console.log(`[${label}] ecosystem response status:`, ecosystemResponse.status)
-    console.log(`[${label}] ecosystem response data:`, JSON.stringify(ecosystemResponse.data, null, 2))
-
-    ecosystemIds = ecosystemResponse.data.data
-    if (!Array.isArray(ecosystemIds) || ecosystemIds.length === 0) {
-      throw new Error(`No ecosystem IDs found for tenant: ${resolvedTenantId}`)
-    }
-
-    console.log(`[${label}] ecosystem IDs:`, ecosystemIds)
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error(`[${label}] ecosystem IDs request failed:`, {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      })
-      throw new Error(
-        `Failed to fetch ecosystem IDs from platform: ${error.response?.status} ${JSON.stringify(error.response?.data)}`,
-      )
-    }
-    throw error
+  if (!x509Certificates || x509Certificates.length === 0) {
+    throw new Error(`[${label}] certificate chain is required but was not provided`)
   }
 
-  return fetchTrustServiceCertificates(trustServiceUrl, token, ecosystemIds, label)
+  const tokenUrl = process.env[TRUST_SERVICE_ENV_KEYS.TOKEN_URL]
+  const clientId = process.env[TRUST_SERVICE_ENV_KEYS.CLIENT_ID]
+  const clientSecret = process.env[TRUST_SERVICE_ENV_KEYS.CLIENT_SECRET]
+  const trustListUrl = process.env[TRUST_SERVICE_ENV_KEYS.TRUST_LIST_URL]
+
+  if (!tokenUrl) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.TOKEN_URL} is not configured`)
+  if (!clientId) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.CLIENT_ID} is not configured`)
+  if (!clientSecret) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.CLIENT_SECRET} is not configured`)
+  if (!trustListUrl) throw new Error(`[${label}] ${TRUST_SERVICE_ENV_KEYS.TRUST_LIST_URL} is not configured`)
+
+  let resolvedTenantId: string | undefined
+  if (!isDedicated) {
+    resolvedTenantId = tenantId
+    if (!resolvedTenantId) throw new Error(`[${label}] tenantId is required for shared agent but was not provided`)
+    console.log(`[${label}] using tenantId:`, resolvedTenantId)
+  }
+
+  console.log(`[${label}] agent type: ${isDedicated ? 'dedicated' : 'shared'}, certificates:`, x509Certificates)
+
+  const token = await fetchPlatformToken(tokenUrl, clientId, clientSecret, label)
+
+  return checkTrustCertificatesExist(trustListUrl, x509Certificates, label, resolvedTenantId, token)
 }
