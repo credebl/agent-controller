@@ -4,7 +4,8 @@ import type { DisclosureFrame } from '../controllers/types'
 import { Agent, CredoError } from '@credo-ts/core'
 import { container } from 'tsyringe'
 
-import { checkDedicatedX509Certificates, checkSharedAgentX509Certificates, fetchDedicatedX509Certificates } from './helpers'
+import { checkX509Certificates } from './helpers'
+import { validateAuthConfig } from './auth'
 import type {
   OpenId4VcCredentialHolderBinding,
   OpenId4VcCredentialHolderDidBinding,
