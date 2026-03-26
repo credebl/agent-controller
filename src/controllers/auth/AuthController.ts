@@ -34,7 +34,7 @@ export class AuthController extends Controller {
     }
 
     const response = await axios.post<OrgTokenResponse>(
-      `${trustServiceTokenUrl}/v1/orgs/${orgId}/token`,
+      `${trustServiceTokenUrl}`,
       { clientId: body.clientId, clientSecret: body.clientSecret },
       { headers: { 'Content-Type': 'application/json', accept: 'application/json' } },
     )
