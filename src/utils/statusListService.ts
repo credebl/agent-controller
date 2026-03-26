@@ -63,10 +63,8 @@ export async function checkAndCreateStatusList(agent: any, listId: string, issue
     try {
         const res = await fetch(uri);
 
-        // If it does not exist (404), we need to create it
         if (res.status === 404) {
             console.log(`Status list ${listId} not found, creating a new one...`);
-            // Use provided listSize or fallback to env var (default to 131072)
             const size = listSize || Number(process.env.STATUS_LIST_DEFAULT_SIZE) || 131072;
             const statusList = new StatusList(new Array(size).fill(0), 1);
 
@@ -77,12 +75,9 @@ export async function checkAndCreateStatusList(agent: any, listId: string, issue
                 throw new Error(`Could not find verification method for DID ${issuerDid}`);
             }
 
-            // Hack to extract keyId
             const keyId = verificationMethod.id;
 
             const jwt = await signStatusList(agent, keyId, statusList, listId, issuerDid);
-
-            // Post the new status list back to the server
             const postRes = await fetch(`${getServerUrl()}/status-lists`, {
                 method: 'POST',
                 headers: getApiKeyHeaders(),
