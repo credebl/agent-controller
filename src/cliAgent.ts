@@ -150,6 +150,7 @@ const getModules = (
   autoAcceptProofs: DidCommAutoAcceptProof,
   walletScheme: AskarMultiWalletDatabaseScheme,
   storeOptions: AskarModuleConfigStoreOptions,
+  endpoints: string[],
 ) => {
   const legacyIndyCredentialFormat = new LegacyIndyDidCommCredentialFormatService()
   const legacyIndyProofFormat = new LegacyIndyDidCommProofFormatService()
@@ -197,6 +198,7 @@ const getModules = (
       mediationRecipient: true,
       messagePickup: true,
       mediator: false,
+      endpoints: endpoints || [],
 
       basicMessages: true,
       connections: {
@@ -298,6 +300,7 @@ const getWithTenantModules = (
   autoAcceptProofs: DidCommAutoAcceptProof,
   walletScheme: AskarMultiWalletDatabaseScheme,
   walletConfig: AskarModuleConfigStoreOptions,
+  endpoints: string[]
 ) => {
   const modules = getModules(
     networkConfig,
@@ -311,6 +314,7 @@ const getWithTenantModules = (
     autoAcceptProofs,
     walletScheme,
     walletConfig,
+    endpoints,
   )
   return {
     tenants: new TenantsModule<typeof modules>({
@@ -341,6 +345,7 @@ const getWithTenantModules = (
 
 export async function runRestAgent(restConfig: AriesRestConfig) {
   const {
+    endpoints,
     schemaFileServerURL,
     logLevel,
     inboundTransports = [],
@@ -443,6 +448,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
       walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
       walletConfig,
+      endpoints || []
     )
   } else {
     modules = getModules(
@@ -457,6 +463,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
       walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
       walletConfig,
+      endpoints || []
     )
   }
 
