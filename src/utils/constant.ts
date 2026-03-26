@@ -3,6 +3,15 @@ import type { Curve } from '../controllers/types'
 import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
 export const X509_CERTIFICATE_RECORD = 'X509_CERTIFICATE'
+export const TRUST_SERVICE_ROUTES = {
+  MATCH_CERTIFICATES: '/api/x509-certificates/match',
+} as const
+
+export const TRUST_SERVICE_ENV_KEYS = {
+  CLIENT_ID: 'TRUST_SERVICE_CLIENT_ID',
+  CLIENT_SECRET: 'TRUST_SERVICE_CLIENT_SECRET',
+  TRUST_LIST_URL: 'TRUST_LIST_URL',
+} as const
 export const keyAlgorithmToCurve: Partial<Record<KeyAlgorithm, Curve>> = {
   [KeyAlgorithm.Ed25519]: 'Ed25519',
   [KeyAlgorithm.X25519]: 'X25519',
