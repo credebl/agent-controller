@@ -1,6 +1,7 @@
 // Note: For now we need to import askar-nodejs at the top to handle the undefined askar issue
 // Refer from: https://github.com/credebl/mobile-sdk/blob/main/packages/ssi/src/wallet/wallet.ts
 import '@openwallet-foundation/askar-nodejs'
+import '@hyperledger/indy-vdr-nodejs'
 import type { AskarModuleConfigStoreOptions } from '@credo-ts/askar'
 import type { InitConfig } from '@credo-ts/core'
 import type { IndyVdrPoolConfig } from '@credo-ts/indy-vdr'
@@ -199,10 +200,6 @@ const getModules = (
     w3cCredentials: new W3cCredentialsModule(),
     didcomm: new DidCommModule({
       processDidCommMessagesConcurrently: true,
-      anoncreds: new AnonCredsModule({
-        registries: [new IndyVdrAnonCredsRegistry()],
-        anoncreds,
-      }),
       mediationRecipient: true,
       messagePickup: true,
       mediator: false,
