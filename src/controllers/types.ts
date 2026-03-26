@@ -1,5 +1,17 @@
 import type { RecordId } from './examples'
-import type { AnonCredsDidCommCredentialFormat, LegacyIndyCredentialFormat } from '@credo-ts/anoncreds'
+import type {
+  AnonCredsCredentialDefinition,
+  AnonCredsDidCommCredentialFormat,
+  LegacyIndyCredentialFormat,
+  RegisterCredentialDefinitionReturnStateAction,
+  RegisterCredentialDefinitionReturnStateFailed,
+  RegisterCredentialDefinitionReturnStateFinished,
+  RegisterCredentialDefinitionReturnStateWait,
+  RegisterSchemaReturnStateAction,
+  RegisterSchemaReturnStateFailed,
+  RegisterSchemaReturnStateFinished,
+  RegisterSchemaReturnStateWait,
+} from '@credo-ts/anoncreds'
 import type {
   DidResolutionMetadata,
   DidDocumentMetadata,
@@ -511,4 +523,47 @@ export type OkpType = {
 export type EcType = {
   kty: 'EC'
   crv: 'P-256' | 'P-384' | 'P-521' | 'secp256k1'
+}
+
+export interface SchemaResponseDTO {
+  schemaId: string
+  schema?: {
+    issuerId: string
+    name: string
+    version: string
+    attrNames: string[]
+  }
+  resolutionMetadata: Record<string, unknown> // Use Record or explicitly define what you need
+  schemaMetadata: Record<string, unknown>
+}
+
+export interface RegisterSchemaReturn {
+  jobId?: string
+  schemaState:
+    | RegisterSchemaReturnStateWait
+    | RegisterSchemaReturnStateAction
+    | RegisterSchemaReturnStateFinished
+    | RegisterSchemaReturnStateFailed
+  schemaMetadata: Record<string, unknown>
+  registrationMetadata: Record<string, unknown>
+}
+
+export interface GetCredentialDefinitionReturn {
+  credentialDefinition?: AnonCredsCredentialDefinition
+  credentialDefinitionId: string
+  resolutionMetadata: Record<string, unknown>
+  credentialDefinitionMetadata: Record<string, unknown>
+}
+
+export type CredentialDefinitionStates =
+  | RegisterCredentialDefinitionReturnStateWait
+  | RegisterCredentialDefinitionReturnStateAction
+  | RegisterCredentialDefinitionReturnStateFinished
+  | RegisterCredentialDefinitionReturnStateFailed
+
+export interface RegisterCredentialDefinitionReturn {
+  jobId?: string
+  credentialDefinitionState: CredentialDefinitionStates
+  credentialDefinitionMetadata: Record<string, unknown>
+  registrationMetadata: Record<string, unknown>
 }

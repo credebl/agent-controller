@@ -19,7 +19,7 @@
       "indyNamespace": "indicio:demonet"
     },
     {
-      "genesisTransactions": "https://raw.githubusercontent.com/bcgov/von-network/main/BCovrin/genesis_test",
+      "genesisTransactions": "https://test.bcovrin.vonx.io/genesis",
       "indyNamespace": "bcovrin:testnet"
     }
   ],
