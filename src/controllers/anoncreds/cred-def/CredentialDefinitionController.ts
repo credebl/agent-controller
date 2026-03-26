@@ -113,7 +113,8 @@ export class CredentialDefinitionController extends Controller {
         await request.agent.modules.anoncreds.registerCredentialDefinition(credentialDefinitionPayload)
 
       if (registerCredentialDefinitionResult.credentialDefinitionState.state === CredentialEnum.Failed) {
-        throw new InternalServerError('Falied to register credef on ledger')
+          const failureReason = registerCredentialDefinitionResult.credentialDefinitionState?.reason ?? 'Failed to register credential definition on ledger'
+          throw new InternalServerError(failureReason)
       }
 
       if (registerCredentialDefinitionResult.credentialDefinitionState.state === CredentialEnum.Wait) {
