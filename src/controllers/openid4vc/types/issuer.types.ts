@@ -79,6 +79,7 @@ export interface OpenId4VcIssuanceSessionsCreateOffer {
     index: number
     listSize?: number
   }
+  isRevocable?: boolean
 }
 
 export interface X509GenericRecordContent {

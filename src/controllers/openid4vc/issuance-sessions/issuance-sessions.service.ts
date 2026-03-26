@@ -54,7 +54,7 @@ class IssuanceSessionsService {
       const effectiveStatusList = cred.statusListDetails || options.statusListDetails
 
       let statusBlock = undefined
-      if (effectiveIssuerDid && effectiveStatusList) {
+      if (options.isRevocable && effectiveIssuerDid && effectiveStatusList) {
         await checkAndCreateStatusList(
           agentReq.agent as any,
           effectiveStatusList.listId,
@@ -91,6 +91,7 @@ class IssuanceSessionsService {
 
     options.issuanceMetadata ||= {}
     options.issuanceMetadata.credentials = mappedCredentials
+    options.issuanceMetadata.isRevocable = options.isRevocable
 
     if (offerStatusInfo.length > 0) {
       options.issuanceMetadata.StatusListInfo = offerStatusInfo

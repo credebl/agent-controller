@@ -2243,6 +2243,9 @@
 							"listId"
 						],
 						"type": "object"
+					},
+					"isRevocable": {
+						"type": "boolean"
 					}
 				},
 				"required": [
