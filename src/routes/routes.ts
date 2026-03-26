@@ -34,6 +34,8 @@ import { SchemaController } from './../controllers/anoncreds/schema/SchemaContro
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { CredentialDefinitionController } from './../controllers/anoncreds/cred-def/CredentialDefinitionController';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { CredentialController } from './../controllers/didcomm/credentials/CredentialController';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { VerifierController } from './../controllers/openid4vc/verifiers/verifier.Controller';
 import { expressAuthentication } from './../authentication';
 // @ts-ignore - no great way to install types from subpackage
@@ -1721,6 +1723,311 @@ const models: TsoaRoute.Models = {
             "registrationMetadata": {"ref":"Record_string.unknown_","required":true},
         },
         "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ThreadId": {
+        "dataType": "refAlias",
+        "type": {"dataType":"string","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialState": {
+        "dataType": "refEnum",
+        "enums": ["proposal-sent","proposal-received","offer-sent","offer-received","declined","request-sent","request-received","credential-issued","credential-received","done","abandoned"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialRole": {
+        "dataType": "refEnum",
+        "enums": ["issuer","holder"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "W3cCredentialRecord": {
+        "dataType": "refAlias",
+        "type": {"ref":"Record_string.unknown_","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialExchangeRecord": {
+        "dataType": "refAlias",
+        "type": {"ref":"Record_string.unknown_","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ProtocolVersion": {
+        "dataType": "refEnum",
+        "enums": ["v1","v2"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialPreviewAttributeOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "name": {"dataType":"string","required":true},
+            "mimeType": {"dataType":"string"},
+            "value": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Pick_AnonCredsDidCommProposeCredentialFormat.Exclude_keyofAnonCredsDidCommProposeCredentialFormat.schemaIssuerId-or-issuerId__": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"schemaId":{"dataType":"string"},"schemaName":{"dataType":"string"},"schemaVersion":{"dataType":"string"},"credentialDefinitionId":{"dataType":"string"},"attributes":{"dataType":"array","array":{"dataType":"refObject","ref":"DidCommCredentialPreviewAttributeOptions"}},"schemaIssuerDid":{"dataType":"string"},"issuerDid":{"dataType":"string"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Omit_AnonCredsDidCommProposeCredentialFormat.schemaIssuerId-or-issuerId_": {
+        "dataType": "refAlias",
+        "type": {"ref":"Pick_AnonCredsDidCommProposeCredentialFormat.Exclude_keyofAnonCredsDidCommProposeCredentialFormat.schemaIssuerId-or-issuerId__","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "LegacyIndyDidCommProposeCredentialFormat": {
+        "dataType": "refAlias",
+        "type": {"ref":"Omit_AnonCredsDidCommProposeCredentialFormat.schemaIssuerId-or-issuerId_","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "W3cIssuerOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "SingleOrArray_JsonObject_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"ref":"JsonObject"},{"dataType":"array","array":{"dataType":"refObject","ref":"JsonObject"}}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "JsonCredential": {
+        "dataType": "refObject",
+        "properties": {
+            "@context": {"dataType":"union","subSchemas":[{"dataType":"array","array":{"dataType":"string"}},{"ref":"JsonObject"}],"required":true},
+            "id": {"dataType":"string"},
+            "type": {"dataType":"array","array":{"dataType":"string"},"required":true},
+            "issuer": {"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"W3cIssuerOptions"}],"required":true},
+            "issuanceDate": {"dataType":"string","required":true},
+            "expirationDate": {"dataType":"string"},
+            "credentialSubject": {"ref":"SingleOrArray_JsonObject_","required":true},
+        },
+        "additionalProperties": {"dataType":"any"},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommJsonLdCredentialDetailFormat": {
+        "dataType": "refObject",
+        "properties": {
+            "credential": {"ref":"JsonCredential","required":true},
+            "options": {"dataType":"nestedObjectLiteral","nestedProperties":{"proofType":{"dataType":"string","required":true},"proofPurpose":{"dataType":"string","required":true}},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AnonCredsDidCommProposeCredentialFormat": {
+        "dataType": "refObject",
+        "properties": {
+            "schemaIssuerId": {"dataType":"string"},
+            "schemaId": {"dataType":"string"},
+            "schemaName": {"dataType":"string"},
+            "schemaVersion": {"dataType":"string"},
+            "credentialDefinitionId": {"dataType":"string"},
+            "issuerId": {"dataType":"string"},
+            "attributes": {"dataType":"array","array":{"dataType":"refObject","ref":"DidCommCredentialPreviewAttributeOptions"}},
+            "schemaIssuerDid": {"dataType":"string"},
+            "issuerDid": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialFormatPayload_CredentialFormatType-Array.createProposal_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"indy":{"ref":"LegacyIndyDidCommProposeCredentialFormat"},"jsonld":{"ref":"DidCommJsonLdCredentialDetailFormat"},"anoncreds":{"ref":"AnonCredsDidCommProposeCredentialFormat"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommAutoAcceptCredential": {
+        "dataType": "refEnum",
+        "enums": ["always","contentApproved","never"],
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ProposeCredentialOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "protocolVersion": {"ref":"ProtocolVersion","required":true},
+            "credentialFormats": {"ref":"DidCommCredentialFormatPayload_CredentialFormatType-Array.createProposal_","required":true},
+            "autoAcceptCredential": {"ref":"DidCommAutoAcceptCredential"},
+            "comment": {"dataType":"string"},
+            "connectionId": {"ref":"RecordId","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AnonCredsDidCommAcceptProposalFormat": {
+        "dataType": "refObject",
+        "properties": {
+            "credentialDefinitionId": {"dataType":"string"},
+            "revocationRegistryDefinitionId": {"dataType":"string"},
+            "revocationRegistryIndex": {"dataType":"double"},
+            "attributes": {"dataType":"array","array":{"dataType":"refObject","ref":"DidCommCredentialPreviewAttributeOptions"}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Record_string.never_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "EmptyObject": {
+        "dataType": "refAlias",
+        "type": {"ref":"Record_string.never_","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialFormatPayload_CredentialFormats.acceptProposal_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"indy":{"ref":"AnonCredsDidCommAcceptProposalFormat"},"jsonld":{"ref":"EmptyObject"},"anoncreds":{"ref":"AnonCredsDidCommAcceptProposalFormat"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AcceptCredentialProposalOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "credentialExchangeRecordId": {"dataType":"string","required":true},
+            "credentialFormats": {"ref":"DidCommCredentialFormatPayload_CredentialFormats.acceptProposal_"},
+            "autoAcceptCredential": {"ref":"DidCommAutoAcceptCredential"},
+            "comment": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AnonCredsDidCommOfferCredentialFormat": {
+        "dataType": "refObject",
+        "properties": {
+            "credentialDefinitionId": {"dataType":"string","required":true},
+            "revocationRegistryDefinitionId": {"dataType":"string"},
+            "revocationRegistryIndex": {"dataType":"double"},
+            "attributes": {"dataType":"array","array":{"dataType":"refObject","ref":"DidCommCredentialPreviewAttributeOptions"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialFormatPayload_CredentialFormats.createOffer_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"indy":{"ref":"AnonCredsDidCommOfferCredentialFormat"},"jsonld":{"ref":"DidCommJsonLdCredentialDetailFormat"},"anoncreds":{"ref":"AnonCredsDidCommOfferCredentialFormat"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CreateOfferOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "protocolVersion": {"ref":"ProtocolVersion","required":true},
+            "connectionId": {"ref":"RecordId","required":true},
+            "credentialFormats": {"ref":"DidCommCredentialFormatPayload_CredentialFormats.createOffer_","required":true},
+            "autoAcceptCredential": {"ref":"DidCommAutoAcceptCredential"},
+            "comment": {"dataType":"string"},
+            "goalCode": {"dataType":"string"},
+            "goal": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialFormatPayload_CredentialFormatType-Array.createOffer_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"indy":{"ref":"AnonCredsDidCommOfferCredentialFormat"},"jsonld":{"ref":"DidCommJsonLdCredentialDetailFormat"},"anoncreds":{"ref":"AnonCredsDidCommOfferCredentialFormat"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CreateOfferOobOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "protocolVersion": {"dataType":"string","required":true},
+            "credentialFormats": {"ref":"DidCommCredentialFormatPayload_CredentialFormatType-Array.createOffer_","required":true},
+            "autoAcceptCredential": {"ref":"DidCommAutoAcceptCredential"},
+            "comment": {"dataType":"string"},
+            "goalCode": {"dataType":"string"},
+            "parentThreadId": {"dataType":"string"},
+            "willConfirm": {"dataType":"boolean"},
+            "label": {"dataType":"string"},
+            "imageUrl": {"dataType":"string"},
+            "recipientKey": {"dataType":"string"},
+            "invitationDid": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AnonCredsDidCommAcceptOfferFormat": {
+        "dataType": "refObject",
+        "properties": {
+            "linkSecretId": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialFormatPayload_CredentialFormats.acceptOffer_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"indy":{"ref":"AnonCredsDidCommAcceptOfferFormat"},"jsonld":{"ref":"EmptyObject"},"anoncreds":{"ref":"AnonCredsDidCommAcceptOfferFormat"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialOfferOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "credentialExchangeRecordId": {"ref":"RecordId","required":true},
+            "credentialFormats": {"ref":"DidCommCredentialFormatPayload_CredentialFormats.acceptOffer_"},
+            "autoAcceptCredential": {"ref":"DidCommAutoAcceptCredential"},
+            "comment": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AnonCredsDidCommAcceptRequestFormat": {
+        "dataType": "refAlias",
+        "type": {"ref":"Record_string.never_","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommJsonLdAcceptRequestFormat": {
+        "dataType": "refObject",
+        "properties": {
+            "verificationMethod": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidCommCredentialFormatPayload_CredentialFormats.acceptRequest_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"indy":{"ref":"AnonCredsDidCommAcceptRequestFormat"},"jsonld":{"ref":"DidCommJsonLdAcceptRequestFormat"},"anoncreds":{"ref":"AnonCredsDidCommAcceptRequestFormat"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AcceptCredentialRequestOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "credentialExchangeRecordId": {"ref":"RecordId","required":true},
+            "credentialFormats": {"ref":"DidCommCredentialFormatPayload_CredentialFormats.acceptRequest_"},
+            "autoAcceptCredential": {"ref":"DidCommAutoAcceptCredential"},
+            "comment": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AcceptCredential": {
+        "dataType": "refObject",
+        "properties": {
+            "credentialExchangeRecordId": {"ref":"RecordId","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.proposal_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.offer_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.request_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.credential_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "GetCredentialFormatDataReturn__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"credential":{"ref":"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.credential_"},"request":{"ref":"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.request_"},"offerAttributes":{"dataType":"array","array":{"dataType":"refObject","ref":"DidCommCredentialPreviewAttributeOptions"}},"offer":{"ref":"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.offer_"},"proposal":{"ref":"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.proposal_"},"proposalAttributes":{"dataType":"array","array":{"dataType":"refObject","ref":"DidCommCredentialPreviewAttributeOptions"}}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "OpenId4VcVerifierRecord": {
@@ -4402,6 +4709,453 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'createCredentialDefinition',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_getAllCredentials: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                threadId: {"in":"query","name":"threadId","ref":"ThreadId"},
+                parentThreadId: {"in":"query","name":"parentThreadId","ref":"ThreadId"},
+                connectionId: {"in":"query","name":"connectionId","ref":"RecordId"},
+                state: {"in":"query","name":"state","ref":"DidCommCredentialState"},
+                role: {"in":"query","name":"role","ref":"DidCommCredentialRole"},
+        };
+        app.get('/didcomm/credentials',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.getAllCredentials)),
+
+            async function CredentialController_getAllCredentials(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_getAllCredentials, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getAllCredentials',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_getAllW3c: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+        };
+        app.get('/didcomm/credentials/w3c',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.getAllW3c)),
+
+            async function CredentialController_getAllW3c(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_getAllW3c, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getAllW3c',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_getW3cById: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                id: {"in":"path","name":"id","required":true,"dataType":"string"},
+        };
+        app.get('/didcomm/credentials/w3c/:id',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.getW3cById)),
+
+            async function CredentialController_getW3cById(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_getW3cById, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getW3cById',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_getCredentialById: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                credentialRecordId: {"in":"path","name":"credentialRecordId","required":true,"ref":"RecordId"},
+        };
+        app.get('/didcomm/credentials/:credentialRecordId',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.getCredentialById)),
+
+            async function CredentialController_getCredentialById(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_getCredentialById, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getCredentialById',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_proposeCredential: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                proposeCredentialOptions: {"in":"body","name":"proposeCredentialOptions","required":true,"ref":"ProposeCredentialOptions"},
+        };
+        app.post('/didcomm/credentials/propose-credential',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.proposeCredential)),
+
+            async function CredentialController_proposeCredential(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_proposeCredential, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'proposeCredential',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_acceptProposal: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                acceptCredentialProposal: {"in":"body","name":"acceptCredentialProposal","required":true,"ref":"AcceptCredentialProposalOptions"},
+        };
+        app.post('/didcomm/credentials/accept-proposal',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.acceptProposal)),
+
+            async function CredentialController_acceptProposal(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_acceptProposal, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'acceptProposal',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_createOffer: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                createOfferOptions: {"in":"body","name":"createOfferOptions","required":true,"ref":"CreateOfferOptions"},
+        };
+        app.post('/didcomm/credentials/create-offer',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.createOffer)),
+
+            async function CredentialController_createOffer(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_createOffer, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'createOffer',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_createOfferOob: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                outOfBandOption: {"in":"body","name":"outOfBandOption","required":true,"ref":"CreateOfferOobOptions"},
+        };
+        app.post('/didcomm/credentials/create-offer-oob',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.createOfferOob)),
+
+            async function CredentialController_createOfferOob(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_createOfferOob, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'createOfferOob',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_acceptOffer: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                acceptCredentialOfferOptions: {"in":"body","name":"acceptCredentialOfferOptions","required":true,"ref":"CredentialOfferOptions"},
+        };
+        app.post('/didcomm/credentials/accept-offer',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.acceptOffer)),
+
+            async function CredentialController_acceptOffer(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_acceptOffer, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'acceptOffer',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_acceptRequest: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                acceptCredentialRequestOptions: {"in":"body","name":"acceptCredentialRequestOptions","required":true,"ref":"AcceptCredentialRequestOptions"},
+        };
+        app.post('/didcomm/credentials/accept-request',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.acceptRequest)),
+
+            async function CredentialController_acceptRequest(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_acceptRequest, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'acceptRequest',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_acceptCredential: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                acceptCredential: {"in":"body","name":"acceptCredential","required":true,"ref":"AcceptCredential"},
+        };
+        app.post('/didcomm/credentials/accept-credential',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.acceptCredential)),
+
+            async function CredentialController_acceptCredential(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_acceptCredential, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'acceptCredential',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_credentialFormData: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                credentialRecordId: {"in":"path","name":"credentialRecordId","required":true,"dataType":"string"},
+        };
+        app.get('/didcomm/credentials/:credentialRecordId/form-data',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.credentialFormData)),
+
+            async function CredentialController_credentialFormData(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_credentialFormData, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'credentialFormData',
                 controller,
                 response,
                 next,
