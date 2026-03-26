@@ -13,10 +13,18 @@
     "emitDecoratorMetadata": true,
     "skipLibCheck": true,
     "outDir": "./build",
-    "types": ["node"],
-    "lib": ["ES2021.Promise"]
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ESNext",
+      "DOM"
+    ]
   },
-  "include": ["src/**/*", "src/routes"],
+  "include": [
+    "src/**/*",
+    "src/routes"
+  ],
   "exclude": [
     "node_modules",
     "build",

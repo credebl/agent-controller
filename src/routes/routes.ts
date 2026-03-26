@@ -812,6 +812,7 @@ const models: TsoaRoute.Models = {
             "credentialSupportedId": {"dataType":"string","required":true},
             "format": {"ref":"OpenId4VciCredentialFormatProfile","required":true},
             "signerOptions": {"dataType":"nestedObjectLiteral","nestedProperties":{"keyId":{"dataType":"string"},"x5c":{"dataType":"array","array":{"dataType":"string"}},"did":{"dataType":"string"},"method":{"ref":"SignerMethod","required":true}},"required":true},
+            "statusListDetails": {"dataType":"nestedObjectLiteral","nestedProperties":{"listSize":{"dataType":"double"},"index":{"dataType":"double","required":true},"listId":{"dataType":"string","required":true}}},
             "payload": {"dataType":"nestedObjectLiteral","nestedProperties":{"vct":{"dataType":"string"}},"additionalProperties":{"dataType":"any"},"required":true},
             "disclosureFrame": {"ref":"DisclosureFrameForOffer"},
         },
@@ -839,6 +840,7 @@ const models: TsoaRoute.Models = {
             "credentialSupportedId": {"dataType":"string","required":true},
             "format": {"ref":"OpenId4VciCredentialFormatProfile","required":true},
             "signerOptions": {"dataType":"nestedObjectLiteral","nestedProperties":{"keyId":{"dataType":"string"},"x5c":{"dataType":"array","array":{"dataType":"string"}},"did":{"dataType":"string"},"method":{"ref":"SignerMethod","required":true}},"required":true},
+            "statusListDetails": {"dataType":"nestedObjectLiteral","nestedProperties":{"listSize":{"dataType":"double"},"index":{"dataType":"double","required":true},"listId":{"dataType":"string","required":true}}},
             "payload": {"dataType":"nestedObjectLiteral","nestedProperties":{"namespaces":{"ref":"MdocNameSpaces","required":true},"validityInfo":{"ref":"Partial_ValidityInfo_"},"docType":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["org.iso.18013.5.1.mDL"]},{"dataType":"intersection","subSchemas":[{"dataType":"string"},{"dataType":"nestedObjectLiteral","nestedProperties":{}}]}],"required":true}},"required":true},
         },
         "additionalProperties": false,
@@ -928,6 +930,7 @@ const models: TsoaRoute.Models = {
             "credentialSupportedId": {"dataType":"string","required":true},
             "format": {"ref":"OpenId4VciCredentialFormatProfile","required":true},
             "signerOptions": {"dataType":"nestedObjectLiteral","nestedProperties":{"keyId":{"dataType":"string"},"x5c":{"dataType":"array","array":{"dataType":"string"}},"did":{"dataType":"string"},"method":{"ref":"SignerMethod","required":true}},"required":true},
+            "statusListDetails": {"dataType":"nestedObjectLiteral","nestedProperties":{"listSize":{"dataType":"double"},"index":{"dataType":"double","required":true},"listId":{"dataType":"string","required":true}}},
             "payload": {"dataType":"nestedObjectLiteral","nestedProperties":{"credential":{"ref":"W3cCredential","required":true},"verificationMethod":{"dataType":"string","required":true}},"required":true},
         },
         "additionalProperties": false,
@@ -941,6 +944,7 @@ const models: TsoaRoute.Models = {
             "authorizationCodeFlowConfig": {"dataType":"nestedObjectLiteral","nestedProperties":{"issuerState":{"dataType":"string"},"requirePresentationDuringIssuance":{"dataType":"boolean"},"authorizationServerUrl":{"dataType":"string","required":true}}},
             "preAuthorizedCodeFlowConfig": {"dataType":"nestedObjectLiteral","nestedProperties":{"authorizationServerUrl":{"dataType":"string","required":true},"txCode":{"dataType":"nestedObjectLiteral","nestedProperties":{"input_mode":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["numeric"]},{"dataType":"enum","enums":["text"]}]},"length":{"dataType":"double"},"description":{"dataType":"string"}}},"preAuthorizedCode":{"dataType":"string"}}},
             "issuanceMetadata": {"ref":"Record_string.unknown_"},
+            "statusListDetails": {"dataType":"nestedObjectLiteral","nestedProperties":{"listSize":{"dataType":"double"},"index":{"dataType":"double","required":true},"listId":{"dataType":"string","required":true}}},
         },
         "additionalProperties": false,
     },
@@ -2512,6 +2516,43 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'deleteIssuanceSessionById',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsIssuanceSessionsController_revokeSessionById: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                issuanceSessionId: {"in":"path","name":"issuanceSessionId","required":true,"dataType":"string"},
+        };
+        app.post('/openid4vc/issuance-sessions/:issuanceSessionId/revoke',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(IssuanceSessionsController)),
+            ...(fetchMiddlewares<RequestHandler>(IssuanceSessionsController.prototype.revokeSessionById)),
+
+            async function IssuanceSessionsController_revokeSessionById(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsIssuanceSessionsController_revokeSessionById, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<IssuanceSessionsController>(IssuanceSessionsController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'revokeSessionById',
                 controller,
                 response,
                 next,

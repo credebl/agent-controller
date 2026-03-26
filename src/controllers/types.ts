@@ -51,6 +51,25 @@ export interface AgentToken {
   token: string
 }
 
+export enum CredentialState {
+  ProposalSent = 'proposal-sent',
+  ProposalReceived = 'proposal-received',
+  OfferSent = 'offer-sent',
+  OfferReceived = 'offer-received',
+  Declined = 'declined',
+  RequestSent = 'request-sent',
+  RequestReceived = 'request-received',
+  CredentialIssued = 'credential-issued',
+  CredentialReceived = 'credential-received',
+  Done = 'done',
+  Abandoned = 'abandoned',
+}
+
+export enum CredentialRole {
+  Issuer = 'issuer',
+  Holder = 'holder',
+}
+
 export interface AgentMessageType {
   '@id': string
   '@type': string

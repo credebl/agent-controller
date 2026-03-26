@@ -45,6 +45,9 @@ interface Parsed {
   fileServerToken?: string
   apiKey?: string
   updateJwtSecret?: boolean
+  'status-list-server-url'?: string
+  'status-list-api-key'?: string
+  'status-list-default-size'?: number
 }
 
 interface InboundTransport {
@@ -163,6 +166,9 @@ async function parseArguments(): Promise<Parsed> {
       boolean: true,
       default: false,
     })
+    .option('status-list-server-url', { string: true })
+    .option('status-list-api-key', { string: true })
+    .option('status-list-default-size', { number: true })
     .config()
     .env('AFJ_REST')
     .parseAsync() as Promise<Parsed>
@@ -211,5 +217,8 @@ export async function runCliServer() {
     fileServerToken: parsed.fileServerToken,
     apiKey: parsed['apiKey'],
     updateJwtSecret: parsed['updateJwtSecret'],
+    statusListServerUrl: parsed['status-list-server-url'],
+    statusListApiKey: parsed['status-list-api-key'],
+    statusListDefaultSize: parsed['status-list-default-size'],
   } as AriesRestConfig)
 }
