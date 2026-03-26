@@ -28,7 +28,6 @@ import {
   LogLevel,
   Agent,
   X509Module,
-  X509Certificate,
   JwkDidRegistrar,
   JwkDidResolver,
   SdJwtVcModule,
