@@ -949,6 +949,7 @@ const models: TsoaRoute.Models = {
             "preAuthorizedCodeFlowConfig": {"dataType":"nestedObjectLiteral","nestedProperties":{"authorizationServerUrl":{"dataType":"string","required":true},"txCode":{"dataType":"nestedObjectLiteral","nestedProperties":{"input_mode":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["numeric"]},{"dataType":"enum","enums":["text"]}]},"length":{"dataType":"double"},"description":{"dataType":"string"}}},"preAuthorizedCode":{"dataType":"string"}}},
             "issuanceMetadata": {"ref":"Record_string.unknown_"},
             "statusListDetails": {"dataType":"nestedObjectLiteral","nestedProperties":{"listSize":{"dataType":"double"},"index":{"dataType":"double","required":true},"listId":{"dataType":"string","required":true}}},
+            "isRevocable": {"dataType":"boolean"},
         },
         "additionalProperties": false,
     },
