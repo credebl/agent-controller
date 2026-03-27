@@ -11,7 +11,7 @@ COPY . .
 
 # Install dependencies
 RUN rm -rf node_modules
-RUN yarn install --network-timeout 600000
+RUN yarn install --frozen-lockfile --network-timeout 600000
 
 RUN yarn global add patch-package
 
