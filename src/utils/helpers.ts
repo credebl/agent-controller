@@ -259,7 +259,7 @@ export function processIsoImages(namespaces: Namespaces): Namespaces {
   const IMAGE_FIELDS = ['portrait', 'enrolment_portrait_image']
 
   for (const [nsKey, nsValue] of Object.entries(namespaces)) {
-    if (!nsKey.includes('org.iso')) continue
+    if (!nsKey.includes('org.iso.18013.5') && !nsKey.includes('org.iso.23220')) continue
 
     for (const field of IMAGE_FIELDS) {
       const value = nsValue[field]

@@ -121,7 +121,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       const parsedCertificate = X509Service.parseCertificate(agentContext, {
         encodedCertificate: issuerx509certificate[0],
       })
-      console.log(`\n credential validityInfo for mdoc: ${JSON.stringify(credential.payload.validityInfo)} \n`)
+
       parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
       const updatedNamespaces = processIsoImages(credential.payload.namespaces)
       credential.payload.namespaces = updatedNamespaces
