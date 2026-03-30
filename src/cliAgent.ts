@@ -2,6 +2,7 @@
 // Refer from: https://github.com/credebl/mobile-sdk/blob/main/packages/ssi/src/wallet/wallet.ts
 import '@openwallet-foundation/askar-nodejs'
 import '@hyperledger/indy-vdr-nodejs'
+import '@hyperledger/anoncreds-nodejs'
 import type { AskarModuleConfigStoreOptions } from '@credo-ts/askar'
 import type { InitConfig } from '@credo-ts/core'
 import type { IndyVdrPoolConfig } from '@credo-ts/indy-vdr'

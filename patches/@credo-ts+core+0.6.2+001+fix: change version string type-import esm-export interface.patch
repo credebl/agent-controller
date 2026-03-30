@@ -1,3 +1,44 @@
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
+index 5a311c1..4d640d0 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
++++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
+@@ -14,7 +14,7 @@ interface Proof extends JsonObject {
+   verificationMethod: string | VerificationMethod;
+   [key: string]: JsonValue;
+ }
+-interface DocumentLoaderResult {
++export interface DocumentLoaderResult {
+   contextUrl?: string | null;
+   documentUrl: string;
+   document: Record<string, unknown>;
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs
+index 49ee03f..aa7e43a 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs
++++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs
+@@ -2,7 +2,7 @@
+ 
+ //#region src/modules/vc/data-integrity/libraries/nativeDocumentLoader.ts
+ async function getNativeDocumentLoader() {
+-	const loader = await import("@digitalcredentials/jsonld/lib/documentLoaders/node");
++	const loader = await import("@digitalcredentials/jsonld/lib/documentLoaders/node.js");
+ 	if (!loader) throw new Error("Could not load node document loader. Module did not contain a loader function");
+ 	if (typeof loader === "function") return loader;
+ 	if (typeof loader === "object" && typeof loader.default === "function") return loader.default;
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.mjs b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.mjs
+index 6a8ca37..0287e99 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.mjs
++++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.mjs
+@@ -1,8 +1,9 @@
+ 
+ 
++
+ //#region src/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.ts
+ async function getNativeDocumentLoader() {
+-	const loader = await import("@digitalcredentials/jsonld/lib/documentLoaders/xhr");
++	const loader = await import("@digitalcredentials/jsonld/lib/documentLoaders/xhr.js");
+ 	if (!loader) throw new Error("Could not load node document loader. Module did not contain a loader function");
+ 	if (typeof loader === "function") return loader;
+ 	if (typeof loader === "object" && typeof loader.default === "function") return loader.default;
 diff --git a/node_modules/@credo-ts/core/build/utils/version.d.mts b/node_modules/@credo-ts/core/build/utils/version.d.mts
 index a71659d..8ed88e2 100644
 --- a/node_modules/@credo-ts/core/build/utils/version.d.mts
