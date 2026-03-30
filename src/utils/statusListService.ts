@@ -4,7 +4,6 @@ import { StatusList, getListFromStatusListJWT } from '@sd-jwt/jwt-status-list';
 const statusListLocks = new Map<string, Promise<void>>();
 
 
-// We evaluate this at request-time instead of statically so cliAgent config is available
 export function getServerUrl() {
     const url = process.env.STATUS_LIST_SERVER_URL;
     if (!url) {
@@ -56,7 +55,6 @@ async function signStatusList(agent: any, verificationMethodId: string, statusLi
     const jwsService = agent.dependencyManager.resolve(JwsService);
     const kmsKeyId = await getKmsKeyIdForDid(agent, issuerDid, verificationMethodId);
 
-    // In v0.6.x, createJwsCompact takes keyId instead of key
     return jwsService.createJwsCompact(agent.context, {
         keyId: kmsKeyId,
         payload,
@@ -74,7 +72,7 @@ export async function checkAndCreateStatusList(agent: any, listId: string, issue
 
         if (res.status === 404) {
             console.log(`Status list ${listId} not found, creating a new one...`);
-            const size = listSize || Number(process.env.STATUS_LIST_DEFAULT_SIZE) || 131072;
+            const size = listSize || Number(process.env.STATUS_LIST_DEFAULT_SIZE);
             const statusList = new StatusList(new Array(size).fill(0), 1);
 
             const didDocument = await agent.dids.resolve(issuerDid);
