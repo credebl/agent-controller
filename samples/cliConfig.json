@@ -1,6 +1,6 @@
 {
-  "label": "AFJ Rest Agent 1",
-  "walletId": "sample",
+  "label": "platform-admin-agent",
+  "walletId": "platform_admin_agent",
   "walletKey": "sample",
   "walletType": "postgres",
   "walletUrl": "localhost:5432",
@@ -23,7 +23,7 @@
       "indyNamespace": "bcovrin:testnet"
     }
   ],
-  "endpoint": ["http://localhost:4002"],
+  "endpoint": ["https://e70b-122-170-198-40.ngrok-free.app"],
   "autoAcceptConnections": true,
   "autoAcceptCredentials": "always",
   "autoAcceptProofs": "contentApproved",
@@ -45,7 +45,7 @@
   "fileServerToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJBeWFuV29ya3MiLCJpZCI6ImNhZDI3ZjhjLTMyNWYtNDRmZC04ZmZkLWExNGNhZTY3NTMyMSJ9.I3IR7abjWbfStnxzn1BhxhV0OEzt1x3mULjDdUcgWHk",
   "apiKey": "supersecret-that-too-16chars",
   "updateJwtSecret": false,
-  "statusListServerUrl": "http://localhost:3000",
+  "statusListServerUrl": "https://dev-status-list.sovio.id/",
   "statusListApiKey": "test_key",
   "statusListDefaultSize": 131072
 }

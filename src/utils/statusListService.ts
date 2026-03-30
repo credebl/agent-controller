@@ -1,6 +1,9 @@
 import { JwsProtectedHeaderOptions, JwsService, JwtPayload } from '@credo-ts/core';
 import { StatusList, getListFromStatusListJWT } from '@sd-jwt/jwt-status-list';
 
+const statusListLocks = new Map<string, Promise<void>>();
+
+
 // We evaluate this at request-time instead of statically so cliAgent config is available
 export function getServerUrl() {
     const url = process.env.STATUS_LIST_SERVER_URL;
@@ -107,41 +110,54 @@ export async function checkAndCreateStatusList(agent: any, listId: string, issue
 }
 
 export async function revokeCredentialInStatusList(agent: any, listId: string, index: number, issuerDid: string) {
-    const uri = `${getServerUrl()}/status-lists/${listId}`;
+    const previousLock = statusListLocks.get(listId) || Promise.resolve();
 
-    // 1. Fetch current
-    const res = await fetch(uri, {
-        headers: getApiKeyHeaders()
-    });
-    if (!res.ok) {
-        const errBody = await res.text().catch(() => '');
-        throw new Error(`Failed to fetch status list to revoke at ${uri}: ${res.status} ${res.statusText} ${errBody}`);
-    }
-
-    const currentJwt = await res.text();
-    const statusList = getListFromStatusListJWT(currentJwt);
-
-    // 2. Flip the bit
-    statusList.setStatus(index, 1);
-
-    // 3. Resolve keyId
-    const didDocument = await agent.dids.resolve(issuerDid);
-    const verificationMethod = didDocument.didDocument?.verificationMethod?.[0];
-    if (!verificationMethod) throw new Error(`Could not find verification method for DID ${issuerDid}`);
-    const keyId = verificationMethod.id;
-
-    // 4. Re-sign
-    const newJwt = await signStatusList(agent, keyId, statusList, listId, issuerDid);
-
-    // 5. Update the server
-    const patchRes = await fetch(`${getServerUrl()}/status-lists/${listId}`, {
-        method: 'PATCH',
-        headers: getApiKeyHeaders(),
-        body: JSON.stringify({ jwt: newJwt }),
+    let releaseLock: () => void;
+    const currentLock = new Promise<void>((resolve) => {
+        releaseLock = resolve;
     });
 
-    if (!patchRes.ok) {
-        const errBody = await patchRes.text();
-        throw new Error(`Failed to update status list on server: ${patchRes.status} ${errBody}`);
+    statusListLocks.set(listId, currentLock);
+
+    try {
+        await previousLock;
+
+        const uri = `${getServerUrl()}/status-lists/${listId}`;
+
+        const res = await fetch(uri, {
+            headers: getApiKeyHeaders(),
+        });
+        if (!res.ok) {
+            const errBody = await res.text().catch(() => '');
+            throw new Error(`Failed to fetch status list to revoke at ${uri}: ${res.status} ${res.statusText} ${errBody}`);
+        }
+
+        const currentJwt = await res.text();
+        const statusList = getListFromStatusListJWT(currentJwt);
+
+        statusList.setStatus(index, 1);
+
+        const didDocument = await agent.dids.resolve(issuerDid);
+        const verificationMethod = didDocument.didDocument?.verificationMethod?.[0];
+        if (!verificationMethod) throw new Error(`Could not find verification method for DID ${issuerDid}`);
+        const keyId = verificationMethod.id;
+
+        const newJwt = await signStatusList(agent, keyId, statusList, listId, issuerDid);
+
+        const patchRes = await fetch(`${getServerUrl()}/status-lists/${listId}`, {
+            method: 'PATCH',
+            headers: getApiKeyHeaders(),
+            body: JSON.stringify({ jwt: newJwt }),
+        });
+
+        if (!patchRes.ok) {
+            const errBody = await patchRes.text();
+            throw new Error(`Failed to update status list on server: ${patchRes.status} ${errBody}`);
+        }
+    } finally {
+        releaseLock!();
+        if (statusListLocks.get(listId) === currentLock) {
+            statusListLocks.delete(listId);
+        }
     }
 }
