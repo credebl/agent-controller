@@ -1,3 +1,4 @@
+import type { DisclosureFrame } from '../controllers/types'
 import type { SdJwtVcHolderBinding } from '@credo-ts/core'
 import type {
   OpenId4VcCredentialHolderBinding,
@@ -7,15 +8,23 @@ import type {
   OpenId4VciSignSdJwtCredentials,
 } from '@credo-ts/openid4vc'
 
-import { Agent, ClaimFormat, CredoError, DidsApi, LogLevel, X509Certificate, X509ModuleConfig, X509Service } from '@credo-ts/core'
+import {
+  Agent,
+  ClaimFormat,
+  CredoError,
+  DidsApi,
+  LogLevel,
+  X509Certificate,
+  X509ModuleConfig,
+  X509Service,
+} from '@credo-ts/core'
 import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 import { container } from 'tsyringe'
 
-import type { DisclosureFrame } from '../controllers/types'
-
 import { SignerMethod } from '../enums/enum'
+
 import { validateAuthConfig } from './auth'
-import { checkX509Certificates } from './helpers'
+import { checkX509Certificates, processIsoImages } from './helpers'
 import { TsLogger } from './logger'
 
 const logger = new TsLogger(LogLevel.info)
@@ -112,7 +121,10 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       const parsedCertificate = X509Service.parseCertificate(agentContext, {
         encodedCertificate: issuerx509certificate[0],
       })
+
       parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
+      const updatedNamespaces = processIsoImages(credential.payload.namespaces)
+      credential.payload.namespaces = updatedNamespaces
       return {
         type: 'credentials',
         format: ClaimFormat.MsoMdoc,
@@ -120,6 +132,11 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
           issuerCertificate: parsedCertificate,
           holderKey: holderBindingDetails.jwk,
           ...credential.payload,
+          validityInfo: {
+            ...credential.payload.validityInfo,
+            validFrom: new Date(credential.payload.validityInfo.validFrom),
+            validUntil: new Date(credential.payload.validityInfo.validUntil),
+          },
           docType: credentialConfiguration.doctype,
         })),
       } satisfies OpenId4VciSignMdocCredentials
@@ -179,7 +196,6 @@ function assertDidBasedHolderBinding(
     throw new CredoError('Only did based holder bindings supported for this credential type')
   }
 }
-
 export interface OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions {
   /**
    * The id of the `credential_supported` entry that is present in the issuer

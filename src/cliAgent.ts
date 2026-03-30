@@ -66,7 +66,11 @@ import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network,
 import { setupServer } from './server'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
-import { getMixedCredentialRequestToCredentialMapper, getX509CertsByClientToken, getX509CertsByUrl } from './utils/oid4vc-agent'
+import {
+  getMixedCredentialRequestToCredentialMapper,
+  getX509CertsByClientToken,
+  getX509CertsByUrl,
+} from './utils/oid4vc-agent'
 import { AuthTypes, getAuthType } from './utils/auth'
 import { PolygonDidRegistrar, PolygonDidResolver, PolygonModule } from '@ayanworks/credo-polygon-w3c-module'
 
@@ -285,14 +289,14 @@ const getModules = (
         console.log('[getTrustedCertificatesForVerification] tenantId from agentContext:', tenantId)
 
         const authType = getAuthType()
-          console.log('[getTrustedCertificatesForVerification] authType:', authType)
+        console.log('[getTrustedCertificatesForVerification] authType:', authType)
 
-          if (authType === AuthTypes.ClientAuth) {
-            return await getX509CertsByClientToken(tenantId, certificateChain)
-          }
+        if (authType === AuthTypes.ClientAuth) {
+          return await getX509CertsByClientToken(tenantId, certificateChain)
+        }
 
-          // NoAuth: return all certs from the static trust list URL
-          return await getX509CertsByUrl()
+        // NoAuth: return all certs from the static trust list URL
+        return await getX509CertsByUrl()
       },
     }),
   }
