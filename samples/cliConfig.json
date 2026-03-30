@@ -1,6 +1,6 @@
 {
-  "label": "platform-admin-agent",
-  "walletId": "platform_admin_agent",
+  "label": "AFJ Rest Agent 1",
+  "walletId": "sample",
   "walletKey": "sample",
   "walletType": "postgres",
   "walletUrl": "localhost:5432",
@@ -23,7 +23,7 @@
       "indyNamespace": "bcovrin:testnet"
     }
   ],
-  "endpoint": ["https://e70b-122-170-198-40.ngrok-free.app"],
+  "endpoint": ["http://localhost:4002"],
   "autoAcceptConnections": true,
   "autoAcceptCredentials": "always",
   "autoAcceptProofs": "contentApproved",
