@@ -532,6 +532,9 @@ export class DidController extends Controller {
     const did = `did:${didOptions.method}:${domain}`
     const keyId = `${did}#key-1`
 
+    let key;
+    let publicJwk;
+
     // TODO: Remove comments afterwards
     // const key = await agent.kms.createKey({
     //   keyType: didOptions.keyType,
@@ -556,20 +559,20 @@ export class DidController extends Controller {
     //   })
 
     if (didOptions.keyType === KeyAlgorithm.Ed25519) {
-      const { privateJwk } = transformSeedToPrivateJwk({
+      const { privateJwk } = transformPrivateKeyToPrivateJwk({
         type: {
           crv: 'Ed25519',
           kty: 'OKP',
         },
-        seed: TypedArrayEncoder.fromString(didOptions.seed),
+        privateKey: TypedArrayEncoder.fromString(didOptions.seed),
       })
 
-      const key = await agent.kms.importKey({ privateJwk })
+      key = await agent.kms.importKey({ privateJwk })
 
-      const publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
+      publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
       didDocument = new DidDocumentBuilder(did)
         .addContext('https://w3id.org/security/suites/ed25519-2018/v1')
-        .addVerificationMethod(getEd25519VerificationKey2018({ id: keyId, controller: did, publicJwk }))
+        .addVerificationMethod(getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }))
         .addAuthentication(keyId)
         .addAssertionMethod(keyId)
         .build()
@@ -584,6 +587,12 @@ export class DidController extends Controller {
       did,
       overwrite: true,
       didDocument,
+      keys: [
+        {
+          didDocumentRelativeKeyId: `#key-1`,
+          kmsKeyId: key.keyId
+        }
+      ]
     })
     return { did, didDocument }
   }
