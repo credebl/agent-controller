@@ -4383,7 +4383,7 @@
 			"CreateOfferOobOptions": {
 				"properties": {
 					"protocolVersion": {
-						"type": "string"
+						"$ref": "#/components/schemas/ProtocolVersion"
 					},
 					"credentialFormats": {
 						"$ref": "#/components/schemas/DidCommCredentialFormatPayload_CredentialFormatType-Array.createOffer_"

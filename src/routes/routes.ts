@@ -1929,7 +1929,7 @@ const models: TsoaRoute.Models = {
     "CreateOfferOobOptions": {
         "dataType": "refObject",
         "properties": {
-            "protocolVersion": {"dataType":"string","required":true},
+            "protocolVersion": {"ref":"ProtocolVersion","required":true},
             "credentialFormats": {"ref":"DidCommCredentialFormatPayload_CredentialFormatType-Array.createOffer_","required":true},
             "autoAcceptCredential": {"ref":"DidCommAutoAcceptCredential"},
             "comment": {"dataType":"string"},

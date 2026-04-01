@@ -532,8 +532,8 @@ export class DidController extends Controller {
     const did = `did:${didOptions.method}:${domain}`
     const keyId = `${did}#key-1`
 
-    let key;
-    let publicJwk;
+    let key
+    let publicJwk
 
     // TODO: Remove comments afterwards
     // const key = await agent.kms.createKey({
@@ -590,9 +590,9 @@ export class DidController extends Controller {
       keys: [
         {
           didDocumentRelativeKeyId: `#key-1`,
-          kmsKeyId: key.keyId
-        }
-      ]
+          kmsKeyId: key.keyId,
+        },
+      ],
     })
     return { did, didDocument }
   }

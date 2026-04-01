@@ -301,7 +301,7 @@ const getWithTenantModules = (
   autoAcceptProofs: DidCommAutoAcceptProof,
   walletScheme: AskarMultiWalletDatabaseScheme,
   walletConfig: AskarModuleConfigStoreOptions,
-  endpoints: string[]
+  endpoints: string[],
 ) => {
   const modules = getModules(
     networkConfig,
@@ -449,7 +449,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
       walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
       walletConfig,
-      endpoints || []
+      endpoints || [],
     )
   } else {
     modules = getModules(
@@ -464,7 +464,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
       walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
       walletConfig,
-      endpoints || []
+      endpoints || [],
     )
   }
 

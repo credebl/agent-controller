@@ -118,7 +118,7 @@ type CredentialFormatType =
   | AnonCredsDidCommCredentialFormat
 
 export interface CreateOfferOobOptions {
-  protocolVersion: string
+  protocolVersion: ProtocolVersion
   credentialFormats: DidCommCredentialFormatPayload<CredentialFormatType[], 'createOffer'>
   autoAcceptCredential?: DidCommAutoAcceptCredential
   comment?: string
