@@ -510,6 +510,7 @@ export class DidController extends Controller {
     return { did: did, didDocument: didDocument }
   }
 
+  // TODO: Right now we are using seed as privateKey for did creation. Fix this is API payload
   public async handleWeb(agent: AgentType, didOptions: DidCreate) {
     let didDocument: DidDocument
     if (!didOptions.domain) {
@@ -534,29 +535,6 @@ export class DidController extends Controller {
 
     let key
     let publicJwk
-
-    // TODO: Remove comments afterwards
-    // const key = await agent.kms.createKey({
-    //   keyType: didOptions.keyType,
-    //   // Commenting for now, as per the multi-tenant endpoint
-    //   // privateKey: TypedArrayEncoder.fromString(didOptions.seed),
-    //   seed: TypedArrayEncoder.fromString(didOptions.seed),
-    // })
-
-    //   const ed25519Key = await agent.kms.createKey({
-    //       type: {
-    //           crv: 'Ed25519',
-    //           kty: 'OKP',
-    //       }
-    //   })
-    //   const publicJwk = Kms.PublicJwk.fromPublicJwk(ed25519Key.publicJwk)
-    //   const { privateJwk } = transformPrivateKeyToPrivateJwk({
-    //       type: {
-    //           crv: 'Ed25519',
-    //           kty: 'OKP',
-    //       },
-    //       privateKey: TypedArrayEncoder.fromString(didOptions.seed),
-    //   })
 
     if (didOptions.keyType === KeyAlgorithm.Ed25519) {
       const { privateJwk } = transformPrivateKeyToPrivateJwk({
