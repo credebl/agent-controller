@@ -231,7 +231,7 @@ export class CredentialController extends Controller {
         outOfBandRecord: outOfBandRecord.toJSON(),
         outOfBandRecordId: outOfBandRecord.id,
         credentialRequestThId: offerOob.credentialExchangeRecord.threadId,
-        invitationDid: outOfBandOption?.invitationDid ? '' : invitationDid,
+        invitationDid,
       }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
