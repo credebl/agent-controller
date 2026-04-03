@@ -801,7 +801,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "_sd": {"dataType":"array","array":{"dataType":"string"}},
         },
-        "additionalProperties": {"dataType":"union","subSchemas":[{"ref":"DisclosureFrameForOffer"},{"dataType":"array","array":{"dataType":"string"}},{"dataType":"undefined"}]},
+        "additionalProperties": {"dataType":"union","subSchemas":[{"ref":"DisclosureFrameForOffer"},{"dataType":"array","array":{"dataType":"refObject","ref":"DisclosureFrameForOffer"}},{"dataType":"array","array":{"dataType":"string"}},{"dataType":"undefined"}]},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "OpenId4VciCredentialFormatProfile": {

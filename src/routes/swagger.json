@@ -1664,6 +1664,12 @@
 						},
 						{
 							"items": {
+								"$ref": "#/components/schemas/DisclosureFrameForOffer"
+							},
+							"type": "array"
+						},
+						{
+							"items": {
 								"type": "string"
 							},
 							"type": "array"
