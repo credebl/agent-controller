@@ -4581,45 +4581,328 @@
 				"type": "object",
 				"description": "Get format data return value. Each key holds a mapping of credential format key to format data."
 			},
-			"OpenId4VcVerifierRecord": {
-				"$ref": "#/components/schemas/Record_string.unknown_",
-				"description": "For OID4VC you need to expos metadata files. Each issuer needs to host this metadata. This is not the case for DIDComm where we can just have one /didcomm endpoint.\nSo we create a record per openid issuer/verifier that you want, and each tenant can create multiple issuers/verifiers which have different endpoints\nand metadata files"
-			},
-			"OpenId4VcSiopVerifierClientMetadata": {
-				"properties": {
-					"client_name": {
-						"type": "string"
-					},
-					"logo_uri": {
-						"type": "string"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"OpenId4VcSiopCreateVerifierOptions": {
-				"properties": {
-					"verifierId": {
-						"type": "string"
-					},
-					"clientMetadata": {
-						"$ref": "#/components/schemas/OpenId4VcSiopVerifierClientMetadata"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"OpenId4VcUpdateVerifierRecordOptions": {
-				"properties": {
-					"clientMetadata": {
-						"$ref": "#/components/schemas/OpenId4VcSiopVerifierClientMetadata"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
 			"DidCommProofExchangeRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"AnonCredsPresentationPreviewAttribute": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"credentialDefinitionId": {
+						"type": "string"
+					},
+					"mimeType": {
+						"type": "string"
+					},
+					"value": {
+						"type": "string"
+					},
+					"referent": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AnonCredsPredicateType": {
+				"type": "string",
+				"enum": [
+					">=",
+					">",
+					"<=",
+					"<"
+				]
+			},
+			"AnonCredsPresentationPreviewPredicate": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"credentialDefinitionId": {
+						"type": "string"
+					},
+					"predicate": {
+						"$ref": "#/components/schemas/AnonCredsPredicateType"
+					},
+					"threshold": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"name",
+					"credentialDefinitionId",
+					"predicate",
+					"threshold"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AnonCredsNonRevokedInterval": {
+				"properties": {
+					"from": {
+						"type": "number",
+						"format": "double"
+					},
+					"to": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AnonCredsProposeProofFormat": {
+				"description": "Interface for creating an anoncreds proof proposal.",
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"version": {
+						"type": "string"
+					},
+					"attributes": {
+						"items": {
+							"$ref": "#/components/schemas/AnonCredsPresentationPreviewAttribute"
+						},
+						"type": "array"
+					},
+					"predicates": {
+						"items": {
+							"$ref": "#/components/schemas/AnonCredsPresentationPreviewPredicate"
+						},
+						"type": "array"
+					},
+					"nonRevokedInterval": {
+						"$ref": "#/components/schemas/AnonCredsNonRevokedInterval"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Schema": {
+				"properties": {
+					"uri": {
+						"type": "string"
+					},
+					"required": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"uri"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"FilterV1": {
+				"properties": {
+					"const": {
+						"$ref": "#/components/schemas/OneOfNumberStringBoolean"
+					},
+					"enum": {
+						"items": {
+							"$ref": "#/components/schemas/OneOfNumberStringBoolean"
+						},
+						"type": "array"
+					},
+					"exclusiveMinimum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"exclusiveMaximum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"format": {
+						"type": "string"
+					},
+					"minLength": {
+						"type": "number",
+						"format": "double"
+					},
+					"maxLength": {
+						"type": "number",
+						"format": "double"
+					},
+					"minimum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"maximum": {
+						"$ref": "#/components/schemas/OneOfNumberString"
+					},
+					"not": {
+						"additionalProperties": false,
+						"type": "object"
+					},
+					"pattern": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"FieldV1": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"path": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"purpose": {
+						"type": "string"
+					},
+					"filter": {
+						"$ref": "#/components/schemas/FilterV1"
+					},
+					"predicate": {
+						"$ref": "#/components/schemas/Optionality"
+					}
+				},
+				"required": [
+					"path"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ConstraintsV1": {
+				"properties": {
+					"limit_disclosure": {
+						"$ref": "#/components/schemas/Optionality"
+					},
+					"statuses": {
+						"$ref": "#/components/schemas/Statuses"
+					},
+					"fields": {
+						"items": {
+							"$ref": "#/components/schemas/FieldV1"
+						},
+						"type": "array"
+					},
+					"subject_is_issuer": {
+						"$ref": "#/components/schemas/Optionality"
+					},
+					"is_holder": {
+						"items": {
+							"$ref": "#/components/schemas/HolderSubject"
+						},
+						"type": "array"
+					},
+					"same_subject": {
+						"items": {
+							"$ref": "#/components/schemas/HolderSubject"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"InputDescriptorV1": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"purpose": {
+						"type": "string"
+					},
+					"group": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"schema": {
+						"items": {
+							"$ref": "#/components/schemas/Schema"
+						},
+						"type": "array"
+					},
+					"issuance": {
+						"items": {
+							"$ref": "#/components/schemas/Issuance"
+						},
+						"type": "array"
+					},
+					"constraints": {
+						"$ref": "#/components/schemas/ConstraintsV1"
+					}
+				},
+				"required": [
+					"id",
+					"schema"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PresentationDefinitionV1": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"purpose": {
+						"type": "string"
+					},
+					"format": {
+						"$ref": "#/components/schemas/Format"
+					},
+					"submission_requirements": {
+						"items": {
+							"$ref": "#/components/schemas/SubmissionRequirement"
+						},
+						"type": "array"
+					},
+					"input_descriptors": {
+						"items": {
+							"$ref": "#/components/schemas/InputDescriptorV1"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"input_descriptors"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidCommProofFormatPayload_ProofFormats.createProposal_": {
+				"properties": {
+					"indy": {
+						"$ref": "#/components/schemas/AnonCredsProposeProofFormat"
+					},
+					"anoncreds": {
+						"$ref": "#/components/schemas/AnonCredsProposeProofFormat"
+					},
+					"presentationExchange": {
+						"properties": {
+							"presentationDefinition": {
+								"$ref": "#/components/schemas/PresentationDefinitionV1"
+							}
+						},
+						"required": [
+							"presentationDefinition"
+						],
+						"type": "object"
+					}
+				},
+				"type": "object",
+				"description": "Get the payload for a specific method from a list of ProofFormat interfaces and a method"
 			},
 			"DidCommAutoAcceptProof": {
 				"description": "Typing of the state for auto acceptance",
@@ -4635,7 +4918,9 @@
 					"connectionId": {
 						"type": "string"
 					},
-					"proofFormats": {},
+					"proofFormats": {
+						"$ref": "#/components/schemas/DidCommProofFormatPayload_ProofFormats.createProposal_"
+					},
 					"goalCode": {
 						"type": "string"
 					},
@@ -4656,12 +4941,58 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"DidCommProofFormatPayload_ProofFormats.acceptProposal_": {
+				"properties": {
+					"indy": {
+						"properties": {
+							"version": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"anoncreds": {
+						"properties": {
+							"version": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"presentationExchange": {
+						"properties": {
+							"options": {
+								"properties": {
+									"domain": {
+										"type": "string"
+									},
+									"challenge": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					}
+				},
+				"type": "object",
+				"description": "Get the payload for a specific method from a list of ProofFormat interfaces and a method"
+			},
 			"AcceptProofProposal": {
 				"properties": {
-					"proofRecordId": {
+					"proofExchangeRecordId": {
 						"type": "string"
 					},
-					"proofFormats": {},
+					"proofFormats": {
+						"$ref": "#/components/schemas/DidCommProofFormatPayload_ProofFormats.acceptProposal_"
+					},
 					"comment": {
 						"type": "string"
 					},
@@ -4676,7 +5007,7 @@
 					}
 				},
 				"required": [
-					"proofRecordId",
+					"proofExchangeRecordId",
 					"proofFormats"
 				],
 				"type": "object",
@@ -4786,6 +5117,43 @@
 					}
 				},
 				"type": "object"
+			},
+			"OpenId4VcVerifierRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_",
+				"description": "For OID4VC you need to expos metadata files. Each issuer needs to host this metadata. This is not the case for DIDComm where we can just have one /didcomm endpoint.\nSo we create a record per openid issuer/verifier that you want, and each tenant can create multiple issuers/verifiers which have different endpoints\nand metadata files"
+			},
+			"OpenId4VcSiopVerifierClientMetadata": {
+				"properties": {
+					"client_name": {
+						"type": "string"
+					},
+					"logo_uri": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OpenId4VcSiopCreateVerifierOptions": {
+				"properties": {
+					"verifierId": {
+						"type": "string"
+					},
+					"clientMetadata": {
+						"$ref": "#/components/schemas/OpenId4VcSiopVerifierClientMetadata"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"OpenId4VcUpdateVerifierRecordOptions": {
+				"properties": {
+					"clientMetadata": {
+						"$ref": "#/components/schemas/OpenId4VcSiopVerifierClientMetadata"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
 			}
 		},
 		"securitySchemes": {
@@ -9622,219 +9990,6 @@
 				]
 			}
 		},
-		"/openid4vc/verifier": {
-			"post": {
-				"operationId": "CreateVerifier",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
-								}
-							}
-						}
-					}
-				},
-				"description": "Create a new verifier and store the verifier record",
-				"tags": [
-					"oid4vc verifiers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"tenant",
-							"dedicated"
-						]
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/OpenId4VcSiopCreateVerifierOptions"
-							}
-						}
-					}
-				}
-			},
-			"get": {
-				"operationId": "GetVerifiersByQuery",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get verifiers by query",
-				"tags": [
-					"oid4vc verifiers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"tenant",
-							"dedicated"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "publicVerifierId",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/openid4vc/verifier/{publicVerifierId}": {
-			"put": {
-				"operationId": "UpdateVerifierMetadata",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
-								}
-							}
-						}
-					}
-				},
-				"description": "Update verifier metadata",
-				"tags": [
-					"oid4vc verifiers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"tenant",
-							"dedicated"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "publicVerifierId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/OpenId4VcUpdateVerifierRecordOptions"
-							}
-						}
-					}
-				}
-			},
-			"get": {
-				"operationId": "GetVerifier",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
-								}
-							}
-						}
-					}
-				},
-				"description": "Get single verifier by ID",
-				"tags": [
-					"oid4vc verifiers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"tenant",
-							"dedicated"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "publicVerifierId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/openid4vc/verifier/{verifierId}": {
-			"delete": {
-				"operationId": "DeleteVerifier",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"message"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"description": "Delete verifier by ID",
-				"tags": [
-					"oid4vc verifiers"
-				],
-				"security": [
-					{
-						"jwt": [
-							"tenant",
-							"dedicated"
-						]
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "verifierId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
 		"/didcomm/proofs": {
 			"get": {
 				"operationId": "GetAllProofs",
@@ -10344,6 +10499,219 @@
 					{
 						"in": "path",
 						"name": "proofRecordId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verifier": {
+			"post": {
+				"operationId": "CreateVerifier",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create a new verifier and store the verifier record",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/OpenId4VcSiopCreateVerifierOptions"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetVerifiersByQuery",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get verifiers by query",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "publicVerifierId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verifier/{publicVerifierId}": {
+			"put": {
+				"operationId": "UpdateVerifierMetadata",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Update verifier metadata",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "publicVerifierId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/OpenId4VcUpdateVerifierRecordOptions"
+							}
+						}
+					}
+				}
+			},
+			"get": {
+				"operationId": "GetVerifier",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OpenId4VcVerifierRecord"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get single verifier by ID",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "publicVerifierId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/verifier/{verifierId}": {
+			"delete": {
+				"operationId": "DeleteVerifier",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"message": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"message"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Delete verifier by ID",
+				"tags": [
+					"oid4vc verifiers"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "verifierId",
 						"required": true,
 						"schema": {
 							"type": "string"
