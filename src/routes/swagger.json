@@ -4915,6 +4915,9 @@
 			},
 			"RequestProofProposalOptions": {
 				"properties": {
+					"protocolVersion": {
+						"$ref": "#/components/schemas/ProtocolVersion"
+					},
 					"connectionId": {
 						"type": "string"
 					},
@@ -4935,6 +4938,7 @@
 					}
 				},
 				"required": [
+					"protocolVersion",
 					"connectionId",
 					"proofFormats"
 				],
@@ -10149,7 +10153,7 @@
 				}
 			}
 		},
-		"/didcomm/proofs/{proofRecordId}/accept-proposal": {
+		"/didcomm/proofs/accept-proposal": {
 			"post": {
 				"operationId": "AcceptProposal",
 				"responses": {

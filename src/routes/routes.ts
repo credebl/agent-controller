@@ -2179,6 +2179,7 @@ const models: TsoaRoute.Models = {
     "RequestProofProposalOptions": {
         "dataType": "refObject",
         "properties": {
+            "protocolVersion": {"ref":"ProtocolVersion","required":true},
             "connectionId": {"dataType":"string","required":true},
             "proofFormats": {"ref":"DidCommProofFormatPayload_ProofFormats.createProposal_","required":true},
             "goalCode": {"dataType":"string"},
@@ -5407,7 +5408,7 @@ export function RegisterRoutes(app: Router) {
                 request: {"in":"request","name":"request","required":true,"dataType":"object"},
                 acceptProposal: {"in":"body","name":"acceptProposal","required":true,"ref":"AcceptProofProposal"},
         };
-        app.post('/didcomm/proofs/:proofRecordId/accept-proposal',
+        app.post('/didcomm/proofs/accept-proposal',
             authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
             ...(fetchMiddlewares<RequestHandler>(ProofController)),
             ...(fetchMiddlewares<RequestHandler>(ProofController.prototype.acceptProposal)),
