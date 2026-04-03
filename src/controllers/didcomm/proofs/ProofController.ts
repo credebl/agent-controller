@@ -79,7 +79,7 @@ export class ProofController extends Controller {
     try {
       const proof = await request.agent.modules.didcomm.proofs.proposeProof({
         connectionId: requestProofProposalOptions.connectionId,
-        protocolVersion: 'v1' as ProofsProtocolVersionType<[]>,
+        protocolVersion: requestProofProposalOptions.protocolVersion as ProofsProtocolVersionType<[]>,
         proofFormats: requestProofProposalOptions.proofFormats,
         comment: requestProofProposalOptions.comment,
         autoAcceptProof: requestProofProposalOptions.autoAcceptProof,
@@ -101,7 +101,7 @@ export class ProofController extends Controller {
    * @param proposal
    * @returns ProofRecord
    */
-  @Post('/:proofRecordId/accept-proposal')
+  @Post('/accept-proposal')
   @Example<DidCommProofExchangeRecordProps>(ProofRecordExample)
   public async acceptProposal(@Request() request: Req, @Body() acceptProposal: AcceptProofProposal) {
     try {
@@ -199,7 +199,7 @@ export class ProofController extends Controller {
           useDidSovPrefixWhereAllowed: request.agent.modules.didcomm.config.useDidSovPrefixWhereAllowed,
         }),
         outOfBandRecord: outOfBandRecord.toJSON(),
-        invitationDid: createRequestOptions?.invitationDid ? '' : invitationDid,
+        invitationDid,
         proofRecordThId: proof.proofRecord.threadId,
         proofMessageId: proof.message.thread?.threadId || proof.message.threadId || proof.message.id,
       }
@@ -223,6 +223,7 @@ export class ProofController extends Controller {
     @Path('proofRecordId') proofRecordId: string,
     @Body()
     body: {
+      // TODO: Check if we can remove the below body options as they are not used
       filterByPresentationPreview?: boolean
       filterByNonRevocationRequirements?: boolean
       comment?: string

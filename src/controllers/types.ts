@@ -259,6 +259,7 @@ export interface RequestProofOptions {
 
 // TODO: added type in protocolVersion
 export interface RequestProofProposalOptions {
+  protocolVersion: ProtocolVersion
   connectionId: string
   proofFormats: DidCommProofFormatPayload<ProofFormats, 'createProposal'>
   goalCode?: string
