@@ -263,7 +263,7 @@ export interface RequestProofProposalOptions {
 }
 
 export interface AcceptProofProposal {
-  proofRecordId: string
+  proofExchangeRecordId: string
   proofFormats: any
   comment?: string
   autoAcceptProof?: DidCommAutoAcceptProof

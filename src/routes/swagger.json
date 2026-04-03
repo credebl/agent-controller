@@ -4617,6 +4617,175 @@
 				},
 				"type": "object",
 				"additionalProperties": false
+			},
+			"DidCommProofExchangeRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"DidCommAutoAcceptProof": {
+				"description": "Typing of the state for auto acceptance",
+				"enum": [
+					"always",
+					"contentApproved",
+					"never"
+				],
+				"type": "string"
+			},
+			"RequestProofProposalOptions": {
+				"properties": {
+					"connectionId": {
+						"type": "string"
+					},
+					"proofFormats": {},
+					"goalCode": {
+						"type": "string"
+					},
+					"parentThreadId": {
+						"type": "string"
+					},
+					"autoAcceptProof": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptProof"
+					},
+					"comment": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"connectionId",
+					"proofFormats"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AcceptProofProposal": {
+				"properties": {
+					"proofRecordId": {
+						"type": "string"
+					},
+					"proofFormats": {},
+					"comment": {
+						"type": "string"
+					},
+					"autoAcceptProof": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptProof"
+					},
+					"goalCode": {
+						"type": "string"
+					},
+					"willConfirm": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"proofRecordId",
+					"proofFormats"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"RequestProofOptions": {
+				"properties": {
+					"connectionId": {
+						"type": "string"
+					},
+					"protocolVersion": {
+						"type": "string"
+					},
+					"proofFormats": {},
+					"comment": {
+						"type": "string"
+					},
+					"autoAcceptProof": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptProof"
+					},
+					"goalCode": {
+						"type": "string"
+					},
+					"parentThreadId": {
+						"type": "string"
+					},
+					"willConfirm": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"connectionId",
+					"protocolVersion",
+					"proofFormats",
+					"comment",
+					"autoAcceptProof"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CreateProofRequestOobOptions": {
+				"properties": {
+					"protocolVersion": {
+						"type": "string"
+					},
+					"proofFormats": {},
+					"goalCode": {
+						"type": "string"
+					},
+					"parentThreadId": {
+						"type": "string"
+					},
+					"willConfirm": {
+						"type": "boolean"
+					},
+					"autoAcceptProof": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptProof"
+					},
+					"comment": {
+						"type": "string"
+					},
+					"label": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"recipientKey": {
+						"type": "string"
+					},
+					"invitationDid": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"protocolVersion",
+					"proofFormats"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"ProofFormatDataMessagePayload__40_LegacyIndyDidCommProofFormat-or-AnonCredsDidCommProofFormat-or-DidCommDifPresentationExchangeProofFormat_41_-Array.proposal_": {
+				"properties": {},
+				"type": "object",
+				"description": "Get the format data payload for a specific message from a list of ProofFormat interfaces and a message\n\nFor an indy offer, this resolves to the proof request format as defined here:\nhttps://github.com/hyperledger/aries-rfcs/tree/b3a3942ef052039e73cd23d847f42947f8287da2/features/0592-indy-attachments#proof-request-format"
+			},
+			"ProofFormatDataMessagePayload__40_LegacyIndyDidCommProofFormat-or-AnonCredsDidCommProofFormat-or-DidCommDifPresentationExchangeProofFormat_41_-Array.request_": {
+				"properties": {},
+				"type": "object",
+				"description": "Get the format data payload for a specific message from a list of ProofFormat interfaces and a message\n\nFor an indy offer, this resolves to the proof request format as defined here:\nhttps://github.com/hyperledger/aries-rfcs/tree/b3a3942ef052039e73cd23d847f42947f8287da2/features/0592-indy-attachments#proof-request-format"
+			},
+			"ProofFormatDataMessagePayload__40_LegacyIndyDidCommProofFormat-or-AnonCredsDidCommProofFormat-or-DidCommDifPresentationExchangeProofFormat_41_-Array.presentation_": {
+				"properties": {},
+				"type": "object",
+				"description": "Get the format data payload for a specific message from a list of ProofFormat interfaces and a message\n\nFor an indy offer, this resolves to the proof request format as defined here:\nhttps://github.com/hyperledger/aries-rfcs/tree/b3a3942ef052039e73cd23d847f42947f8287da2/features/0592-indy-attachments#proof-request-format"
+			},
+			"GetProofFormatDataReturn__40_LegacyIndyDidCommProofFormat-or-AnonCredsDidCommProofFormat-or-DidCommDifPresentationExchangeProofFormat_41_-Array_": {
+				"properties": {
+					"presentation": {
+						"$ref": "#/components/schemas/ProofFormatDataMessagePayload__40_LegacyIndyDidCommProofFormat-or-AnonCredsDidCommProofFormat-or-DidCommDifPresentationExchangeProofFormat_41_-Array.presentation_"
+					},
+					"request": {
+						"$ref": "#/components/schemas/ProofFormatDataMessagePayload__40_LegacyIndyDidCommProofFormat-or-AnonCredsDidCommProofFormat-or-DidCommDifPresentationExchangeProofFormat_41_-Array.request_"
+					},
+					"proposal": {
+						"$ref": "#/components/schemas/ProofFormatDataMessagePayload__40_LegacyIndyDidCommProofFormat-or-AnonCredsDidCommProofFormat-or-DidCommDifPresentationExchangeProofFormat_41_-Array.proposal_"
+					}
+				},
+				"type": "object"
 			}
 		},
 		"securitySchemes": {
@@ -9658,6 +9827,523 @@
 					{
 						"in": "path",
 						"name": "verifierId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/didcomm/proofs": {
+			"get": {
+				"operationId": "GetAllProofs",
+				"responses": {
+					"200": {
+						"description": "ProofRecord[]",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/Record_string.unknown_"
+									},
+									"type": "array"
+								},
+								"examples": {
+									"Example 1": {
+										"value": [
+											{
+												"metadata": {},
+												"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+												"createdAt": "2022-01-01T00:00:00.000Z",
+												"connectionId": "2aecf74c-3073-4f98-9acb-92415d096834",
+												"threadId": "0019d466-5eea-4269-8c40-031b4896c5b7",
+												"protocolVersion": "v1"
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Retrieve all proof records",
+				"tags": [
+					"DIDComm - Proofs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "threadId",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/didcomm/proofs/{proofRecordId}": {
+			"get": {
+				"operationId": "GetProofById",
+				"responses": {
+					"200": {
+						"description": "ProofRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Record_string.unknown_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"metadata": {},
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "2aecf74c-3073-4f98-9acb-92415d096834",
+											"threadId": "0019d466-5eea-4269-8c40-031b4896c5b7",
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Retrieve proof record by proof record id",
+				"tags": [
+					"DIDComm - Proofs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "proofRecordId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/RecordId"
+						}
+					}
+				]
+			}
+		},
+		"/didcomm/proofs/propose-proof": {
+			"post": {
+				"operationId": "ProposeProof",
+				"responses": {
+					"200": {
+						"description": "ProofRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommProofExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"metadata": {},
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "2aecf74c-3073-4f98-9acb-92415d096834",
+											"threadId": "0019d466-5eea-4269-8c40-031b4896c5b7",
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Initiate a new presentation exchange as prover by sending a presentation proposal request\nto the connection with the specified connection id.",
+				"tags": [
+					"DIDComm - Proofs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RequestProofProposalOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/proofs/{proofRecordId}/accept-proposal": {
+			"post": {
+				"operationId": "AcceptProposal",
+				"responses": {
+					"200": {
+						"description": "ProofRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommProofExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"metadata": {},
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "2aecf74c-3073-4f98-9acb-92415d096834",
+											"threadId": "0019d466-5eea-4269-8c40-031b4896c5b7",
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Accept a presentation proposal as verifier by sending an accept proposal message\nto the connection associated with the proof record.",
+				"tags": [
+					"DIDComm - Proofs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AcceptProofProposal"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/proofs/request-proof": {
+			"post": {
+				"operationId": "RequestProof",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommProofExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"metadata": {},
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "2aecf74c-3073-4f98-9acb-92415d096834",
+											"threadId": "0019d466-5eea-4269-8c40-031b4896c5b7",
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Creates a presentation request bound to existing connection",
+				"tags": [
+					"DIDComm - Proofs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RequestProofOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/proofs/create-request-oob": {
+			"post": {
+				"operationId": "CreateRequest",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"proofMessageId": {
+											"type": "string"
+										},
+										"proofRecordThId": {
+											"type": "string"
+										},
+										"invitationDid": {
+											"type": "string"
+										},
+										"outOfBandRecord": {
+											"$ref": "#/components/schemas/Record_string.unknown_"
+										},
+										"invitation": {
+											"$ref": "#/components/schemas/DidCommPlaintextMessage"
+										},
+										"invitationUrl": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"proofMessageId",
+										"proofRecordThId",
+										"invitationDid",
+										"outOfBandRecord",
+										"invitation",
+										"invitationUrl"
+									],
+									"type": "object"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"metadata": {},
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "2aecf74c-3073-4f98-9acb-92415d096834",
+											"threadId": "0019d466-5eea-4269-8c40-031b4896c5b7",
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Creates a presentation request not bound to any proposal or existing connection",
+				"tags": [
+					"DIDComm - Proofs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateProofRequestOobOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/proofs/{proofRecordId}/accept-request": {
+			"post": {
+				"operationId": "AcceptRequest",
+				"responses": {
+					"200": {
+						"description": "ProofRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Record_string.unknown_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"metadata": {},
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "2aecf74c-3073-4f98-9acb-92415d096834",
+											"threadId": "0019d466-5eea-4269-8c40-031b4896c5b7",
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Accept a presentation request as prover by sending an accept request message\nto the connection associated with the proof record.",
+				"tags": [
+					"DIDComm - Proofs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "proofRecordId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"comment": {
+										"type": "string"
+									},
+									"filterByNonRevocationRequirements": {
+										"type": "boolean"
+									},
+									"filterByPresentationPreview": {
+										"type": "boolean"
+									}
+								},
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/proofs/{proofRecordId}/accept-presentation": {
+			"post": {
+				"operationId": "AcceptPresentation",
+				"responses": {
+					"200": {
+						"description": "ProofRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommProofExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"metadata": {},
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "2aecf74c-3073-4f98-9acb-92415d096834",
+											"threadId": "0019d466-5eea-4269-8c40-031b4896c5b7",
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Accept a presentation as prover by sending an accept presentation message\nto the connection associated with the proof record.",
+				"tags": [
+					"DIDComm - Proofs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "proofRecordId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/didcomm/proofs/{proofRecordId}/form-data": {
+			"get": {
+				"operationId": "ProofFormData",
+				"responses": {
+					"200": {
+						"description": "ProofRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GetProofFormatDataReturn__40_LegacyIndyDidCommProofFormat-or-AnonCredsDidCommProofFormat-or-DidCommDifPresentationExchangeProofFormat_41_-Array_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"metadata": {},
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "2aecf74c-3073-4f98-9acb-92415d096834",
+											"threadId": "0019d466-5eea-4269-8c40-031b4896c5b7",
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Return proofRecord",
+				"tags": [
+					"DIDComm - Proofs"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "proofRecordId",
 						"required": true,
 						"schema": {
 							"type": "string"
