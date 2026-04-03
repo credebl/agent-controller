@@ -2,6 +2,7 @@
 // Refer from: https://github.com/credebl/mobile-sdk/blob/main/packages/ssi/src/wallet/wallet.ts
 import '@openwallet-foundation/askar-nodejs'
 import '@hyperledger/indy-vdr-nodejs'
+import '@hyperledger/anoncreds-nodejs'
 import type { AskarModuleConfigStoreOptions } from '@credo-ts/askar'
 import type { InitConfig } from '@credo-ts/core'
 import type { IndyVdrPoolConfig } from '@credo-ts/indy-vdr'
@@ -155,6 +156,7 @@ const getModules = (
   autoAcceptProofs: DidCommAutoAcceptProof,
   walletScheme: AskarMultiWalletDatabaseScheme,
   storeOptions: AskarModuleConfigStoreOptions,
+  endpoints: string[],
 ) => {
   const legacyIndyCredentialFormat = new LegacyIndyDidCommCredentialFormatService()
   const legacyIndyProofFormat = new LegacyIndyDidCommProofFormatService()
@@ -202,6 +204,7 @@ const getModules = (
       mediationRecipient: true,
       messagePickup: true,
       mediator: false,
+      endpoints: endpoints || [],
 
       basicMessages: true,
       connections: {
@@ -310,6 +313,7 @@ const getWithTenantModules = (
   autoAcceptProofs: DidCommAutoAcceptProof,
   walletScheme: AskarMultiWalletDatabaseScheme,
   walletConfig: AskarModuleConfigStoreOptions,
+  endpoints: string[],
 ) => {
   const modules = getModules(
     networkConfig,
@@ -323,6 +327,7 @@ const getWithTenantModules = (
     autoAcceptProofs,
     walletScheme,
     walletConfig,
+    endpoints,
   )
   return {
     tenants: new TenantsModule<typeof modules>({
@@ -353,6 +358,7 @@ const getWithTenantModules = (
 
 export async function runRestAgent(restConfig: AriesRestConfig) {
   const {
+    endpoints,
     schemaFileServerURL,
     logLevel,
     inboundTransports = [],
@@ -455,6 +461,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
       walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
       walletConfig,
+      endpoints || [],
     )
   } else {
     modules = getModules(
@@ -469,6 +476,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
       walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
       walletConfig,
+      endpoints || [],
     )
   }
 

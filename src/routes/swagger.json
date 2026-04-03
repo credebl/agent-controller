@@ -3930,6 +3930,657 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"ThreadId": {
+				"type": "string",
+				"example": "ea4e5e69-fc04-465a-90d2-9f8ff78aa71d"
+			},
+			"DidCommCredentialState": {
+				"description": "Issue Credential states as defined in RFC 0036 and RFC 0453",
+				"enum": [
+					"proposal-sent",
+					"proposal-received",
+					"offer-sent",
+					"offer-received",
+					"declined",
+					"request-sent",
+					"request-received",
+					"credential-issued",
+					"credential-received",
+					"done",
+					"abandoned"
+				],
+				"type": "string"
+			},
+			"DidCommCredentialRole": {
+				"enum": [
+					"issuer",
+					"holder"
+				],
+				"type": "string"
+			},
+			"W3cCredentialRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"DidCommCredentialExchangeRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"ProtocolVersion": {
+				"enum": [
+					"v1",
+					"v2"
+				],
+				"type": "string"
+			},
+			"DidCommCredentialPreviewAttributeOptions": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"mimeType": {
+						"type": "string"
+					},
+					"value": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"value"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Pick_AnonCredsDidCommProposeCredentialFormat.Exclude_keyofAnonCredsDidCommProposeCredentialFormat.schemaIssuerId-or-issuerId__": {
+				"properties": {
+					"schemaId": {
+						"type": "string"
+					},
+					"schemaName": {
+						"type": "string"
+					},
+					"schemaVersion": {
+						"type": "string"
+					},
+					"credentialDefinitionId": {
+						"type": "string"
+					},
+					"attributes": {
+						"items": {
+							"$ref": "#/components/schemas/DidCommCredentialPreviewAttributeOptions"
+						},
+						"type": "array"
+					},
+					"schemaIssuerDid": {
+						"type": "string"
+					},
+					"issuerDid": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"Omit_AnonCredsDidCommProposeCredentialFormat.schemaIssuerId-or-issuerId_": {
+				"$ref": "#/components/schemas/Pick_AnonCredsDidCommProposeCredentialFormat.Exclude_keyofAnonCredsDidCommProposeCredentialFormat.schemaIssuerId-or-issuerId__",
+				"description": "Construct a type with the properties of T except for those in type K."
+			},
+			"LegacyIndyDidCommProposeCredentialFormat": {
+				"$ref": "#/components/schemas/Omit_AnonCredsDidCommProposeCredentialFormat.schemaIssuerId-or-issuerId_",
+				"description": "This defines the module payload for calling CredentialsApi.createProposal\nor CredentialsApi.negotiateOffer\n\nNOTE: This doesn't include the `issuerId` and `schemaIssuerId` properties that are present in the newer format."
+			},
+			"W3cIssuerOptions": {
+				"description": "TODO: check how to support arbitrary data in class",
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SingleOrArray_JsonObject_": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/JsonObject"
+					},
+					{
+						"items": {
+							"$ref": "#/components/schemas/JsonObject"
+						},
+						"type": "array"
+					}
+				]
+			},
+			"JsonCredential": {
+				"properties": {
+					"@context": {
+						"anyOf": [
+							{
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							},
+							{
+								"$ref": "#/components/schemas/JsonObject"
+							}
+						]
+					},
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"issuer": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"$ref": "#/components/schemas/W3cIssuerOptions"
+							}
+						]
+					},
+					"issuanceDate": {
+						"type": "string"
+					},
+					"expirationDate": {
+						"type": "string"
+					},
+					"credentialSubject": {
+						"$ref": "#/components/schemas/SingleOrArray_JsonObject_"
+					}
+				},
+				"required": [
+					"@context",
+					"type",
+					"issuer",
+					"issuanceDate",
+					"credentialSubject"
+				],
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"DidCommJsonLdCredentialDetailFormat": {
+				"description": "Format for creating a jsonld proposal, offer or request.",
+				"properties": {
+					"credential": {
+						"$ref": "#/components/schemas/JsonCredential"
+					},
+					"options": {
+						"properties": {
+							"proofType": {
+								"type": "string"
+							},
+							"proofPurpose": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"proofType",
+							"proofPurpose"
+						],
+						"type": "object"
+					}
+				},
+				"required": [
+					"credential",
+					"options"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AnonCredsDidCommProposeCredentialFormat": {
+				"description": "This defines the module payload for calling CredentialsApi.createProposal\nor CredentialsApi.negotiateOffer",
+				"properties": {
+					"schemaIssuerId": {
+						"type": "string"
+					},
+					"schemaId": {
+						"type": "string"
+					},
+					"schemaName": {
+						"type": "string"
+					},
+					"schemaVersion": {
+						"type": "string"
+					},
+					"credentialDefinitionId": {
+						"type": "string"
+					},
+					"issuerId": {
+						"type": "string"
+					},
+					"attributes": {
+						"items": {
+							"$ref": "#/components/schemas/DidCommCredentialPreviewAttributeOptions"
+						},
+						"type": "array"
+					},
+					"schemaIssuerDid": {
+						"type": "string"
+					},
+					"issuerDid": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidCommCredentialFormatPayload_CredentialFormatType-Array.createProposal_": {
+				"properties": {
+					"indy": {
+						"$ref": "#/components/schemas/LegacyIndyDidCommProposeCredentialFormat"
+					},
+					"jsonld": {
+						"$ref": "#/components/schemas/DidCommJsonLdCredentialDetailFormat"
+					},
+					"anoncreds": {
+						"$ref": "#/components/schemas/AnonCredsDidCommProposeCredentialFormat"
+					}
+				},
+				"type": "object",
+				"description": "Get the payload for a specific method from a list of CredentialFormat interfaces and a method"
+			},
+			"DidCommAutoAcceptCredential": {
+				"description": "Typing of the state for auto acceptance",
+				"enum": [
+					"always",
+					"contentApproved",
+					"never"
+				],
+				"type": "string"
+			},
+			"ProposeCredentialOptions": {
+				"properties": {
+					"protocolVersion": {
+						"$ref": "#/components/schemas/ProtocolVersion"
+					},
+					"credentialFormats": {
+						"$ref": "#/components/schemas/DidCommCredentialFormatPayload_CredentialFormatType-Array.createProposal_"
+					},
+					"autoAcceptCredential": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptCredential"
+					},
+					"comment": {
+						"type": "string"
+					},
+					"connectionId": {
+						"$ref": "#/components/schemas/RecordId"
+					}
+				},
+				"required": [
+					"protocolVersion",
+					"credentialFormats",
+					"connectionId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AnonCredsDidCommAcceptProposalFormat": {
+				"description": "This defines the module payload for calling CredentialsApi.acceptProposal",
+				"properties": {
+					"credentialDefinitionId": {
+						"type": "string"
+					},
+					"revocationRegistryDefinitionId": {
+						"type": "string"
+					},
+					"revocationRegistryIndex": {
+						"type": "number",
+						"format": "double"
+					},
+					"attributes": {
+						"items": {
+							"$ref": "#/components/schemas/DidCommCredentialPreviewAttributeOptions"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"Record_string.never_": {
+				"properties": {},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"EmptyObject": {
+				"$ref": "#/components/schemas/Record_string.never_"
+			},
+			"DidCommCredentialFormatPayload_CredentialFormats.acceptProposal_": {
+				"properties": {
+					"indy": {
+						"$ref": "#/components/schemas/AnonCredsDidCommAcceptProposalFormat"
+					},
+					"jsonld": {
+						"$ref": "#/components/schemas/EmptyObject"
+					},
+					"anoncreds": {
+						"$ref": "#/components/schemas/AnonCredsDidCommAcceptProposalFormat"
+					}
+				},
+				"type": "object",
+				"description": "Get the payload for a specific method from a list of CredentialFormat interfaces and a method"
+			},
+			"AcceptCredentialProposalOptions": {
+				"properties": {
+					"credentialExchangeRecordId": {
+						"type": "string"
+					},
+					"credentialFormats": {
+						"$ref": "#/components/schemas/DidCommCredentialFormatPayload_CredentialFormats.acceptProposal_"
+					},
+					"autoAcceptCredential": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptCredential"
+					},
+					"comment": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"credentialExchangeRecordId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AnonCredsDidCommOfferCredentialFormat": {
+				"description": "This defines the module payload for calling CredentialsApi.offerCredential\nor CredentialsApi.negotiateProposal",
+				"properties": {
+					"credentialDefinitionId": {
+						"type": "string"
+					},
+					"revocationRegistryDefinitionId": {
+						"type": "string"
+					},
+					"revocationRegistryIndex": {
+						"type": "number",
+						"format": "double"
+					},
+					"attributes": {
+						"items": {
+							"$ref": "#/components/schemas/DidCommCredentialPreviewAttributeOptions"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"credentialDefinitionId",
+					"attributes"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidCommCredentialFormatPayload_CredentialFormats.createOffer_": {
+				"properties": {
+					"indy": {
+						"$ref": "#/components/schemas/AnonCredsDidCommOfferCredentialFormat"
+					},
+					"jsonld": {
+						"$ref": "#/components/schemas/DidCommJsonLdCredentialDetailFormat"
+					},
+					"anoncreds": {
+						"$ref": "#/components/schemas/AnonCredsDidCommOfferCredentialFormat"
+					}
+				},
+				"type": "object",
+				"description": "Get the payload for a specific method from a list of CredentialFormat interfaces and a method"
+			},
+			"CreateOfferOptions": {
+				"properties": {
+					"protocolVersion": {
+						"$ref": "#/components/schemas/ProtocolVersion"
+					},
+					"connectionId": {
+						"$ref": "#/components/schemas/RecordId"
+					},
+					"credentialFormats": {
+						"$ref": "#/components/schemas/DidCommCredentialFormatPayload_CredentialFormats.createOffer_"
+					},
+					"autoAcceptCredential": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptCredential"
+					},
+					"comment": {
+						"type": "string"
+					},
+					"goalCode": {
+						"type": "string"
+					},
+					"goal": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"protocolVersion",
+					"connectionId",
+					"credentialFormats"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidCommCredentialFormatPayload_CredentialFormatType-Array.createOffer_": {
+				"properties": {
+					"indy": {
+						"$ref": "#/components/schemas/AnonCredsDidCommOfferCredentialFormat"
+					},
+					"jsonld": {
+						"$ref": "#/components/schemas/DidCommJsonLdCredentialDetailFormat"
+					},
+					"anoncreds": {
+						"$ref": "#/components/schemas/AnonCredsDidCommOfferCredentialFormat"
+					}
+				},
+				"type": "object",
+				"description": "Get the payload for a specific method from a list of CredentialFormat interfaces and a method"
+			},
+			"CreateOfferOobOptions": {
+				"properties": {
+					"protocolVersion": {
+						"$ref": "#/components/schemas/ProtocolVersion"
+					},
+					"credentialFormats": {
+						"$ref": "#/components/schemas/DidCommCredentialFormatPayload_CredentialFormatType-Array.createOffer_"
+					},
+					"autoAcceptCredential": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptCredential"
+					},
+					"comment": {
+						"type": "string"
+					},
+					"goalCode": {
+						"type": "string"
+					},
+					"parentThreadId": {
+						"type": "string"
+					},
+					"willConfirm": {
+						"type": "boolean"
+					},
+					"label": {
+						"type": "string"
+					},
+					"imageUrl": {
+						"type": "string"
+					},
+					"recipientKey": {
+						"type": "string"
+					},
+					"invitationDid": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"protocolVersion",
+					"credentialFormats"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AnonCredsDidCommAcceptOfferFormat": {
+				"description": "This defines the module payload for calling CredentialsApi.acceptOffer. No options are available for this\nmethod, so it's an empty object",
+				"properties": {
+					"linkSecretId": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidCommCredentialFormatPayload_CredentialFormats.acceptOffer_": {
+				"properties": {
+					"indy": {
+						"$ref": "#/components/schemas/AnonCredsDidCommAcceptOfferFormat"
+					},
+					"jsonld": {
+						"$ref": "#/components/schemas/EmptyObject"
+					},
+					"anoncreds": {
+						"$ref": "#/components/schemas/AnonCredsDidCommAcceptOfferFormat"
+					}
+				},
+				"type": "object",
+				"description": "Get the payload for a specific method from a list of CredentialFormat interfaces and a method"
+			},
+			"CredentialOfferOptions": {
+				"properties": {
+					"credentialExchangeRecordId": {
+						"$ref": "#/components/schemas/RecordId"
+					},
+					"credentialFormats": {
+						"$ref": "#/components/schemas/DidCommCredentialFormatPayload_CredentialFormats.acceptOffer_"
+					},
+					"autoAcceptCredential": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptCredential"
+					},
+					"comment": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"credentialExchangeRecordId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AnonCredsDidCommAcceptRequestFormat": {
+				"$ref": "#/components/schemas/Record_string.never_",
+				"description": "This defines the module payload for calling CredentialsApi.acceptRequest. No options are available for this\nmethod, so it's an empty object"
+			},
+			"DidCommJsonLdAcceptRequestFormat": {
+				"description": "Format for accepting a jsonld credential request. Optionally allows the verification\nmethod to use to sign the credential.",
+				"properties": {
+					"verificationMethod": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidCommCredentialFormatPayload_CredentialFormats.acceptRequest_": {
+				"properties": {
+					"indy": {
+						"$ref": "#/components/schemas/AnonCredsDidCommAcceptRequestFormat"
+					},
+					"jsonld": {
+						"$ref": "#/components/schemas/DidCommJsonLdAcceptRequestFormat"
+					},
+					"anoncreds": {
+						"$ref": "#/components/schemas/AnonCredsDidCommAcceptRequestFormat"
+					}
+				},
+				"type": "object",
+				"description": "Get the payload for a specific method from a list of CredentialFormat interfaces and a method"
+			},
+			"AcceptCredentialRequestOptions": {
+				"properties": {
+					"credentialExchangeRecordId": {
+						"$ref": "#/components/schemas/RecordId"
+					},
+					"credentialFormats": {
+						"$ref": "#/components/schemas/DidCommCredentialFormatPayload_CredentialFormats.acceptRequest_"
+					},
+					"autoAcceptCredential": {
+						"$ref": "#/components/schemas/DidCommAutoAcceptCredential"
+					},
+					"comment": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"credentialExchangeRecordId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AcceptCredential": {
+				"properties": {
+					"credentialExchangeRecordId": {
+						"$ref": "#/components/schemas/RecordId"
+					}
+				},
+				"required": [
+					"credentialExchangeRecordId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.proposal_": {
+				"properties": {},
+				"type": "object",
+				"description": "Get the format data payload for a specific message from a list of CredentialFormat interfaces and a message\n\nFor an indy offer, this resolves to the cred abstract format as defined here:\nhttps://github.com/hyperledger/aries-rfcs/tree/b3a3942ef052039e73cd23d847f42947f8287da2/features/0592-indy-attachments#cred-abstract-format"
+			},
+			"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.offer_": {
+				"properties": {},
+				"type": "object",
+				"description": "Get the format data payload for a specific message from a list of CredentialFormat interfaces and a message\n\nFor an indy offer, this resolves to the cred abstract format as defined here:\nhttps://github.com/hyperledger/aries-rfcs/tree/b3a3942ef052039e73cd23d847f42947f8287da2/features/0592-indy-attachments#cred-abstract-format"
+			},
+			"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.request_": {
+				"properties": {},
+				"type": "object",
+				"description": "Get the format data payload for a specific message from a list of CredentialFormat interfaces and a message\n\nFor an indy offer, this resolves to the cred abstract format as defined here:\nhttps://github.com/hyperledger/aries-rfcs/tree/b3a3942ef052039e73cd23d847f42947f8287da2/features/0592-indy-attachments#cred-abstract-format"
+			},
+			"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.credential_": {
+				"properties": {},
+				"type": "object",
+				"description": "Get the format data payload for a specific message from a list of CredentialFormat interfaces and a message\n\nFor an indy offer, this resolves to the cred abstract format as defined here:\nhttps://github.com/hyperledger/aries-rfcs/tree/b3a3942ef052039e73cd23d847f42947f8287da2/features/0592-indy-attachments#cred-abstract-format"
+			},
+			"GetCredentialFormatDataReturn__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array_": {
+				"properties": {
+					"credential": {
+						"$ref": "#/components/schemas/CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.credential_"
+					},
+					"request": {
+						"$ref": "#/components/schemas/CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.request_"
+					},
+					"offerAttributes": {
+						"items": {
+							"$ref": "#/components/schemas/DidCommCredentialPreviewAttributeOptions"
+						},
+						"type": "array"
+					},
+					"offer": {
+						"$ref": "#/components/schemas/CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.offer_"
+					},
+					"proposal": {
+						"$ref": "#/components/schemas/CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.proposal_"
+					},
+					"proposalAttributes": {
+						"items": {
+							"$ref": "#/components/schemas/DidCommCredentialPreviewAttributeOptions"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object",
+				"description": "Get format data return value. Each key holds a mapping of credential format key to format data."
+			},
 			"OpenId4VcVerifierRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_",
 				"description": "For OID4VC you need to expos metadata files. Each issuer needs to host this metadata. This is not the case for DIDComm where we can just have one /didcomm endpoint.\nSo we create a record per openid issuer/verifier that you want, and each tenant can create multiple issuers/verifiers which have different endpoints\nand metadata files"
@@ -8077,6 +8728,729 @@
 						}
 					}
 				}
+			}
+		},
+		"/didcomm/credentials": {
+			"get": {
+				"operationId": "GetAllCredentials",
+				"responses": {
+					"200": {
+						"description": "CredentialExchangeRecord[]",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/Record_string.unknown_"
+									},
+									"type": "array"
+								},
+								"examples": {
+									"Example 1": {
+										"value": [
+											{
+												"_tags": {
+													"state": "offer-sent",
+													"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+													"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b"
+												},
+												"metadata": {
+													"_internal/indyCredential": {
+														"credentialDefinitionId": "q7ATwTYbQDgiigVijUAej:3:CL:318187:latest",
+														"schemaId": "q7ATwTYbQDgiigVijUAej:2:Employee Badge:1.0"
+													}
+												},
+												"credentials": [],
+												"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+												"createdAt": "2022-01-01T00:00:00.000Z",
+												"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b",
+												"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+												"credentialAttributes": [],
+												"protocolVersion": "v1"
+											}
+										]
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Retrieve all credential exchange records",
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "threadId",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/ThreadId"
+						}
+					},
+					{
+						"in": "query",
+						"name": "parentThreadId",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/ThreadId"
+						}
+					},
+					{
+						"in": "query",
+						"name": "connectionId",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/RecordId"
+						}
+					},
+					{
+						"in": "query",
+						"name": "state",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/DidCommCredentialState"
+						}
+					},
+					{
+						"in": "query",
+						"name": "role",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/DidCommCredentialRole"
+						}
+					}
+				]
+			}
+		},
+		"/didcomm/credentials/w3c": {
+			"get": {
+				"operationId": "GetAllW3c",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/W3cCredentialRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/didcomm/credentials/w3c/{id}": {
+			"get": {
+				"operationId": "GetW3cById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/W3cCredentialRecord"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/didcomm/credentials/{credentialRecordId}": {
+			"get": {
+				"operationId": "GetCredentialById",
+				"responses": {
+					"200": {
+						"description": "CredentialExchangeRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Record_string.unknown_"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"_tags": {
+												"state": "offer-sent",
+												"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+												"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b"
+											},
+											"metadata": {
+												"_internal/indyCredential": {
+													"credentialDefinitionId": "q7ATwTYbQDgiigVijUAej:3:CL:318187:latest",
+													"schemaId": "q7ATwTYbQDgiigVijUAej:2:Employee Badge:1.0"
+												}
+											},
+											"credentials": [],
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b",
+											"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+											"credentialAttributes": [],
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Retrieve credential exchange record by credential record id",
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "credentialRecordId",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/RecordId"
+						}
+					}
+				]
+			}
+		},
+		"/didcomm/credentials/propose-credential": {
+			"post": {
+				"operationId": "ProposeCredential",
+				"responses": {
+					"200": {
+						"description": "CredentialExchangeRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommCredentialExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"_tags": {
+												"state": "offer-sent",
+												"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+												"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b"
+											},
+											"metadata": {
+												"_internal/indyCredential": {
+													"credentialDefinitionId": "q7ATwTYbQDgiigVijUAej:3:CL:318187:latest",
+													"schemaId": "q7ATwTYbQDgiigVijUAej:2:Employee Badge:1.0"
+												}
+											},
+											"credentials": [],
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b",
+											"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+											"credentialAttributes": [],
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Initiate a new credential exchange as holder by sending a propose credential message\nto the connection with a specified connection id.",
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ProposeCredentialOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/credentials/accept-proposal": {
+			"post": {
+				"operationId": "AcceptProposal",
+				"responses": {
+					"200": {
+						"description": "CredentialExchangeRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommCredentialExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"_tags": {
+												"state": "offer-sent",
+												"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+												"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b"
+											},
+											"metadata": {
+												"_internal/indyCredential": {
+													"credentialDefinitionId": "q7ATwTYbQDgiigVijUAej:3:CL:318187:latest",
+													"schemaId": "q7ATwTYbQDgiigVijUAej:2:Employee Badge:1.0"
+												}
+											},
+											"credentials": [],
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b",
+											"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+											"credentialAttributes": [],
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Accept a credential proposal as issuer by sending an accept proposal message\nto the connection associated with the credential exchange record.",
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AcceptCredentialProposalOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/credentials/create-offer": {
+			"post": {
+				"operationId": "CreateOffer",
+				"responses": {
+					"200": {
+						"description": "AgentMessage, CredentialExchangeRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommCredentialExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"_tags": {
+												"state": "offer-sent",
+												"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+												"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b"
+											},
+											"metadata": {
+												"_internal/indyCredential": {
+													"credentialDefinitionId": "q7ATwTYbQDgiigVijUAej:3:CL:318187:latest",
+													"schemaId": "q7ATwTYbQDgiigVijUAej:2:Employee Badge:1.0"
+												}
+											},
+											"credentials": [],
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b",
+											"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+											"credentialAttributes": [],
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Initiate a new credential exchange as issuer by creating a credential offer\nwithout specifying a connection id",
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateOfferOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/credentials/create-offer-oob": {
+			"post": {
+				"operationId": "CreateOfferOob",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"invitationDid": {
+											"type": "string"
+										},
+										"credentialRequestThId": {
+											"type": "string"
+										},
+										"outOfBandRecordId": {
+											"type": "string"
+										},
+										"outOfBandRecord": {
+											"$ref": "#/components/schemas/Record_string.unknown_"
+										},
+										"invitation": {
+											"$ref": "#/components/schemas/DidCommPlaintextMessage"
+										},
+										"invitationUrl": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"invitationDid",
+										"credentialRequestThId",
+										"outOfBandRecordId",
+										"outOfBandRecord",
+										"invitation",
+										"invitationUrl"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateOfferOobOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/credentials/accept-offer": {
+			"post": {
+				"operationId": "AcceptOffer",
+				"responses": {
+					"200": {
+						"description": "CredentialExchangeRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommCredentialExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"_tags": {
+												"state": "offer-sent",
+												"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+												"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b"
+											},
+											"metadata": {
+												"_internal/indyCredential": {
+													"credentialDefinitionId": "q7ATwTYbQDgiigVijUAej:3:CL:318187:latest",
+													"schemaId": "q7ATwTYbQDgiigVijUAej:2:Employee Badge:1.0"
+												}
+											},
+											"credentials": [],
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b",
+											"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+											"credentialAttributes": [],
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Accept a credential offer as holder by sending an accept offer message\nto the connection associated with the credential exchange record.",
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CredentialOfferOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/credentials/accept-request": {
+			"post": {
+				"operationId": "AcceptRequest",
+				"responses": {
+					"200": {
+						"description": "CredentialExchangeRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommCredentialExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"_tags": {
+												"state": "offer-sent",
+												"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+												"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b"
+											},
+											"metadata": {
+												"_internal/indyCredential": {
+													"credentialDefinitionId": "q7ATwTYbQDgiigVijUAej:3:CL:318187:latest",
+													"schemaId": "q7ATwTYbQDgiigVijUAej:2:Employee Badge:1.0"
+												}
+											},
+											"credentials": [],
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b",
+											"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+											"credentialAttributes": [],
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Accept a credential request as issuer by sending an accept request message\nto the connection associated with the credential exchange record.",
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AcceptCredentialRequestOptions"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/credentials/accept-credential": {
+			"post": {
+				"operationId": "AcceptCredential",
+				"responses": {
+					"200": {
+						"description": "CredentialExchangeRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidCommCredentialExchangeRecord"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"_tags": {
+												"state": "offer-sent",
+												"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+												"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b"
+											},
+											"metadata": {
+												"_internal/indyCredential": {
+													"credentialDefinitionId": "q7ATwTYbQDgiigVijUAej:3:CL:318187:latest",
+													"schemaId": "q7ATwTYbQDgiigVijUAej:2:Employee Badge:1.0"
+												}
+											},
+											"credentials": [],
+											"id": "821f9b26-ad04-4f56-89b6-e2ef9c72b36e",
+											"createdAt": "2022-01-01T00:00:00.000Z",
+											"connectionId": "ac6d0fdd-0db8-4f52-8a3d-de7ff8ddc14b",
+											"threadId": "82701488-b43c-4d7b-9244-4bb204a7ae26",
+											"credentialAttributes": [],
+											"protocolVersion": "v1"
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Accept a credential as holder by sending an accept credential message\nto the connection associated with the credential exchange record.",
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/AcceptCredential"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/didcomm/credentials/{credentialRecordId}/form-data": {
+			"get": {
+				"operationId": "CredentialFormData",
+				"responses": {
+					"200": {
+						"description": "credentialRecord",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GetCredentialFormatDataReturn__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array_"
+								}
+							}
+						}
+					}
+				},
+				"description": "Return credentialRecord",
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "credentialRecordId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/openid4vc/verifier": {
