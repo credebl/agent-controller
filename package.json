@@ -68,7 +68,7 @@
     "@types/ref-struct-di": "^1.1.12",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
-    "axios": "^1.13.5",
+    "axios": "1.13.5",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -120,7 +120,6 @@
   "resolutions": {
     "@credo-ts/core": "0.6.2",
     "@credo-ts/askar": "0.6.2",
-    "axios": "1.13.5",
     "flatted": "3.4.0",
     "undici": "6.24.0"
   }
