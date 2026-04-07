@@ -2,6 +2,9 @@ import type { AriesRestConfig } from './cliAgent.js'
 
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 import { runRestAgent } from './cliAgent.js'
 
@@ -154,7 +157,9 @@ async function parseArguments(): Promise<Parsed> {
     .option('wallet-idle-timeout', { number: true })
     .option('apiKey', {
       string: true,
-      coerce: (input: string) => {
+      default: process.env.API_KEY,
+      coerce: (input: string | undefined) => {
+        if (!input) return input
         input = input.trim()
         if (input && input.length < 16) {
           throw new Error('API key must be at least 16 characters long')
@@ -164,11 +169,11 @@ async function parseArguments(): Promise<Parsed> {
     })
     .option('updateJwtSecret', {
       boolean: true,
-      default: false,
+      default: process.env.UPDATE_JWT_SECRET === 'true',
     })
-    .option('status-list-server-url', { string: true })
-    .option('status-list-api-key', { string: true })
-    .option('status-list-default-size', { number: true })
+    .option('status-list-server-url', { string: true, default: process.env.STATUS_LIST_SERVER_URL })
+    .option('status-list-api-key', { string: true, default: process.env.STATUS_LIST_API_KEY })
+    .option('status-list-default-size', { number: true, default: process.env.STATUS_LIST_DEFAULT_SIZE ? Number(process.env.STATUS_LIST_DEFAULT_SIZE) : undefined })
     .config()
     .env('AFJ_REST')
     .parseAsync() as Promise<Parsed>

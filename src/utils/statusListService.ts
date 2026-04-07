@@ -1,5 +1,6 @@
-import { JwsProtectedHeaderOptions, JwsService, JwtPayload } from '@credo-ts/core';
+import { Agent, JwsProtectedHeaderOptions, JwsService, JwtPayload } from '@credo-ts/core';
 import { StatusList, getListFromStatusListJWT } from '@sd-jwt/jwt-status-list';
+import { STATUS_LISTS_PATH } from './constant';
 
 const statusListLocks = new Map<string, Promise<void>>();
 
@@ -14,14 +15,15 @@ export function getServerUrl() {
 
 function getApiKeyHeaders() {
     const key = process.env.STATUS_LIST_API_KEY;
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (key) {
-        headers['x-api-key'] = key;
+    if (!key) {
+        throw new Error('STATUS_LIST_API_KEY is not configured');
     }
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    headers['x-api-key'] = key;
     return headers;
 }
 
-async function getKmsKeyIdForDid(agent: any, did: string, verificationMethodId: string) {
+async function getKmsKeyIdForDid(agent: Agent, did: string, verificationMethodId: string) {
     const didRecords = await agent.dids.getCreatedDids({ did });
     const didRecord = didRecords[0];
     if (didRecord && didRecord.keys) {
@@ -34,10 +36,10 @@ async function getKmsKeyIdForDid(agent: any, did: string, verificationMethodId: 
     return verificationMethodId;
 }
 
-async function signStatusList(agent: any, verificationMethodId: string, statusList: StatusList, listId: string, issuerDid: string): Promise<string> {
+async function signStatusList(agent: Agent, verificationMethodId: string, statusList: StatusList, listId: string, issuerDid: string): Promise<string> {
     const payload = new JwtPayload({
         iss: issuerDid,
-        sub: `${getServerUrl()}/status-lists/${listId}`,
+        sub: `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`,
         iat: Math.floor(Date.now() / 1000),
         additionalClaims: {
             status_list: {
@@ -62,8 +64,8 @@ async function signStatusList(agent: any, verificationMethodId: string, statusLi
     });
 }
 
-export async function checkAndCreateStatusList(agent: any, listId: string, issuerDid: string, listSize?: number) {
-    const uri = `${getServerUrl()}/status-lists/${listId}`;
+export async function checkAndCreateStatusList(agent: Agent, listId: string, issuerDid: string, listSize?: number) {
+    const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`;
 
     try {
         const res = await fetch(uri, {
@@ -85,7 +87,7 @@ export async function checkAndCreateStatusList(agent: any, listId: string, issue
             const keyId = verificationMethod.id;
 
             const jwt = await signStatusList(agent, keyId, statusList, listId, issuerDid);
-            const postRes = await fetch(`${getServerUrl()}/status-lists`, {
+            const postRes = await fetch(`${getServerUrl()}/${STATUS_LISTS_PATH}`, {
                 method: 'POST',
                 headers: getApiKeyHeaders(),
                 body: JSON.stringify({ id: listId, jwt }),
@@ -107,7 +109,7 @@ export async function checkAndCreateStatusList(agent: any, listId: string, issue
     }
 }
 
-export async function revokeCredentialInStatusList(agent: any, listId: string, index: number, issuerDid: string) {
+export async function revokeCredentialInStatusList(agent: Agent, listId: string, index: number, issuerDid: string) {
     const previousLock = statusListLocks.get(listId) || Promise.resolve();
 
     let releaseLock: () => void;
@@ -120,7 +122,7 @@ export async function revokeCredentialInStatusList(agent: any, listId: string, i
     try {
         await previousLock;
 
-        const uri = `${getServerUrl()}/status-lists/${listId}`;
+        const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`;
 
         const res = await fetch(uri, {
             headers: getApiKeyHeaders(),
@@ -142,7 +144,7 @@ export async function revokeCredentialInStatusList(agent: any, listId: string, i
 
         const newJwt = await signStatusList(agent, keyId, statusList, listId, issuerDid);
 
-        const patchRes = await fetch(`${getServerUrl()}/status-lists/${listId}`, {
+        const patchRes = await fetch(`${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`, {
             method: 'PATCH',
             headers: getApiKeyHeaders(),
             body: JSON.stringify({ jwt: newJwt }),

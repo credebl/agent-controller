@@ -7,7 +7,8 @@ import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc'
 import { SignerMethod } from '../../../enums/enum'
 import { BadRequestError, NotFoundError } from '../../../errors/errors'
 
-import { checkAndCreateStatusList, getServerUrl } from '../../../utils/statusListService'
+import { checkAndCreateStatusList, getServerUrl, revokeCredentialInStatusList } from '../../../utils/statusListService'
+import { STATUS_LISTS_PATH } from '../../../utils/constant'
 
 class IssuanceSessionsService {
   public async createCredentialOffer(options: OpenId4VcIssuanceSessionsCreateOffer, agentReq: Req) {
@@ -61,7 +62,7 @@ class IssuanceSessionsService {
           effectiveIssuerDid,
           effectiveStatusList.listSize,
         )
-        const listUri = `${getServerUrl()}/status-lists/${effectiveStatusList.listId}`
+        const listUri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${effectiveStatusList.listId}`
 
         statusBlock = {
           status_list: {
@@ -195,8 +196,6 @@ class IssuanceSessionsService {
     if (!statusInfo || statusInfo.length === 0) {
       throw new Error(`No status list information found for session ${sessionId}`)
     }
-
-    const { revokeCredentialInStatusList } = await import('../../../utils/statusListService')
 
     for (const info of statusInfo) {
       await revokeCredentialInStatusList(agentReq.agent as any, info.listId, info.index, info.issuerDid)

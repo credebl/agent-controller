@@ -42,10 +42,5 @@
   "schemaManagerContractAddress": "0x4742d43C2dFCa5a1d4238240Afa8547Daf87Ee7a",
   "rpcUrl": "https://rpc-amoy.polygon.technology",
   "fileServerUrl": "https://schema.credebl.id",
-  "fileServerToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJBeWFuV29ya3MiLCJpZCI6ImNhZDI3ZjhjLTMyNWYtNDRmZC04ZmZkLWExNGNhZTY3NTMyMSJ9.I3IR7abjWbfStnxzn1BhxhV0OEzt1x3mULjDdUcgWHk",
-  "apiKey": "supersecret-that-too-16chars",
-  "updateJwtSecret": false,
-  "statusListServerUrl": "https://dev-status-list.sovio.id/",
-  "statusListApiKey": "test_key",
-  "statusListDefaultSize": 131072
+  "fileServerToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJBeWFuV29ya3MiLCJpZCI6ImNhZDI3ZjhjLTMyNWYtNDRmZC04ZmZkLWExNGNhZTY3NTMyMSJ9.I3IR7abjWbfStnxzn1BhxhV0OEzt1x3mULjDdUcgWHk"
 }
