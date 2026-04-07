@@ -510,6 +510,7 @@ export class DidController extends Controller {
     return { did: did, didDocument: didDocument }
   }
 
+  // TODO: Right now we are using seed as privateKey for did creation. Fix this is API payload
   public async handleWeb(agent: AgentType, didOptions: DidCreate) {
     let didDocument: DidDocument
     if (!didOptions.domain) {
@@ -532,44 +533,24 @@ export class DidController extends Controller {
     const did = `did:${didOptions.method}:${domain}`
     const keyId = `${did}#key-1`
 
-    // TODO: Remove comments afterwards
-    // const key = await agent.kms.createKey({
-    //   keyType: didOptions.keyType,
-    //   // Commenting for now, as per the multi-tenant endpoint
-    //   // privateKey: TypedArrayEncoder.fromString(didOptions.seed),
-    //   seed: TypedArrayEncoder.fromString(didOptions.seed),
-    // })
-
-    //   const ed25519Key = await agent.kms.createKey({
-    //       type: {
-    //           crv: 'Ed25519',
-    //           kty: 'OKP',
-    //       }
-    //   })
-    //   const publicJwk = Kms.PublicJwk.fromPublicJwk(ed25519Key.publicJwk)
-    //   const { privateJwk } = transformPrivateKeyToPrivateJwk({
-    //       type: {
-    //           crv: 'Ed25519',
-    //           kty: 'OKP',
-    //       },
-    //       privateKey: TypedArrayEncoder.fromString(didOptions.seed),
-    //   })
+    let key
+    let publicJwk
 
     if (didOptions.keyType === KeyAlgorithm.Ed25519) {
-      const { privateJwk } = transformSeedToPrivateJwk({
+      const { privateJwk } = transformPrivateKeyToPrivateJwk({
         type: {
           crv: 'Ed25519',
           kty: 'OKP',
         },
-        seed: TypedArrayEncoder.fromString(didOptions.seed),
+        privateKey: TypedArrayEncoder.fromString(didOptions.seed),
       })
 
-      const key = await agent.kms.importKey({ privateJwk })
+      key = await agent.kms.importKey({ privateJwk })
 
-      const publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
+      publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
       didDocument = new DidDocumentBuilder(did)
         .addContext('https://w3id.org/security/suites/ed25519-2018/v1')
-        .addVerificationMethod(getEd25519VerificationKey2018({ id: keyId, controller: did, publicJwk }))
+        .addVerificationMethod(getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }))
         .addAuthentication(keyId)
         .addAssertionMethod(keyId)
         .build()
@@ -584,6 +565,12 @@ export class DidController extends Controller {
       did,
       overwrite: true,
       didDocument,
+      keys: [
+        {
+          didDocumentRelativeKeyId: `#key-1`,
+          kmsKeyId: key.keyId,
+        },
+      ],
     })
     return { did, didDocument }
   }

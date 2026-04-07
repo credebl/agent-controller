@@ -56,6 +56,9 @@ class IssuanceSessionsService {
 
       let statusBlock = undefined
       if (options.isRevocable && effectiveIssuerDid && effectiveStatusList) {
+        if (!process.env.STATUS_LIST_SERVER_URL) {
+          throw new BadRequestError('Cannot create revocable credentials: STATUS_LIST_SERVER_URL is not configured')
+        }
         await checkAndCreateStatusList(
           agentReq.agent as any,
           effectiveStatusList.listId,
@@ -195,6 +198,10 @@ class IssuanceSessionsService {
     const statusInfo = record.issuanceMetadata?.StatusListInfo as any[]
     if (!statusInfo || statusInfo.length === 0) {
       throw new Error(`No status list information found for session ${sessionId}`)
+    }
+
+    if (!process.env.STATUS_LIST_SERVER_URL) {
+      throw new BadRequestError('Cannot execute revocation: STATUS_LIST_SERVER_URL is not configured')
     }
 
     for (const info of statusInfo) {

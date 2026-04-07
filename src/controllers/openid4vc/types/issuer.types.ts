@@ -24,7 +24,7 @@ export interface OpenId4VciOfferCredentials {
 
 export interface DisclosureFrameForOffer {
   _sd?: string[]
-  [claim: string]: DisclosureFrameForOffer | string[] | undefined
+  [claim: string]: DisclosureFrameForOffer | DisclosureFrameForOffer[] | string[] | undefined
 }
 
 export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentials {
