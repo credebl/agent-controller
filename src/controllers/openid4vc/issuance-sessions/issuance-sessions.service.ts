@@ -4,7 +4,7 @@ import type { Request as Req } from 'express'
 import { type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
 import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc'
 
-import { SignerMethod } from '../../../enums/enum'
+import { CredentialFormat, SignerMethod } from '../../../enums/enum'
 import { BadRequestError, NotFoundError } from '../../../errors/errors'
 
 import { checkAndCreateStatusList, getServerUrl, revokeCredentialInStatusList } from '../../../utils/statusListService'
@@ -55,10 +55,24 @@ class IssuanceSessionsService {
       const effectiveStatusList = cred.statusListDetails || options.statusListDetails
 
       let statusBlock = undefined
-      if (options.isRevocable && effectiveIssuerDid && effectiveStatusList) {
+
+      if (options.isRevocable) {
+        if (![CredentialFormat.VcSdJwt, CredentialFormat.DcSdJwt].includes(cred.format as unknown as CredentialFormat)) {
+          throw new BadRequestError(`Revocation is only supported for SD-JWT formats (vc+sd-jwt, dc+sd-jwt), got '${cred.format}'`)
+        }
+
         if (!process.env.STATUS_LIST_SERVER_URL) {
           throw new BadRequestError('Cannot create revocable credentials: STATUS_LIST_SERVER_URL is not configured')
         }
+
+        if (cred.signerOptions.method !== SignerMethod.Did || !effectiveIssuerDid) {
+          throw new BadRequestError(`Revocation is not supported without a DID signer (found ${cred.signerOptions.method})`)
+        }
+
+        if (!effectiveStatusList) {
+          throw new BadRequestError('Status list details must be provided for revocable credentials')
+        }
+
         await checkAndCreateStatusList(
           agentReq.agent as any,
           effectiveStatusList.listId,
