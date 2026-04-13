@@ -31,6 +31,7 @@ import {
   X509Module,
   JwkDidRegistrar,
   JwkDidResolver,
+  PeerDidNumAlgo,
 } from '@credo-ts/core'
 import {
   DidCommHttpOutboundTransport,
@@ -209,6 +210,8 @@ const getModules = (
       basicMessages: true,
       connections: {
         autoAcceptConnections: autoAcceptConnections || true,
+        peerNumAlgoForDidExchangeRequests: PeerDidNumAlgo.GenesisDoc,
+        peerNumAlgoForDidRotation: PeerDidNumAlgo.ShortFormAndLongForm
       },
       proofs: {
         autoAcceptProofs: autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
@@ -552,6 +555,6 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
   logger.info(`*** API Key: ${apiKey}`)
 
   app.listen(adminPort, () => {
-    logger.info(`Successfully started server on port ${adminPort}`)
+    logger.info(`Successfully started server on port ${adminPort}, hacked my way in`)
   })
 }

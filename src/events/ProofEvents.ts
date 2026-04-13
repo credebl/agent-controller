@@ -11,15 +11,15 @@ export const proofEvents = async (agent: Agent, config: ServerConfig) => {
     const body = { ...record.toJSON(), ...event.metadata } as { proofData?: any }
     if (event.metadata.contextCorrelationId !== 'default') {
       const tenantAgent = await agent.modules.tenants.getTenantAgent({
-        tenantId: event.metadata.contextCorrelationId,
+        tenantId: event.metadata.contextCorrelationId.split('tenant-')[1],
       })
-      const data = await tenantAgent.proofs.getFormatData(record.id)
+      const data = await tenantAgent.modules.didcomm.proofs.getFormatData(record.id)
       body.proofData = data
     }
 
     //Emit webhook for dedicated agent
     if (event.metadata.contextCorrelationId === 'default') {
-      const data = await agent.modules.proofs.getFormatData(record.id)
+      const data = await agent.modules.didcomm.proofs.getFormatData(record.id)
       body.proofData = data
     }
 
