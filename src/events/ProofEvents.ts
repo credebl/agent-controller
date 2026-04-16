@@ -9,7 +9,7 @@ export const proofEvents = async (agent: Agent, config: ServerConfig) => {
   agent.events.on(DidCommProofEventTypes.ProofStateChanged, async (event: DidCommProofStateChangedEvent) => {
     const record = event.payload.proofRecord
     const body = { ...record.toJSON(), ...event.metadata } as { proofData?: any }
-    if (event.metadata.contextCorrelationId !== 'default') {
+    if (event.metadata.contextCorrelationId && event.metadata.contextCorrelationId !== 'default') {
       const tenantAgent = await agent.modules.tenants.getTenantAgent({
         tenantId: event.metadata.contextCorrelationId.split('tenant-')[1],
       })
