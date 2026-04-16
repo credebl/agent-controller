@@ -555,6 +555,6 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
   logger.info(`*** API Key: ${apiKey}`)
 
   app.listen(adminPort, () => {
-    logger.info(`Successfully started server on port ${adminPort}, hacked my way in`)
+    logger.info(`Successfully started server on port ${adminPort}`)
   })
 }
