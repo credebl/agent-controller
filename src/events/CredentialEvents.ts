@@ -32,7 +32,7 @@ export const credentialEvents = async (agent: Agent, config: ServerConfig) => {
             },
           )
         } else {
-          connectionRecord = await agent.modules.didcomm.connections.getById(record.connectionId)
+          connectionRecord = await agent.modules.didcomm.connections.findById(record.connectionId)
         }
         body.outOfBandId = connectionRecord?.outOfBandId
       }
