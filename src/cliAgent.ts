@@ -211,7 +211,7 @@ const getModules = (
       connections: {
         autoAcceptConnections: autoAcceptConnections || true,
         peerNumAlgoForDidExchangeRequests: PeerDidNumAlgo.GenesisDoc,
-        peerNumAlgoForDidRotation: PeerDidNumAlgo.ShortFormAndLongForm
+        peerNumAlgoForDidRotation: PeerDidNumAlgo.ShortFormAndLongForm,
       },
       proofs: {
         autoAcceptProofs: autoAcceptProofs || DidCommAutoAcceptProof.ContentApproved,
