@@ -66,6 +66,9 @@ import { readFile } from 'fs/promises'
 
 import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network, NetworkName } from './enums'
 import { setupServer } from './server'
+import { retentionCronService } from './services/RetentionCronService'
+import { buildRetentionConfig } from './types/RetentionTypes'
+import type { RetentionConfig } from './types/RetentionTypes'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
 import {
@@ -122,6 +125,7 @@ export interface AriesRestConfig {
   schemaFileServerURL?: string
   apiKey: string
   updateJwtSecret?: boolean
+  retention?: RetentionConfig
 }
 
 export async function readRestConfig(path: string) {
@@ -361,6 +365,7 @@ const getWithTenantModules = (
 //   return secretKey
 // }
 
+
 export async function runRestAgent(restConfig: AriesRestConfig) {
   const {
     endpoints,
@@ -559,4 +564,20 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
   app.listen(adminPort, () => {
     logger.info(`Successfully started server on port ${adminPort}`)
   })
+
+  // Start retention cron service if enabled
+  const retentionConfig = buildRetentionConfig(restConfig.retention)
+  if (retentionConfig) {
+    await retentionCronService.start(agent, retentionConfig, webhookUrl)
+  }
+
+  // Graceful shutdown — stop retention service before exit
+  const shutdown = async () => {
+    agent.config.logger.info('[Retention] Shutting down retention cron service...')
+    await retentionCronService.stop()
+    process.exit(0)
+  }
+
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
 }
