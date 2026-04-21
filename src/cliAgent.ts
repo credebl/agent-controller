@@ -66,9 +66,9 @@ import { readFile } from 'fs/promises'
 
 import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network, NetworkName } from './enums'
 import { setupServer } from './server'
-import { retentionCronService } from './services/RetentionCronService'
-import { buildRetentionConfig } from './types/RetentionTypes'
-import type { RetentionConfig } from './types/RetentionTypes'
+import { buildPurgeConfig } from './purge/PurgeTypes'
+import { validatePurgeConfig } from './purge/PurgeConfigValidator'
+import { initPurgeSchedulers, stopPurgeSchedulers, getNatsPurgeScheduler, getCronPurgeScheduler } from './purge/PurgeSchedulerFactory'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
 import {
@@ -125,7 +125,6 @@ export interface AriesRestConfig {
   schemaFileServerURL?: string
   apiKey: string
   updateJwtSecret?: boolean
-  retention?: RetentionConfig
 }
 
 export async function readRestConfig(path: string) {
@@ -565,16 +564,25 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     logger.info(`Successfully started server on port ${adminPort}`)
   })
 
-  // Start retention cron service if enabled
-  const retentionConfig = buildRetentionConfig(restConfig.retention)
-  if (retentionConfig) {
-    await retentionCronService.start(agent, retentionConfig, webhookUrl)
+  // Start purge schedulers if enabled (NATS and Cron are independent)
+  const purgeConfig = buildPurgeConfig()
+  if (purgeConfig) {
+    await validatePurgeConfig(purgeConfig)
+    initPurgeSchedulers(purgeConfig.natsConfig.enabled, purgeConfig.cronConfig.enabled)
+
+    if (purgeConfig.natsConfig.enabled) {
+      await getNatsPurgeScheduler()!.start(agent, purgeConfig, webhookUrl)
+    }
+
+    if (purgeConfig.cronConfig.enabled) {
+      await getCronPurgeScheduler()!.start(agent, purgeConfig, webhookUrl)
+    }
   }
 
-  // Graceful shutdown — stop retention service before exit
+  // Graceful shutdown
   const shutdown = async () => {
-    agent.config.logger.info('[Retention] Shutting down retention cron service...')
-    await retentionCronService.stop()
+    agent.config.logger.info('[Shutdown] Stopping services...')
+    await stopPurgeSchedulers()
     process.exit(0)
   }
 

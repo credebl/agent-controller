@@ -9848,6 +9848,9 @@
 										"credentialRequestThId": {
 											"type": "string"
 										},
+										"credentialExchangeRecordId": {
+											"type": "string"
+										},
 										"outOfBandRecordId": {
 											"type": "string"
 										},
@@ -9864,6 +9867,7 @@
 									"required": [
 										"invitationDid",
 										"credentialRequestThId",
+										"credentialExchangeRecordId",
 										"outOfBandRecordId",
 										"outOfBandRecord",
 										"invitation",
@@ -10409,6 +10413,9 @@
 										"proofRecordThId": {
 											"type": "string"
 										},
+										"proofRecordId": {
+											"type": "string"
+										},
 										"invitationDid": {
 											"type": "string"
 										},
@@ -10425,6 +10432,7 @@
 									"required": [
 										"proofMessageId",
 										"proofRecordThId",
+										"proofRecordId",
 										"invitationDid",
 										"outOfBandRecord",
 										"invitation",

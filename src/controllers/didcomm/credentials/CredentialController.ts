@@ -14,6 +14,8 @@ import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
+import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
+import { PurgeRecordType } from '../../../purge/PurgeTypes'
 import { AgentType } from '../../../types'
 import { CredentialExchangeRecordExample, RecordId } from '../../examples'
 import {
@@ -163,6 +165,7 @@ export class CredentialController extends Controller {
    */
   @Example<DidCommCredentialExchangeRecordProps>(CredentialExchangeRecordExample)
   @Post('/create-offer')
+  @SchedulePurge(PurgeRecordType.DIDCOMM_CREDENTIAL, (r) => (r as any)?.id)
   public async createOffer(@Request() request: Req, @Body() createOfferOptions: CreateOfferOptions) {
     try {
       const offer = await request.agent.modules.didcomm.credentials.offerCredential(createOfferOptions)
@@ -173,6 +176,7 @@ export class CredentialController extends Controller {
   }
 
   @Post('/create-offer-oob')
+  @SchedulePurge(PurgeRecordType.DIDCOMM_CREDENTIAL, (r) => (r as any)?.credentialExchangeRecordId)
   public async createOfferOob(@Request() request: Req, @Body() outOfBandOption: CreateOfferOobOptions) {
     try {
       let invitationDid: string | undefined
@@ -230,6 +234,7 @@ export class CredentialController extends Controller {
         }),
         outOfBandRecord: outOfBandRecord.toJSON(),
         outOfBandRecordId: outOfBandRecord.id,
+        credentialExchangeRecordId: offerOob.credentialExchangeRecord.id,
         credentialRequestThId: offerOob.credentialExchangeRecord.threadId,
         invitationDid,
       }

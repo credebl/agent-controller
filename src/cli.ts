@@ -1,5 +1,4 @@
 import type { AriesRestConfig } from './cliAgent.js'
-import type { RetentionConfig } from './types/RetentionTypes.js'
 
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
@@ -49,7 +48,6 @@ interface Parsed {
   fileServerToken?: string
   apiKey?: string
   updateJwtSecret?: boolean
-  retention?: RetentionConfig
 }
 
 interface InboundTransport {
@@ -218,6 +216,5 @@ export async function runCliServer() {
     fileServerToken: parsed.fileServerToken,
     apiKey: parsed['apiKey'],
     updateJwtSecret: parsed['updateJwtSecret'],
-    retention: parsed.retention,
   } as AriesRestConfig)
 }
