@@ -1,5 +1,4 @@
 import type { AriesRestConfig } from './cliAgent.js'
-import type { RetentionConfig } from './types/RetentionTypes.js'
 
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
