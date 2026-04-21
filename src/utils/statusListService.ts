@@ -157,7 +157,6 @@ export async function revokeCredentialInStatusList(agent: Agent, listId: string,
         const didDocument = await agent.dids.resolve(issuerDid);
         const verificationMethod = didDocument.didDocument ? getVerificationMethod(didDocument.didDocument) : undefined;
         if (!verificationMethod) throw new Error(`Could not find suitable verification method (assertionMethod) for DID ${issuerDid}`);
-        const keyId = verificationMethod.id;
 
         const newJwt = await signStatusList(agent, verificationMethod, statusList, listId, issuerDid);
 

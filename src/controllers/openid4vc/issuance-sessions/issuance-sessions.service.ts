@@ -29,7 +29,7 @@ class IssuanceSessionsService {
 
         const statusBlock = await this.processStatusList(cred, options, agentReq, offerStatusInfo)
 
-        const currentVct = cred.payload && 'vct' in cred.payload ? (cred.payload as any).vct : undefined
+        const currentVct = cred.payload && 'vct' in cred.payload ? cred.payload.vct : undefined
         return {
           ...cred,
           payload: {
