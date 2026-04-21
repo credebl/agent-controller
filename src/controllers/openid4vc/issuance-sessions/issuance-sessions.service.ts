@@ -21,91 +21,25 @@ class IssuanceSessionsService {
 
     const offerStatusInfo: any[] = []
 
-    const mappedCredentials = await Promise.all(credentials.map(async (cred) => {
-      const supported = issuer?.credentialConfigurationsSupported[cred.credentialSupportedId]
-      if (!supported) {
-        throw new Error(`CredentialSupportedId '${cred.credentialSupportedId}' is not supported by issuer`)
-      }
-      if (supported.format !== cred.format) {
-        throw new Error(
-          `Format mismatch for '${cred.credentialSupportedId}': expected '${supported.format}', got '${cred.format}'`,
-        )
-      }
+    const mappedCredentials = await Promise.all(
+      credentials.map(async (cred) => {
+        const supported = issuer.credentialConfigurationsSupported[cred.credentialSupportedId]
 
-      // must have signing options
-      if (!cred.signerOptions?.method) {
-        throw new BadRequestError(
-          `signerOptions must be provided and allowed methods are ${Object.values(SignerMethod).join(', ')}`,
-        )
-      }
+        this.validateCredentialConfig(cred, supported)
 
-      if (cred.signerOptions.method == SignerMethod.Did && !cred.signerOptions.did) {
-        throw new BadRequestError(
-          `For ${cred.credentialSupportedId} : did must be present inside signerOptions if SignerMethod is 'did' `,
-        )
-      }
+        const statusBlock = await this.processStatusList(cred, options, agentReq, offerStatusInfo)
 
-      if (cred.signerOptions.method === SignerMethod.X5c && !cred.signerOptions.x5c) {
-        throw new BadRequestError(
-          `For ${cred.credentialSupportedId} : x5c must be present inside signerOptions if SignerMethod is 'x5c' `,
-        )
-      }
-
-      const effectiveIssuerDid = cred.signerOptions?.method === SignerMethod.Did ? cred.signerOptions.did : undefined
-      const effectiveStatusList = cred.statusListDetails || options.statusListDetails
-
-      let statusBlock = undefined
-
-      if (options.isRevocable) {
-        if (![CredentialFormat.VcSdJwt, CredentialFormat.DcSdJwt].includes(cred.format as unknown as CredentialFormat)) {
-          throw new BadRequestError(`Revocation is only supported for SD-JWT formats (vc+sd-jwt, dc+sd-jwt), got '${cred.format}'`)
+        const currentVct = cred.payload && 'vct' in cred.payload ? (cred.payload as any).vct : undefined
+        return {
+          ...cred,
+          payload: {
+            ...cred.payload,
+            vct: currentVct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
+            ...(statusBlock ? { status: statusBlock } : {}),
+          },
         }
-
-        if (!process.env.STATUS_LIST_SERVER_URL) {
-          throw new BadRequestError('Cannot create revocable credentials: STATUS_LIST_SERVER_URL is not configured')
-        }
-
-        if (cred.signerOptions.method !== SignerMethod.Did || !effectiveIssuerDid) {
-          throw new BadRequestError(`Revocation is not supported without a DID signer (found ${cred.signerOptions.method})`)
-        }
-
-        if (!effectiveStatusList) {
-          throw new BadRequestError('Status list details must be provided for revocable credentials')
-        }
-
-        await checkAndCreateStatusList(
-          agentReq.agent as any,
-          effectiveStatusList.listId,
-          effectiveIssuerDid,
-          effectiveStatusList.listSize,
-        )
-        const listUri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${effectiveStatusList.listId}`
-
-        statusBlock = {
-          status_list: {
-            uri: listUri,
-            idx: effectiveStatusList.index
-          }
-        }
-
-        offerStatusInfo.push({
-          credentialSupportedId: cred.credentialSupportedId,
-          listId: effectiveStatusList.listId,
-          index: effectiveStatusList.index,
-          issuerDid: effectiveIssuerDid
-        })
-      }
-
-      const currentVct = cred.payload && 'vct' in cred.payload ? (cred.payload as any).vct : undefined
-      return {
-        ...cred,
-        payload: {
-          ...cred.payload,
-          vct: currentVct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
-          ...(statusBlock ? { status: statusBlock } : {})
-        },
-      }
-    }))
+      }),
+    )
 
     options.issuanceMetadata ||= {}
     options.issuanceMetadata.credentials = mappedCredentials
@@ -130,6 +64,91 @@ class IssuanceSessionsService {
 
     return { credentialOffer, issuanceSession }
   }
+
+  private validateCredentialConfig(cred: any, supported: any) {
+    if (!supported) {
+      throw new Error(`CredentialSupportedId '${cred.credentialSupportedId}' is not supported by issuer`)
+    }
+    if (supported.format !== cred.format) {
+      throw new Error(
+        `Format mismatch for '${cred.credentialSupportedId}': expected '${supported.format}', got '${cred.format}'`,
+      )
+    }
+
+    if (!cred.signerOptions?.method) {
+      throw new BadRequestError(
+        `signerOptions must be provided and allowed methods are ${Object.values(SignerMethod).join(', ')}`,
+      )
+    }
+
+    if (cred.signerOptions.method === SignerMethod.Did && !cred.signerOptions.did) {
+      throw new BadRequestError(
+        `For ${cred.credentialSupportedId} : did must be present inside signerOptions if SignerMethod is 'did' `,
+      )
+    }
+
+    if (cred.signerOptions.method === SignerMethod.X5c && !cred.signerOptions.x5c) {
+      throw new BadRequestError(
+        `For ${cred.credentialSupportedId} : x5c must be present inside signerOptions if SignerMethod is 'x5c' `,
+      )
+    }
+  }
+
+  private async processStatusList(
+    cred: any,
+    options: OpenId4VcIssuanceSessionsCreateOffer,
+    agentReq: Req,
+    offerStatusInfo: any[],
+  ) {
+    if (!options.isRevocable) {
+      return undefined
+    }
+
+    const effectiveIssuerDid = cred.signerOptions?.method === SignerMethod.Did ? cred.signerOptions.did : undefined
+    const effectiveStatusList = cred.statusListDetails || options.statusListDetails
+
+    if (![CredentialFormat.VcSdJwt, CredentialFormat.DcSdJwt].includes(cred.format as unknown as CredentialFormat)) {
+      throw new BadRequestError(
+        `Revocation is only supported for SD-JWT formats (vc+sd-jwt, dc+sd-jwt), got '${cred.format}'`,
+      )
+    }
+
+    if (!process.env.STATUS_LIST_SERVER_URL) {
+      throw new BadRequestError('Cannot create revocable credentials: STATUS_LIST_SERVER_URL is not configured')
+    }
+
+    if (cred.signerOptions.method !== SignerMethod.Did || !effectiveIssuerDid) {
+      throw new BadRequestError(`Revocation is not supported without a DID signer (found ${cred.signerOptions.method})`)
+    }
+
+    if (!effectiveStatusList) {
+      throw new BadRequestError('Status list details must be provided for revocable credentials')
+    }
+
+    await checkAndCreateStatusList(
+      agentReq.agent as any,
+      effectiveStatusList.listId,
+      effectiveIssuerDid,
+      effectiveStatusList.listSize,
+    )
+
+    const listUri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${effectiveStatusList.listId}`
+
+    offerStatusInfo.push({
+      credentialSupportedId: cred.credentialSupportedId,
+      listId: effectiveStatusList.listId,
+      index: effectiveStatusList.index,
+      issuerDid: effectiveIssuerDid,
+    })
+
+    return {
+      status_list: {
+        uri: listUri,
+        idx: effectiveStatusList.index,
+      },
+    }
+  }
+
 
   public async getIssuanceSessionsById(agentReq: Req, sessionId: string) {
     const issuer = agentReq.agent.modules.openid4vc.issuer
