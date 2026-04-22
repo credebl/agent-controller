@@ -28,3 +28,4 @@ export const curveToKty = {
 
 export const verkey = '#verkey'
 export const p521 = 'p521'
+export const STATUS_LISTS_PATH = 'status-lists'

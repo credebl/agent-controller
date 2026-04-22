@@ -1726,6 +1726,26 @@
 						],
 						"type": "object"
 					},
+					"statusListDetails": {
+						"properties": {
+							"listSize": {
+								"type": "number",
+								"format": "double"
+							},
+							"index": {
+								"type": "number",
+								"format": "double"
+							},
+							"listId": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"index",
+							"listId"
+						],
+						"type": "object"
+					},
 					"payload": {
 						"properties": {
 							"vct": {
@@ -1809,6 +1829,26 @@
 						},
 						"required": [
 							"method"
+						],
+						"type": "object"
+					},
+					"statusListDetails": {
+						"properties": {
+							"listSize": {
+								"type": "number",
+								"format": "double"
+							},
+							"index": {
+								"type": "number",
+								"format": "double"
+							},
+							"listId": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"index",
+							"listId"
 						],
 						"type": "object"
 					},
@@ -2065,6 +2105,26 @@
 						],
 						"type": "object"
 					},
+					"statusListDetails": {
+						"properties": {
+							"listSize": {
+								"type": "number",
+								"format": "double"
+							},
+							"index": {
+								"type": "number",
+								"format": "double"
+							},
+							"listId": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"index",
+							"listId"
+						],
+						"type": "object"
+					},
 					"payload": {
 						"properties": {
 							"credential": {
@@ -2163,6 +2223,29 @@
 					},
 					"issuanceMetadata": {
 						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"statusListDetails": {
+						"properties": {
+							"listSize": {
+								"type": "number",
+								"format": "double"
+							},
+							"index": {
+								"type": "number",
+								"format": "double"
+							},
+							"listId": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"index",
+							"listId"
+						],
+						"type": "object"
+					},
+					"isRevocable": {
+						"type": "boolean"
 					}
 				},
 				"required": [
@@ -6618,6 +6701,53 @@
 						"in": "query",
 						"name": "authorizationCode",
 						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/openid4vc/issuance-sessions/{issuanceSessionId}/revoke": {
+			"post": {
+				"operationId": "RevokeSessionById",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"message": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"message"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Revoke credentials in an issuance session by session ID",
+				"tags": [
+					"oid4vc issuance sessions"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "issuanceSessionId",
+						"required": true,
 						"schema": {
 							"type": "string"
 						}

@@ -1,7 +1,7 @@
 import type { Curve, EcCurve, EcType, OkpCurve, OkpType } from '../controllers/types'
 import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
-import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
+import { JsonEncoder, JsonTransformer, DidDocument, VerificationMethod } from '@credo-ts/core'
 import axios from 'axios'
 import { randomBytes } from 'crypto'
 
@@ -114,6 +114,60 @@ export function getTypeFromCurve(key: Curve | KeyAlgorithm): OkpType | EcType {
     }
   }
   return keyTypeInfo
+}
+
+export function getVerificationMethod(didDocument: DidDocument): VerificationMethod | undefined {
+  // Try assertionMethod first
+  const assertionMethod = didDocument.assertionMethod?.[0]
+  if (assertionMethod) {
+    if (typeof assertionMethod === 'string') {
+      return didDocument.dereferenceVerificationMethod(assertionMethod)
+    }
+    return assertionMethod as VerificationMethod
+  }
+  // Fallback to verificationMethod[0]
+  return didDocument.verificationMethod?.[0]
+}
+
+export function getAlgFromVerificationMethod(vm: VerificationMethod): string {
+  if (vm.type === 'Ed25519VerificationKey2018' || vm.type === 'Ed25519VerificationKey2020') {
+    return 'EdDSA'
+  }
+
+  if (vm.type === 'JsonWebKey2020' || vm.type === 'JsonWebKey2024') {
+    const jwk = vm.publicKeyJwk as any
+    if (jwk?.crv === 'P-256') return 'ES256'
+    if (jwk?.crv === 'P-384') return 'ES384'
+    if (jwk?.crv === 'P-521') return 'ES512'
+    if (jwk?.crv === 'secp256k1') return 'ES256K'
+  }
+
+  if (vm.type === 'EcdsaSecp256k1VerificationKey2019') {
+    return 'ES256K'
+  }
+
+  return 'EdDSA'
+}
+
+export async function fetchWithTimeout(resource: string, options: any = {}) {
+  const { timeout = 10000, ...fetchOptions } = options
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeout)
+
+  try {
+    const response = await fetch(resource, {
+      ...fetchOptions,
+      signal: controller.signal,
+    })
+    return response
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeout}ms`)
+    }
+    throw error
+  } finally {
+    clearTimeout(id)
+  }
 }
 
 type Namespaces = Record<string, any>

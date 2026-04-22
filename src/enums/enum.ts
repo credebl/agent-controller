@@ -111,3 +111,11 @@ export enum KeyAlgorithmCurve {
   secp256k1 = 'secp256k1',
   Bls12381G2 = 'bls12381g2',
 }
+
+export enum CredentialFormat {
+  VcSdJwt = 'vc+sd-jwt',
+  DcSdJwt = 'dc+sd-jwt',
+  JwtVcJson = 'jwt_vc_json',
+  JwtVcJsonLd = 'jwt_vc_json-ld',
+  LdpVc = 'ldp_vc',
+}

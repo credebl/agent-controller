@@ -2,6 +2,9 @@ import type { AriesRestConfig } from './cliAgent.js'
 
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 import { runRestAgent } from './cliAgent.js'
 
@@ -151,7 +154,9 @@ async function parseArguments(): Promise<Parsed> {
     .option('wallet-idle-timeout', { number: true })
     .option('apiKey', {
       string: true,
-      coerce: (input: string) => {
+      default: process.env.API_KEY,
+      coerce: (input: string | undefined) => {
+        if (!input) return input
         input = input.trim()
         if (input && input.length < 16) {
           throw new Error('API key must be at least 16 characters long')
@@ -161,7 +166,7 @@ async function parseArguments(): Promise<Parsed> {
     })
     .option('updateJwtSecret', {
       boolean: true,
-      default: false,
+      default: process.env.UPDATE_JWT_SECRET === 'true',
     })
     .config()
     .env('AFJ_REST')

@@ -4,8 +4,11 @@ import type { Request as Req } from 'express'
 import { type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
 import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc'
 
-import { SignerMethod } from '../../../enums/enum'
+import { CredentialFormat, SignerMethod } from '../../../enums/enum'
 import { BadRequestError, NotFoundError } from '../../../errors/errors'
+
+import { checkAndCreateStatusList, getServerUrl, revokeCredentialInStatusList } from '../../../utils/statusListService'
+import { STATUS_LISTS_PATH } from '../../../utils/constant'
 
 class IssuanceSessionsService {
   public async createCredentialOffer(options: OpenId4VcIssuanceSessionsCreateOffer, agentReq: Req) {
@@ -15,49 +18,36 @@ class IssuanceSessionsService {
     if (!issuer) {
       throw new NotFoundError(`Issuer with id ${publicIssuerId} not found`)
     }
-    const mappedCredentials = credentials.map((cred) => {
-      const supported = issuer?.credentialConfigurationsSupported[cred.credentialSupportedId]
-      if (!supported) {
-        throw new Error(`CredentialSupportedId '${cred.credentialSupportedId}' is not supported by issuer`)
-      }
-      if (supported.format !== cred.format) {
-        throw new Error(
-          `Format mismatch for '${cred.credentialSupportedId}': expected '${supported.format}', got '${cred.format}'`,
-        )
-      }
 
-      // must have signing options
-      if (!cred.signerOptions?.method) {
-        throw new BadRequestError(
-          `signerOptions must be provided and allowed methods are ${Object.values(SignerMethod).join(', ')}`,
-        )
-      }
+    const offerStatusInfo: any[] = []
 
-      if (cred.signerOptions.method == SignerMethod.Did && !cred.signerOptions.did) {
-        throw new BadRequestError(
-          `For ${cred.credentialSupportedId} : did must be present inside signerOptions if SignerMethod is 'did' `,
-        )
-      }
+    const mappedCredentials = await Promise.all(
+      credentials.map(async (cred) => {
+        const supported = issuer.credentialConfigurationsSupported[cred.credentialSupportedId]
 
-      if (cred.signerOptions.method === SignerMethod.X5c && !cred.signerOptions.x5c) {
-        throw new BadRequestError(
-          `For ${cred.credentialSupportedId} : x5c must be present inside signerOptions if SignerMethod is 'x5c' `,
-        )
-      }
+        this.validateCredentialConfig(cred, supported)
 
-      const currentVct = cred.payload && 'vct' in cred.payload ? cred.payload.vct : undefined
-      return {
-        ...cred,
-        payload: {
-          ...cred.payload,
-          vct: currentVct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
-        },
-      }
-    })
+        const statusBlock = await this.processStatusList(cred, options, agentReq, offerStatusInfo)
+
+        const currentVct = cred.payload && 'vct' in cred.payload ? cred.payload.vct : undefined
+        return {
+          ...cred,
+          payload: {
+            ...cred.payload,
+            vct: currentVct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
+            ...(statusBlock ? { status: statusBlock } : {}),
+          },
+        }
+      }),
+    )
 
     options.issuanceMetadata ||= {}
-
     options.issuanceMetadata.credentials = mappedCredentials
+    options.issuanceMetadata.isRevocable = options.isRevocable
+
+    if (offerStatusInfo.length > 0) {
+      options.issuanceMetadata.StatusListInfo = offerStatusInfo
+    }
 
     const issuerModule = agentReq.agent.modules.openid4vc.issuer
 
@@ -74,6 +64,91 @@ class IssuanceSessionsService {
 
     return { credentialOffer, issuanceSession }
   }
+
+  private validateCredentialConfig(cred: any, supported: any) {
+    if (!supported) {
+      throw new Error(`CredentialSupportedId '${cred.credentialSupportedId}' is not supported by issuer`)
+    }
+    if (supported.format !== cred.format) {
+      throw new Error(
+        `Format mismatch for '${cred.credentialSupportedId}': expected '${supported.format}', got '${cred.format}'`,
+      )
+    }
+
+    if (!cred.signerOptions?.method) {
+      throw new BadRequestError(
+        `signerOptions must be provided and allowed methods are ${Object.values(SignerMethod).join(', ')}`,
+      )
+    }
+
+    if (cred.signerOptions.method === SignerMethod.Did && !cred.signerOptions.did) {
+      throw new BadRequestError(
+        `For ${cred.credentialSupportedId} : did must be present inside signerOptions if SignerMethod is 'did' `,
+      )
+    }
+
+    if (cred.signerOptions.method === SignerMethod.X5c && !cred.signerOptions.x5c) {
+      throw new BadRequestError(
+        `For ${cred.credentialSupportedId} : x5c must be present inside signerOptions if SignerMethod is 'x5c' `,
+      )
+    }
+  }
+
+  private async processStatusList(
+    cred: any,
+    options: OpenId4VcIssuanceSessionsCreateOffer,
+    agentReq: Req,
+    offerStatusInfo: any[],
+  ) {
+    if (!options.isRevocable) {
+      return undefined
+    }
+
+    const effectiveIssuerDid = cred.signerOptions?.method === SignerMethod.Did ? cred.signerOptions.did : undefined
+    const effectiveStatusList = cred.statusListDetails || options.statusListDetails
+
+    if (![CredentialFormat.VcSdJwt, CredentialFormat.DcSdJwt].includes(cred.format as unknown as CredentialFormat)) {
+      throw new BadRequestError(
+        `Revocation is only supported for SD-JWT formats (vc+sd-jwt, dc+sd-jwt), got '${cred.format}'`,
+      )
+    }
+
+    if (!process.env.STATUS_LIST_SERVER_URL) {
+      throw new BadRequestError('Cannot create revocable credentials: STATUS_LIST_SERVER_URL is not configured')
+    }
+
+    if (cred.signerOptions.method !== SignerMethod.Did || !effectiveIssuerDid) {
+      throw new BadRequestError(`Revocation is not supported without a DID signer (found ${cred.signerOptions.method})`)
+    }
+
+    if (!effectiveStatusList) {
+      throw new BadRequestError('Status list details must be provided for revocable credentials')
+    }
+
+    await checkAndCreateStatusList(
+      agentReq.agent as any,
+      effectiveStatusList.listId,
+      effectiveIssuerDid,
+      effectiveStatusList.listSize,
+    )
+
+    const listUri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${effectiveStatusList.listId}`
+
+    offerStatusInfo.push({
+      credentialSupportedId: cred.credentialSupportedId,
+      listId: effectiveStatusList.listId,
+      index: effectiveStatusList.index,
+      issuerDid: effectiveIssuerDid,
+    })
+
+    return {
+      status_list: {
+        uri: listUri,
+        idx: effectiveStatusList.index,
+      },
+    }
+  }
+
 
   public async getIssuanceSessionsById(agentReq: Req, sessionId: string) {
     const issuer = agentReq.agent.modules.openid4vc.issuer
@@ -143,6 +218,30 @@ class IssuanceSessionsService {
   public async deleteById(agentReq: Req, sessionId: string): Promise<void> {
     const issuanceSessionRepository = agentReq.agent.dependencyManager.resolve(OpenId4VcIssuanceSessionRepository)
     await issuanceSessionRepository.deleteById(agentReq.agent.context, sessionId)
+  }
+
+  public async revokeBySessionId(agentReq: Req, sessionId: string) {
+    const issuanceSessionRepository = agentReq.agent.dependencyManager.resolve(OpenId4VcIssuanceSessionRepository)
+    const record = await issuanceSessionRepository.findById(agentReq.agent.context, sessionId)
+
+    if (!record) {
+      throw new NotFoundError(`Issuance session with id ${sessionId} not found`)
+    }
+
+    const statusInfo = record.issuanceMetadata?.StatusListInfo as any[]
+    if (!statusInfo || statusInfo.length === 0) {
+      throw new Error(`No status list information found for session ${sessionId}`)
+    }
+
+    if (!process.env.STATUS_LIST_SERVER_URL) {
+      throw new BadRequestError('Cannot execute revocation: STATUS_LIST_SERVER_URL is not configured')
+    }
+
+    for (const info of statusInfo) {
+      await revokeCredentialInStatusList(agentReq.agent as any, info.listId, info.index, info.issuerDid)
+    }
+
+    return { message: 'Credentials in session revoked successfully' }
   }
 }
 

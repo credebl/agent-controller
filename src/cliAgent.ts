@@ -31,6 +31,7 @@ import {
   X509Module,
   JwkDidRegistrar,
   JwkDidResolver,
+  SdJwtVcModule,
   PeerDidNumAlgo,
 } from '@credo-ts/core'
 import {
@@ -255,6 +256,7 @@ const getModules = (
       rpcUrl: rpcUrl ? rpcUrl : (process.env.RPC_URL as string),
       serverUrl: fileServerUrl ? fileServerUrl : (process.env.SERVER_URL as string),
     }),
+    sdJwtVc: new SdJwtVcModule(),
     openid4vc: new OpenId4VcModule({
       app: expressApp,
       issuer: {

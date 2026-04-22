@@ -1,7 +1,7 @@
 {
   "label": "AFJ Rest Agent 1",
-  "walletId": "sample",
-  "walletKey": "sample",
+  "walletId": "sample10",
+  "walletKey": "sample10",
   "walletType": "postgres",
   "walletUrl": "localhost:5432",
   "walletAccount": "postgres",
@@ -23,7 +23,9 @@
       "indyNamespace": "bcovrin:testnet"
     }
   ],
-  "endpoint": ["http://localhost:4002"],
+  "endpoint": [
+    "http://localhost:4002"
+  ],
   "autoAcceptConnections": true,
   "autoAcceptCredentials": "always",
   "autoAcceptProofs": "contentApproved",
@@ -34,7 +36,9 @@
       "port": 4002
     }
   ],
-  "outboundTransport": ["http"],
+  "outboundTransport": [
+    "http"
+  ],
   "adminPort": 4001,
   "tenancy": true,
   "schemaFileServerURL": "https://schema.credebl.id/schemas/",
@@ -42,7 +46,5 @@
   "schemaManagerContractAddress": "0x4742d43C2dFCa5a1d4238240Afa8547Daf87Ee7a",
   "rpcUrl": "https://rpc-amoy.polygon.technology",
   "fileServerUrl": "https://schema.credebl.id",
-  "fileServerToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJBeWFuV29ya3MiLCJpZCI6ImNhZDI3ZjhjLTMyNWYtNDRmZC04ZmZkLWExNGNhZTY3NTMyMSJ9.I3IR7abjWbfStnxzn1BhxhV0OEzt1x3mULjDdUcgWHk",
-  "apiKey": "supersecret-that-too-16chars",
-  "updateJwtSecret": false
+  "fileServerToken": ""
 }
