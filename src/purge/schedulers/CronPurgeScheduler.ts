@@ -12,14 +12,20 @@ import { PurgeRecordType } from '../PurgeTypes'
 
 export class CronPurgeScheduler {
   private job: ScheduledTask | null = null
+  private isRunning = false
 
   async start(agent: Agent, config: PurgeConfig, webhookUrl: string | undefined): Promise<void> {
     const { cronConfig } = config
 
     this.job = cron.schedule(cronConfig.cronSchedule, () => {
-      this.runScan(agent, config, webhookUrl).catch((err: Error) =>
-        agent.config.logger.error('[Purge] Cron scan error', { error: err?.message }),
-      )
+      if (this.isRunning) {
+        agent.config.logger.warn('[Purge] Cron scan still running — skipping this tick')
+        return
+      }
+      this.isRunning = true
+      this.runScan(agent, config, webhookUrl)
+        .catch((err: Error) => agent.config.logger.error('[Purge] Cron scan error', { error: err?.message }))
+        .finally(() => { this.isRunning = false })
     })
 
     agent.config.logger.info('[Purge] CronPurgeScheduler started', {

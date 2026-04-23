@@ -1,7 +1,9 @@
 import type { Agent } from '@credo-ts/core'
 import type { JetStreamClient, JetStreamManager, NatsConnection } from 'nats'
 
-import { AckPolicy, DiscardPolicy, RetentionPolicy, StorageType, StringCodec, connect, headers } from 'nats'
+import { readFileSync } from 'node:fs'
+
+import { AckPolicy, DiscardPolicy, RetentionPolicy, StorageType, StringCodec, connect, credsAuthenticator, headers } from 'nats'
 
 import {
   NATS_ERR_CONSUMER_ALREADY_EXISTS,
@@ -17,9 +19,9 @@ import {
   PURGE_EXECUTION_SUBJECTS,
   PURGE_SCHEDULER_SUBJECTS,
   PURGE_STREAM,
-  PURGE_STREAM_MAX_AGE_NS,
+  PURGE_STREAM_BUFFER_NS,
 } from '../PurgeConstants'
-import type { PurgeConfig, PurgeJob } from '../PurgeTypes'
+import type { AgentMode, PurgeConfig, PurgeJob } from '../PurgeTypes'
 import { PurgeRecordType } from '../PurgeTypes'
 import { PurgeWorker } from '../PurgeWorker'
 
@@ -39,7 +41,9 @@ export class NatsPurgeScheduler {
 
     this.nc = await connect({
       servers: natsConfig.nats.servers,
-      ...(natsConfig.nats.credentialsFile ? { credentialsFile: natsConfig.nats.credentialsFile } : {}),
+      ...(natsConfig.nats.credentialsFile
+        ? { authenticator: credsAuthenticator(readFileSync(natsConfig.nats.credentialsFile)) }
+        : {}),
       maxReconnectAttempts: NATS_MAX_RECONNECT_ATTEMPTS,
       reconnectTimeWait: NATS_RECONNECT_TIME_WAIT_MS,
     })
@@ -63,25 +67,26 @@ export class NatsPurgeScheduler {
     recordType: PurgeRecordType,
     recordId: string,
     tenantId: string,
-    agentMode: 'shared' | 'dedicated',
+    agentMode: AgentMode,
   ): Promise<void> {
     if (!this.js) throw new Error('[Purge] NatsPurgeScheduler not started')
 
     const fireAt = new Date(Date.now() + this.ttlSeconds * 1000).toISOString()
     const job: PurgeJob = { recordId, recordType, tenantId, agentMode, scheduledAt: fireAt }
 
-    // Subject is unique per record — prevents later offers overwriting earlier ones
-    // (NATS: only one active schedule per subject)
-    const scheduleSubject = `${PURGE_SCHEDULER_SUBJECTS[recordType]}.${recordId}`
+    // tenantScope ensures subjects and dedup IDs are unique across tenants in shared mode
+    const tenantScope = agentMode === 'shared' ? tenantId : 'dedicated'
+    // Subject is unique per tenant+record — NATS allows only one active schedule per subject
+    const scheduleSubject = `${PURGE_SCHEDULER_SUBJECTS[recordType]}.${tenantScope}.${recordId}`
 
     const h = headers()
     h.set('Nats-Schedule', `@at ${fireAt}`)
     h.set('Nats-Schedule-Target', PURGE_EXECUTION_SUBJECTS[recordType])
-    h.set('Nats-Msg-Id', `purge-${recordType}-${recordId}`)
+    h.set('Nats-Msg-Id', `purge-${recordType}-${tenantScope}-${recordId}`)
 
     await this.js.publish(scheduleSubject, sc.encode(JSON.stringify(job)), { headers: h })
 
-    console.info(`[Purge] Scheduled: ${recordType} recordId=${recordId} fireAt=${fireAt}`)
+    console.info(`[Purge] Scheduled: ${recordType} recordId=${recordId} tenantId="${tenantId}" agentMode=${agentMode} fireAt=${fireAt}`)
   }
 
   async stop(): Promise<void> {
@@ -96,17 +101,12 @@ export class NatsPurgeScheduler {
   private async provisionStreams(): Promise<void> {
     if (!this.jsm) throw new Error('[Purge] Not connected')
 
-    // Single combined stream: schedule subjects AND execution subjects must live
-    // in the same stream — NATS validates Nats-Schedule-Target against the same stream.
-    // Limits retention so schedule messages are not blocked waiting for a consumer ack.
     await this.addOrUpdateStream({
       name: PURGE_STREAM,
-      // Wildcards required — schedule subjects include a per-record ID suffix
-      // e.g. purge.schedule.oid4vc.issuance.<recordId>
       subjects: ['purge.schedule.>', 'purge.execute.>'],
       retention: RetentionPolicy.Limits,
       storage: StorageType.File,
-      max_age: PURGE_STREAM_MAX_AGE_NS,
+      max_age: this.ttlSeconds * 1_000_000_000 + PURGE_STREAM_BUFFER_NS,
       discard: DiscardPolicy.Old,
       allow_msg_schedules: true,
     })
@@ -120,8 +120,7 @@ export class NatsPurgeScheduler {
       if (this.isAlreadyExistsError(err)) {
         await this.jsm.streams.update(config.name, config)
       } else if (err?.message?.includes('subjects overlap')) {
-        // Old streams from a previous code version have conflicting subjects.
-        // Delete them and retry — safe because these are transient job streams.
+        // Stale streams from a previous version — delete and retry
         console.warn('[Purge] Subject overlap detected — purging stale streams and retrying')
         await this.deleteStaleStreams(config.subjects)
         await this.jsm.streams.add(config)
@@ -131,15 +130,17 @@ export class NatsPurgeScheduler {
     }
   }
 
-  private async deleteStaleStreams(subjects: string[]): Promise<void> {
+  private async deleteStaleStreams(_subjects: string[]): Promise<void> {
     if (!this.jsm) return
     const list = await this.jsm.streams.list().next()
     for (const stream of list) {
-      const hasOverlap = stream.config.subjects?.some((s: string) =>
-        subjects.some((newS) => s === newS || s.endsWith('>') || newS.endsWith('>')),
+      if (stream.config.name === PURGE_STREAM) continue
+      // Only delete streams that explicitly claim purge.* subjects — never touch unrelated streams
+      const isPurgeStream = stream.config.subjects?.some(
+        (s: string) => s.startsWith('purge.schedule.') || s.startsWith('purge.execute.'),
       )
-      if (hasOverlap && stream.config.name !== PURGE_STREAM) {
-        console.warn(`[Purge] Deleting stale stream: ${stream.config.name}`)
+      if (isPurgeStream) {
+        console.warn(`[Purge] Deleting stale purge stream: ${stream.config.name}`)
         await this.jsm.streams.delete(stream.config.name)
       }
     }
@@ -169,15 +170,33 @@ export class NatsPurgeScheduler {
 
     for (const recordType of this.recordTypes) {
       const consumerName = PURGE_CONSUMER_NAMES[recordType]
-      const consumer = await this.js.consumers.get(PURGE_STREAM, consumerName)
-      const worker = new PurgeWorker(recordType, consumerName, webhookUrl)
-
       agent.config.logger.info('[Purge] Starting worker', { recordType, consumerName })
-
-      worker.start(agent, consumer).catch((err: Error) =>
-        agent.config.logger.error('[Purge] Worker crashed', { consumerName, error: err?.message }),
-      )
+      this.runWorkerWithRestart(agent, recordType, consumerName, webhookUrl)
     }
+  }
+
+  private runWorkerWithRestart(
+    agent: Agent,
+    recordType: PurgeRecordType,
+    consumerName: string,
+    webhookUrl: string | undefined,
+    attempt = 0,
+  ): void {
+    if (!this.js) return
+
+    const delayMs = Math.min(1000 * 2 ** attempt, 60_000)
+
+    const launch = async () => {
+      const consumer = await this.js!.consumers.get(PURGE_STREAM, consumerName)
+      const worker = new PurgeWorker(recordType, consumerName, webhookUrl)
+      await worker.start(agent, consumer)
+    }
+
+    launch().catch((err: Error) => {
+      if (!this.nc) return // scheduler stopped — do not restart
+      agent.config.logger.error('[Purge] Worker crashed — restarting', { consumerName, attempt, delayMs, error: err?.message })
+      setTimeout(() => this.runWorkerWithRestart(agent, recordType, consumerName, webhookUrl, attempt + 1), delayMs)
+    })
   }
 
   private isAlreadyExistsError(err: any): boolean {

@@ -25,5 +25,10 @@ export async function deletePurgeRecord(agent: Agent, recordType: PurgeRecordTyp
       await repo.deleteById(agent.context, recordId)
       break
     }
+
+    default: {
+      const _exhaustive: never = recordType
+      throw new Error(`[Purge] Unhandled record type: ${_exhaustive}`)
+    }
   }
 }
