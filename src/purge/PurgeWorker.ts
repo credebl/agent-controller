@@ -50,6 +50,16 @@ export class PurgeWorker {
     const logger = agent.config.logger
     const deliveryCount: number = msg.info.deliveryCount
 
+    if (recordType !== this.recordType) {
+      logger.error('[Purge] Job record type mismatch — discarding', {
+        expected: this.recordType,
+        received: recordType,
+        recordId,
+      })
+      msg.ack()
+      return
+    }
+
     logger.info('[Purge] Job received', { recordId, recordType, tenantId, deliveryCount })
 
     try {

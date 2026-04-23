@@ -1,6 +1,6 @@
-import type { PurgeRecordType } from '../PurgeTypes'
+import type { AgentMode, PurgeRecordType } from '../PurgeTypes'
 
-import { getNatsPurgeScheduler } from '../PurgeSchedulerFactory'
+import { getCronPurgeScheduler, getNatsPurgeScheduler } from '../PurgeSchedulerFactory'
 
 export function SchedulePurge(
   recordType: PurgeRecordType,
@@ -22,23 +22,29 @@ export function SchedulePurge(
       const recordId = idExtractor(result)
 
       if (!recordId) {
-        console.warn(`[Purge] @SchedulePurge(${recordType}): could not extract recordId from result`, result)
+        const resultKeys = result && typeof result === 'object' ? Object.keys(result) : typeof result
+        console.warn(`[Purge] @SchedulePurge(${recordType}): could not extract recordId — result shape: ${JSON.stringify(resultKeys)}`)
         return result
       }
 
       const request = args[0] as any
-      // TenantAgent sets context.contextCorrelationId = `tenant-${tenantId}` (Credo internals).
-      // Auth middleware sets request.agent to TenantAgent directly — query param is not reliable.
+      // TenantAgent.context.contextCorrelationId = `tenant-${tenantId}` (Credo internals)
       const contextCorrelationId: string = (request?.agent as any)?.context?.contextCorrelationId ?? ''
       const tenantId: string = contextCorrelationId.startsWith('tenant-')
         ? contextCorrelationId.slice('tenant-'.length)
         : ''
-      const agentMode: 'shared' | 'dedicated' = tenantId ? 'shared' : 'dedicated'
+      const agentMode: AgentMode = tenantId ? 'shared' : 'dedicated'
 
       console.info(`[Purge] Scheduling purge: ${recordType} recordId=${recordId} tenantId="${tenantId}" agentMode=${agentMode}`)
 
+      // Fire-and-forget: purge scheduling must not block record creation.
+      // If NATS publish fails and cron is disabled, this record will not be purged.
       scheduler.schedulePurge(recordType, recordId, tenantId, agentMode).catch((err: Error) => {
-        console.error(`[Purge] Failed to schedule purge for ${recordType}:${recordId}`, err?.message)
+        const hasCronFallback = getCronPurgeScheduler() !== null
+        const level = hasCronFallback ? 'warn' : 'error'
+        console[level](
+          `[Purge] Failed to schedule NATS purge for ${recordType}:${recordId} — ${hasCronFallback ? 'cron fallback active' : 'NO cron fallback, record may leak'}: ${err?.message}`,
+        )
       })
 
       return result

@@ -579,24 +579,26 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
 
   logger.info(`*** API Key: ${apiKey}`)
 
-  app.listen(adminPort, () => {
-    logger.info(`Successfully started server on port ${adminPort}`)
-  })
-
   // Start purge schedulers if enabled (NATS and Cron are independent)
   const purgeConfig = buildPurgeConfig()
   if (purgeConfig) {
     await validatePurgeConfig(purgeConfig)
     initPurgeSchedulers(purgeConfig.natsConfig.enabled, purgeConfig.cronConfig.enabled)
 
+    const purgeWebhookUrl = purgeConfig.webhookEnabled ? webhookUrl : undefined
+
     if (purgeConfig.natsConfig.enabled) {
-      await getNatsPurgeScheduler()!.start(agent, purgeConfig, webhookUrl)
+      await getNatsPurgeScheduler()!.start(agent, purgeConfig, purgeWebhookUrl)
     }
 
     if (purgeConfig.cronConfig.enabled) {
-      await getCronPurgeScheduler()!.start(agent, purgeConfig, webhookUrl)
+      await getCronPurgeScheduler()!.start(agent, purgeConfig, purgeWebhookUrl)
     }
   }
+
+  app.listen(adminPort, () => {
+    logger.info(`Successfully started server on port ${adminPort}`)
+  })
 
   // Graceful shutdown
   const shutdown = async () => {

@@ -35,12 +35,13 @@ export async function sendPurgeWebhook(
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      await fetch(url, {
+      const res = await fetch(url, {
         method: 'POST',
         body: JSON.stringify(body),
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(10000),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       logger.debug('[Purge] Webhook delivered', { url, recordId })
       return
     } catch (err: any) {
