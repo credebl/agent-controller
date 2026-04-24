@@ -65,13 +65,12 @@ export interface OpenId4VcIssuanceSessionsCreateOffer {
     issuerState?: string
   }
   preAuthorizedCodeFlowConfig?: {
-    preAuthorizedCode?: string
     txCode?: {
       description?: string
       length?: number
       input_mode?: 'numeric' | 'text'
     }
-    authorizationServerUrl: string
+    authorizationServerUrl?: string
   }
   issuanceMetadata?: Record<string, unknown>
   statusListDetails?: {
