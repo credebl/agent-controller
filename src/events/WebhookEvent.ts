@@ -2,12 +2,16 @@ import type { Logger } from '@credo-ts/core'
 
 import fetch from 'node-fetch'
 
+const DEFAULT_TIMEOUT = 5000;
+
 export const sendWebhookEvent = async (
   webhookUrl: string,
   body: Record<string, unknown>,
   logger: Logger,
-  timeoutMs = 5000,
+  timeoutMs: number = parseInt(process.env.WEBHOOK_TIMEOUT_MS || '', 10) || DEFAULT_TIMEOUT,
 ): Promise<void> => {
+
+  console.log(`Sending webhook event to ${webhookUrl} with timeout of ${timeoutMs}ms`)
   // Abort the webhook send events if the request hangs-in for >5 secs
   // This can avoid failure of services due to bad webhook listners
   const controller = new AbortController()
