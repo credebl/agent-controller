@@ -50,16 +50,22 @@ export class NatsPurgeScheduler {
     this.js = this.nc.jetstream()
     this.jsm = await this.nc.jetstreamManager()
 
+    console.log(`[Purge][NATS] Connected to NATS server(s): ${natsConfig.nats.servers}`)
+    console.log('[Purge][NATS] Provisioning streams...')
     agent.config.logger.info('[Purge] Provisioning NATS streams...')
     await this.provisionStreams()
+    console.log('[Purge][NATS] Streams ready')
     agent.config.logger.info('[Purge] NATS streams ready')
 
+    console.log('[Purge][NATS] Provisioning consumers...')
     agent.config.logger.info('[Purge] Provisioning NATS consumers...')
     await this.provisionConsumers()
+    console.log(`[Purge][NATS] Consumers ready — recordTypes=${this.recordTypes.join(', ')}`)
     agent.config.logger.info('[Purge] NATS consumers ready')
 
     await this.startWorkers(agent, webhookUrl)
 
+    console.log(`[Purge][NATS] Scheduler started — ttlSeconds=${this.ttlSeconds} recordTypes=${this.recordTypes.join(', ')}`)
     agent.config.logger.info('[Purge] NatsPurgeScheduler started', { ttlSeconds: this.ttlSeconds })
   }
 
@@ -170,6 +176,7 @@ export class NatsPurgeScheduler {
 
     for (const recordType of this.recordTypes) {
       const consumerName = PURGE_CONSUMER_NAMES[recordType]
+      console.log(`[Purge][NATS] Starting worker — recordType=${recordType} consumer=${consumerName}`)
       agent.config.logger.info('[Purge] Starting worker', { recordType, consumerName })
       this.runWorkerWithRestart(agent, recordType, consumerName, webhookUrl)
     }
@@ -192,11 +199,14 @@ export class NatsPurgeScheduler {
       await worker.start(agent, consumer)
     }
 
-    launch().catch((err: Error) => {
-      if (!this.nc) return // scheduler stopped — do not restart
-      agent.config.logger.error('[Purge] Worker crashed — restarting', { consumerName, attempt, delayMs, error: err?.message })
-      setTimeout(() => this.runWorkerWithRestart(agent, recordType, consumerName, webhookUrl, attempt + 1), delayMs)
-    })
+    launch()
+      .then(() => console.log(`[Purge][NATS] Worker launched — consumer=${consumerName}`))
+      .catch((err: Error) => {
+        if (!this.nc) return // scheduler stopped — do not restart
+        console.error(`[Purge][NATS] Worker crashed — consumer=${consumerName} attempt=${attempt} retryIn=${delayMs}ms`, err?.message)
+        agent.config.logger.error('[Purge] Worker crashed — restarting', { consumerName, attempt, delayMs, error: err?.message })
+        setTimeout(() => this.runWorkerWithRestart(agent, recordType, consumerName, webhookUrl, attempt + 1), delayMs)
+      })
   }
 
   private isAlreadyExistsError(err: any): boolean {

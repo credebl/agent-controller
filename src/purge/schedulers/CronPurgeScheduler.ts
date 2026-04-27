@@ -18,16 +18,22 @@ export class CronPurgeScheduler {
     const { cronConfig } = config
 
     this.job = cron.schedule(cronConfig.cronSchedule, () => {
+      console.log(`[Purge][Cron] Tick fired — schedule="${cronConfig.cronSchedule}"`)
       if (this.isRunning) {
+        console.warn('[Purge][Cron] Scan still running — skipping this tick')
         agent.config.logger.warn('[Purge] Cron scan still running — skipping this tick')
         return
       }
       this.isRunning = true
       this.runScan(agent, config, webhookUrl)
-        .catch((err: Error) => agent.config.logger.error('[Purge] Cron scan error', { error: err?.message }))
+        .catch((err: Error) => {
+          console.error('[Purge][Cron] Scan error', err?.message)
+          agent.config.logger.error('[Purge] Cron scan error', { error: err?.message })
+        })
         .finally(() => { this.isRunning = false })
     })
 
+    console.log(`[Purge][Cron] Scheduler started — schedule="${cronConfig.cronSchedule}" ttlSeconds=${cronConfig.ttlSeconds} recordTypes=${cronConfig.recordTypes.join(', ')}`)
     agent.config.logger.info('[Purge] CronPurgeScheduler started', {
       cronSchedule: cronConfig.cronSchedule,
       ttlSeconds: cronConfig.ttlSeconds,
@@ -44,6 +50,7 @@ export class CronPurgeScheduler {
     const logger = agent.config.logger
     const isShared = typeof (agent as any).modules?.tenants?.getAllTenants === 'function'
 
+    console.log(`[Purge][Cron] Scan started — agentMode=${isShared ? 'shared' : 'dedicated'}`)
     logger.info('[Purge] Cron scan started', { agentMode: isShared ? 'shared' : 'dedicated' })
 
     let totalDeleted = 0
@@ -61,6 +68,7 @@ export class CronPurgeScheduler {
             },
           )
         } catch (err: any) {
+          console.error(`[Purge][Cron] Failed to scan tenant tenantId=${tenant.id}`, err?.message)
           logger.error('[Purge] Failed to scan tenant', { tenantId: tenant.id, error: err?.message })
         }
       }
@@ -68,6 +76,7 @@ export class CronPurgeScheduler {
       totalDeleted = await this.scanTenant(agent, '', config, webhookUrl)
     }
 
+    console.log(`[Purge][Cron] Scan completed — totalDeleted=${totalDeleted}`)
     logger.info('[Purge] Cron scan completed', { totalDeleted })
   }
 
@@ -83,13 +92,16 @@ export class CronPurgeScheduler {
     for (const recordType of cronConfig.recordTypes) {
       try {
         const expiredIds = await this.queryExpiredRecords(tenantAgent, recordType, cronConfig.ttlSeconds)
+        console.log(`[Purge][Cron] Queried expired records — recordType=${recordType} tenantId="${tenantId}" found=${expiredIds.length}`)
 
         for (const recordId of expiredIds) {
+          console.log(`[Purge][Cron] Deleting record — recordType=${recordType} recordId=${recordId} tenantId="${tenantId}"`)
           if (await this.deleteAndNotify(tenantAgent, recordId, recordType, tenantId, webhookUrl)) {
             deleted++
           }
         }
       } catch (err: any) {
+        console.error(`[Purge][Cron] Error scanning recordType=${recordType} tenantId="${tenantId}"`, err?.message)
         tenantAgent.config.logger.error('[Purge] Error scanning record type', {
           tenantId,
           recordType,
@@ -160,13 +172,16 @@ export class CronPurgeScheduler {
 
     try {
       await deletePurgeRecord(agent, recordType, recordId)
+      console.log(`[Purge][Cron] Record deleted — recordType=${recordType} recordId=${recordId} tenantId="${tenantId}"`)
       logger.info('[Purge] Record deleted by cron', { recordId, recordType, tenantId })
       status = PurgeDeletionStatus.DELETED
     } catch (err: any) {
       if (err instanceof RecordNotFoundError) {
+        console.warn(`[Purge][Cron] Record already absent — recordType=${recordType} recordId=${recordId}`)
         logger.warn('[Purge] Record already absent — skipping', { recordId, recordType })
         status = PurgeDeletionStatus.ALREADY_ABSENT
       } else {
+        console.error(`[Purge][Cron] Failed to delete record — recordType=${recordType} recordId=${recordId}`, err?.message)
         logger.error('[Purge] Failed to delete record', { recordId, recordType, error: err?.message })
         return false
       }
@@ -174,7 +189,8 @@ export class CronPurgeScheduler {
 
     if (webhookUrl) {
       await sendPurgeWebhook(webhookUrl, recordId, recordType, tenantId, status, logger)
-    }
+   
+ }
 
     return true
   }
