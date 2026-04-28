@@ -8,14 +8,18 @@ export const sendWebhookEvent = async (
   webhookUrl: string,
   body: Record<string, unknown>,
   logger: Logger,
-  timeoutMs: number = parseInt(process.env.WEBHOOK_TIMEOUT_MS || '', 10) || DEFAULT_TIMEOUT,
+  timeoutMs?: number,
 ): Promise<void> => {
 
-  console.log(`Sending webhook event to ${webhookUrl} with timeout of ${timeoutMs}ms`)
+  const envTimeout = parseInt(process.env.WEBHOOK_TIMEOUT_MS ?? '', 10)
+  const candidateTimeout = timeoutMs ?? envTimeout
+  const resolvedTimeout = candidateTimeout > 0 ? candidateTimeout : DEFAULT_TIMEOUT
+
+  logger.info(`Sending webhook event to ${webhookUrl} with timeout of ${resolvedTimeout}ms`)
   // Abort the webhook send events if the request hangs-in for >5 secs
   // This can avoid failure of services due to bad webhook listners
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const timeout = setTimeout(() => controller.abort(), resolvedTimeout)
 
   try {
     await fetch(webhookUrl, {
