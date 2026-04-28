@@ -1,6 +1,9 @@
 export interface NatsConfig {
   servers: string[]
+  nkeySeed?: string
   credentialsFile?: string
+  username?: string
+  password?: string
 }
 
 export type AgentMode = 'shared' | 'dedicated'
@@ -54,7 +57,10 @@ export function buildPurgeConfig(): PurgeConfig | undefined {
       ttlSeconds: parseTtlSeconds(process.env.PURGE_NATS_TTL_SECONDS, 'PURGE_NATS_TTL_SECONDS'),
       nats: {
         servers: (process.env.NATS_SERVERS || 'nats://localhost:4222').split(',').map((s) => s.trim()).filter(Boolean),
+        nkeySeed: process.env.NATS_NKEY_SEED,
         credentialsFile: process.env.NATS_CREDENTIALS_FILE,
+        username: process.env.NATS_USER,
+        password: process.env.NATS_PASSWORD,
       },
       recordTypes: buildPurgeRecordTypes(),
     },

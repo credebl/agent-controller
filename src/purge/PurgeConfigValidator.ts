@@ -1,6 +1,7 @@
 import { connect } from 'nats'
 
-import type { PurgeConfig } from './PurgeTypes'
+import { buildNatsAuthenticator } from '../utils/NatsAuthenticator'
+import type { NatsConfig, PurgeConfig } from './PurgeTypes'
 
 export async function validatePurgeConfig(config: PurgeConfig): Promise<void> {
   const { natsConfig, cronConfig } = config
@@ -13,23 +14,23 @@ export async function validatePurgeConfig(config: PurgeConfig): Promise<void> {
   }
 
   if (natsConfig.enabled) {
-    await verifyNatsJetStream(natsConfig.nats.servers, natsConfig.nats.credentialsFile)
+    await verifyNatsJetStream(natsConfig.nats)
   }
 }
 
-async function verifyNatsJetStream(servers: string[], credentialsFile?: string): Promise<void> {
+async function verifyNatsJetStream(nats: NatsConfig): Promise<void> {
   let nc: Awaited<ReturnType<typeof connect>> | null = null
 
   try {
     nc = await connect({
-      servers,
-      ...(credentialsFile ? { credentialsFile } : {}),
+      servers: nats.servers,
+      ...buildNatsAuthenticator(nats),
       timeout: 5000,
       maxReconnectAttempts: 0,
     })
   } catch (err: any) {
     throw new Error(
-      `[Purge] PURGE_NATS_ENABLED=true but cannot connect to NATS at ${servers.join(', ')}: ${err?.message}`,
+      `[Purge] PURGE_NATS_ENABLED=true but cannot connect to NATS at ${nats.servers.join(', ')}: ${err?.message}`,
     )
   }
 

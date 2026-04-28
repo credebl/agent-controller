@@ -1,9 +1,9 @@
 import type { Agent } from '@credo-ts/core'
 import type { JetStreamClient, JetStreamManager, NatsConnection } from 'nats'
 
-import { readFileSync } from 'node:fs'
+import { AckPolicy, DiscardPolicy, RetentionPolicy, StorageType, StringCodec, connect, headers } from 'nats'
 
-import { AckPolicy, DiscardPolicy, RetentionPolicy, StorageType, StringCodec, connect, credsAuthenticator, headers } from 'nats'
+import { buildNatsAuthenticator } from '../../utils/NatsAuthenticator'
 
 import {
   NATS_ERR_CONSUMER_ALREADY_EXISTS,
@@ -41,9 +41,7 @@ export class NatsPurgeScheduler {
 
     this.nc = await connect({
       servers: natsConfig.nats.servers,
-      ...(natsConfig.nats.credentialsFile
-        ? { authenticator: credsAuthenticator(readFileSync(natsConfig.nats.credentialsFile)) }
-        : {}),
+      ...buildNatsAuthenticator(natsConfig.nats),
       maxReconnectAttempts: NATS_MAX_RECONNECT_ATTEMPTS,
       reconnectTimeWait: NATS_RECONNECT_TIME_WAIT_MS,
     })
@@ -219,3 +217,4 @@ export class NatsPurgeScheduler {
     )
   }
 }
+
