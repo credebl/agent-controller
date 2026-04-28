@@ -54,15 +54,44 @@ class IssuanceSessionsService {
     if (!issuerModule) {
       throw new Error('OID4VC issuer module not initialized')
     }
+    const preAuthorizedCodeFlowConfig = this.resolvePreAuthorizedCodeFlowConfig(options.preAuthorizedCodeFlowConfig)
+
     const { credentialOffer, issuanceSession } = await issuerModule.createCredentialOffer({
       issuerId: publicIssuerId,
       issuanceMetadata: options.issuanceMetadata,
       credentialConfigurationIds: credentials.map((c) => c.credentialSupportedId),
-      preAuthorizedCodeFlowConfig: options.preAuthorizedCodeFlowConfig,
+      preAuthorizedCodeFlowConfig,
       authorizationCodeFlowConfig: options.authorizationCodeFlowConfig,
     })
 
     return { credentialOffer, issuanceSession }
+  }
+
+  private resolvePreAuthorizedCodeFlowConfig(
+    config: OpenId4VcIssuanceSessionsCreateOffer['preAuthorizedCodeFlowConfig'],
+  ) {
+    if (!config) return undefined
+
+    const hasTxCode = config.txCode != null
+    const hasAuthServerUrl = config.authorizationServerUrl != null
+
+    if (hasTxCode !== hasAuthServerUrl) {
+      throw new BadRequestError(
+        'Both txCode and authorizationServerUrl must be provided together for normal flow, or both must be omitted for no-auth flow',
+      )
+    }
+
+    if (!hasTxCode) return {}
+
+    if (Object.keys(config.txCode!).length === 0) {
+      throw new BadRequestError('txCode must not be an empty object when provided')
+    }
+
+    if (config.authorizationServerUrl!.trim() === '') {
+      throw new BadRequestError('authorizationServerUrl must not be an empty string when provided')
+    }
+
+    return { txCode: config.txCode, authorizationServerUrl: config.authorizationServerUrl }
   }
 
   private validateCredentialConfig(cred: any, supported: any) {
