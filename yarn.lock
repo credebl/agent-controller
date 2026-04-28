@@ -2754,6 +2754,11 @@
   dependencies:
     "@types/express" "*"
 
+"@types/node-cron@^3.0.11":
+  version "3.0.11"
+  resolved "https://registry.yarnpkg.com/@types/node-cron/-/node-cron-3.0.11.tgz#70b7131f65038ae63cfe841354c8aba363632344"
+  integrity sha512-0ikrnug3/IyneSHqCBeslAhlK2aBfYek1fGo4bP4QnZPmiqSGRK+Oy7ZMisLWkesffJvQ1cqAcBnJC+8+nxIAg==
+
 "@types/node-fetch@^2.6.4":
   version "2.6.13"
   resolved "https://registry.yarnpkg.com/@types/node-fetch/-/node-fetch-2.6.13.tgz#e0c9b7b5edbdb1b50ce32c127e85e880872d56ee"
@@ -6470,6 +6475,13 @@ napi-postinstall@^0.3.0:
   resolved "https://registry.yarnpkg.com/napi-postinstall/-/napi-postinstall-0.3.4.tgz#7af256d6588b5f8e952b9190965d6b019653bbb9"
   integrity sha512-PHI5f1O0EP5xJ9gQmFGMS6IZcrVvTjpXjz7Na41gTE7eE2hK11lg04CECCYEEjdc17EV4DO+fkGEtt7TpTaTiQ==
 
+nats@^2.29.3:
+  version "2.29.3"
+  resolved "https://registry.yarnpkg.com/nats/-/nats-2.29.3.tgz#86099c9bc193464d4f8cbb1d3504335bd2719ec6"
+  integrity sha512-tOQCRCwC74DgBTk4pWZ9V45sk4d7peoE2njVprMRCBXrhJ5q5cYM7i6W+Uvw2qUrcfOSnuisrX7bEx3b3Wx4QA==
+  dependencies:
+    nkeys.js "1.1.0"
+
 natural-compare@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/natural-compare/-/natural-compare-1.4.0.tgz#4abebfeed7541f2c27acfb29bdbbd15c8d5ba4f7"
@@ -6509,6 +6521,13 @@ ngrok@^4.3.3:
   optionalDependencies:
     hpagent "^0.1.2"
 
+nkeys.js@1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/nkeys.js/-/nkeys.js-1.1.0.tgz#de83a9a13f396c5b6d7c412788f4b9f7f35d4c18"
+  integrity sha512-tB/a0shZL5UZWSwsoeyqfTszONTt4k2YS0tuQioMOD180+MbombYVgzDUYHlx+gejYK6rgf08n/2Df99WY0Sxg==
+  dependencies:
+    tweetnacl "1.0.3"
+
 node-addon-api@^2.0.0:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-2.0.2.tgz#432cfa82962ce494b132e9d72a15b29f71ff5d32"
@@ -6518,6 +6537,11 @@ node-addon-api@^3.0.0:
   version "3.2.1"
   resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-3.2.1.tgz#81325e0a2117789c0128dab65e7e38f07ceba161"
   integrity sha512-mmcei9JghVNDYydghQmeDX8KoAm0FAiYyIcUt/N4nhyAipB17pllZQDOJD2fotxABnt4Mdz+dKTO7eftLg4d0A==
+
+node-cron@^4.2.1:
+  version "4.2.1"
+  resolved "https://registry.yarnpkg.com/node-cron/-/node-cron-4.2.1.tgz#6979be4aee4702f06322d21220df8de252c8e265"
+  integrity sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg==
 
 node-fetch@2, node-fetch@^2.7.0:
   version "2.7.0"
@@ -7838,6 +7862,11 @@ tsyringe@^4.10.0, tsyringe@^4.6.0:
   integrity sha512-axr3IdNuVIxnaK5XGEUFTu3YmAQ6lllgrvqfEoR16g/HGnYY/6We4oWENtAnzK6/LpJ2ur9PAb80RBt7/U4ugw==
   dependencies:
     tslib "^1.9.3"
+
+tweetnacl@1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/tweetnacl/-/tweetnacl-1.0.3.tgz#ac0af71680458d8a6378d0d0d050ab1407d35596"
+  integrity sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"

@@ -66,6 +66,9 @@ import { readFile } from 'fs/promises'
 
 import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network, NetworkName } from './enums'
 import { setupServer } from './server'
+import { buildPurgeConfig } from './purge/PurgeTypes'
+import { validatePurgeConfig } from './purge/PurgeConfigValidator'
+import { initPurgeSchedulers, stopPurgeSchedulers, getNatsPurgeScheduler, getCronPurgeScheduler } from './purge/PurgeSchedulerFactory'
 import { generateSecretKey } from './utils/helpers'
 import { TsLogger } from './utils/logger'
 import {
@@ -361,6 +364,7 @@ const getWithTenantModules = (
 //   return secretKey
 // }
 
+
 export async function runRestAgent(restConfig: AriesRestConfig) {
   const {
     endpoints,
@@ -556,7 +560,34 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
 
   logger.info(`*** API Key: ${apiKey}`)
 
+  // Start purge schedulers if enabled (NATS and Cron are independent)
+  const purgeConfig = buildPurgeConfig()
+  if (purgeConfig) {
+    await validatePurgeConfig(purgeConfig)
+    initPurgeSchedulers(purgeConfig.natsConfig.enabled, purgeConfig.cronConfig.enabled)
+
+    const purgeWebhookUrl = purgeConfig.webhookEnabled ? webhookUrl : undefined
+
+    if (purgeConfig.natsConfig.enabled) {
+      await getNatsPurgeScheduler()!.start(agent, purgeConfig, purgeWebhookUrl)
+    }
+
+    if (purgeConfig.cronConfig.enabled) {
+      await getCronPurgeScheduler()!.start(agent, purgeConfig, purgeWebhookUrl)
+    }
+  }
+
   app.listen(adminPort, () => {
     logger.info(`Successfully started server on port ${adminPort}`)
   })
+
+  // Graceful shutdown
+  const shutdown = async () => {
+    agent.config.logger.info('[Shutdown] Stopping services...')
+    await stopPurgeSchedulers()
+    process.exit(0)
+  }
+
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
 }

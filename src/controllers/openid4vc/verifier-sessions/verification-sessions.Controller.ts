@@ -5,6 +5,8 @@ import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
+import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
+import { PurgeRecordType } from '../../../purge/PurgeTypes'
 import { CreateAuthorizationRequest, OpenId4VCDCQLVerificationSessionRecord } from '../types/verifier.types'
 
 import { VerificationSessionsService } from './verification-sessions.service'
@@ -21,6 +23,7 @@ export class VerificationSessionsController extends Controller {
    * Create an authorization request, acting as a Relying Party (RP)
    */
   @Post('/create-presentation-request')
+  @SchedulePurge(PurgeRecordType.OID4VC_VERIFICATION, (r) => (r as any)?.verificationSession?.id)
   public async createProofRequest(
     @Request() request: Req,
     @Body() createAuthorizationRequest: CreateAuthorizationRequest,

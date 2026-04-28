@@ -6,6 +6,8 @@ import { injectable } from 'tsyringe'
 import { SCOPES } from '../../../enums'
 // eslint-disable-next-line import/order
 import ErrorHandlingService from '../../../errorHandlingService'
+import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
+import { PurgeRecordType } from '../../../purge/PurgeTypes'
 
 // import { AgentWithRootOrTenant } from '../../types/agent'
 import { OpenId4VcIssuanceSessionsCreateOffer } from '../types/issuer.types'
@@ -26,6 +28,7 @@ export class IssuanceSessionsController extends Controller {
    * Creates a credential offer with the specified credential configurations and authorization type.
    */
   @Post('/create-credential-offer')
+  @SchedulePurge(PurgeRecordType.OID4VC_ISSUANCE, (r) => (r as any)?.issuanceSession?.id)
   public async createCredentialOffer(@Request() request: Req, @Body() options: OpenId4VcIssuanceSessionsCreateOffer) {
     try {
       return await issuanceSessionService.createCredentialOffer(options, request)

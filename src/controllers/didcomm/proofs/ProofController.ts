@@ -16,6 +16,8 @@ import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
+import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
+import { PurgeRecordType } from '../../../purge/PurgeTypes'
 import { ProofRecordExample, RecordId } from '../../examples'
 import {
   AcceptProofProposal,
@@ -118,6 +120,7 @@ export class ProofController extends Controller {
    */
   @Post('/request-proof')
   @Example<DidCommProofExchangeRecordProps>(ProofRecordExample)
+  @SchedulePurge(PurgeRecordType.DIDCOMM_PROOF, (r) => (r as any)?.id)
   public async requestProof(@Request() request: Req, @Body() requestProofOptions: RequestProofOptions) {
     try {
       const requestProofPayload = {
@@ -143,6 +146,7 @@ export class ProofController extends Controller {
    */
   @Post('create-request-oob')
   @Example<DidCommProofExchangeRecordProps>(ProofRecordExample)
+  @SchedulePurge(PurgeRecordType.DIDCOMM_PROOF, (r) => (r as any)?.proofRecordId)
   public async createRequest(@Request() request: Req, @Body() createRequestOptions: CreateProofRequestOobOptions) {
     try {
       let routing: DidCommRouting
@@ -200,6 +204,7 @@ export class ProofController extends Controller {
         }),
         outOfBandRecord: outOfBandRecord.toJSON(),
         invitationDid,
+        proofRecordId: proof.proofRecord.id,
         proofRecordThId: proof.proofRecord.threadId,
         proofMessageId: proof.message.thread?.threadId || proof.message.threadId || proof.message.id,
       }

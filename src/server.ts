@@ -40,8 +40,12 @@ export const setupServer = async (
   config: ServerConfig,
   apiKey?: string,
 ) => {
-  await otelSDK.start()
-  agent.config.logger.info('OpenTelemetry SDK started')
+  if (process.env.OTEL_ENABLED === 'true') {
+    await otelSDK.start()
+    agent.config.logger.info('OpenTelemetry SDK started')
+  } else {
+    agent.config.logger.info('OpenTelemetry SDK disabled (set OTEL_ENABLED=true to enable)')
+  }
   validateAuthConfig()
   container.registerInstance(Agent, agent as Agent)
   fs.writeFileSync('config.json', JSON.stringify(config, null, 2))
