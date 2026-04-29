@@ -80,6 +80,7 @@ npx -p @aries-framework/rest afj-rest start \
   --inbound-transport http 5000
 ```
 
+
 **Configuration**
 
 To find out all available configuration options from the CLI, you can run the CLI command with `--help`. This will print a full list of all available options.
