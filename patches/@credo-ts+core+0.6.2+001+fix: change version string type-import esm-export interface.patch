@@ -11,6 +11,17 @@ index 5a311c1..4d640d0 100644
    contextUrl?: string | null;
    documentUrl: string;
    document: Record<string, unknown>;
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
+index 195af1d..30d1638 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
++++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
+@@ -5,4 +5,5 @@ import { AgentContext } from "../../../../agent/context/AgentContext.mjs";
+ type DocumentLoaderWithContext = (agentContext: AgentContext) => DocumentLoader;
+ //#endregion
+ export { DocumentLoaderWithContext };
++export declare function defaultDocumentLoader(agentContext: AgentContext): DocumentLoader;
+ //# sourceMappingURL=documentLoader.d.mts.map
+\ No newline at end of file
 diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs
 index 49ee03f..aa7e43a 100644
 --- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs
