@@ -1,16 +1,16 @@
 import type { AgentContext, DocumentLoader } from '@credo-ts/core'
-import type { DocumentLoaderResult } from '@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil'
+import type { DocumentLoaderResult } from '@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.mjs'
 
 import { CredoError } from '@credo-ts/core'
-import { defaultDocumentLoader } from '@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader'
+import { defaultDocumentLoader } from '@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.mjs'
 
 /**
  * Check if URL belongs to CREDEBL schema domain
  */
 function isW3CDeprecatedUrl(url: string, agentContext: AgentContext): boolean {
-  agentContext.config.logger.debug(
-    `Checking if w3c url(${url}) contains deprecated domain for agent: ${agentContext.config.label}`,
-  )
+  // agentContext.config.logger.debug(
+  //   `Checking if w3c url(${url}) contains deprecated domain for agent: ${agentContext.config.label}`,
+  // )
   return url.startsWith(process.env.DEPRECATED_DOMAIN!)
 }
 
@@ -32,9 +32,9 @@ export const CustomDocumentLoader = (agentContext: AgentContext): DocumentLoader
     try {
       // Intercept credebl schemas
       if (isW3CDeprecatedUrl(url, agentContext)) {
-        agentContext.config.logger.debug(
-          `Found w3c url(${url}) containing deprecated domain for agent: ${agentContext.config.label}`,
-        )
+        // agentContext.config.logger.debug(
+        //   `Found w3c url(${url}) containing deprecated domain for agent: ${agentContext.config.label}`,
+        // )
         url = replaceUrl(url, agentContext)
       }
 
