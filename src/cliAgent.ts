@@ -587,6 +587,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     logger.info(`Successfully started server on port ${adminPort}`)
   })
 
+  
   // Graceful shutdown
   const shutdown = async () => {
     agent.config.logger.info('[Shutdown] Stopping services...')
