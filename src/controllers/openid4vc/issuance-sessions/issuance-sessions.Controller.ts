@@ -4,10 +4,9 @@ import { Body, Controller, Delete, Get, Path, Post, Put, Query, Request, Route, 
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
-// eslint-disable-next-line import/order
 import ErrorHandlingService from '../../../errorHandlingService'
-import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { PurgeRecordType } from '../../../purge/PurgeTypes'
+import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 
 // import { AgentWithRootOrTenant } from '../../types/agent'
 import { OpenId4VcIssuanceSessionsCreateOffer } from '../types/issuer.types'

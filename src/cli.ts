@@ -1,8 +1,8 @@
 import type { AriesRestConfig } from './cliAgent.js'
 
+import dotenv from 'dotenv'
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
-import dotenv from 'dotenv'
 
 dotenv.config()
 

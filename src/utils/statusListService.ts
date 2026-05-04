@@ -1,5 +1,8 @@
-import { Agent, JwsProtectedHeaderOptions, JwsService, JwtPayload, VerificationMethod } from '@credo-ts/core'
+import type { Agent, JwsProtectedHeaderOptions, VerificationMethod } from '@credo-ts/core'
+
+import { JwsService, JwtPayload } from '@credo-ts/core'
 import { StatusList, getListFromStatusListJWT } from '@sd-jwt/jwt-status-list'
+
 import { STATUS_LISTS_PATH } from './constant'
 import { getAlgFromVerificationMethod, getVerificationMethod, fetchWithTimeout } from './helpers'
 

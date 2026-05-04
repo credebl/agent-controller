@@ -1,7 +1,8 @@
 import type { ServerConfig } from '../utils/ServerConfig'
 import type { Agent } from '@credo-ts/core'
+import type { DidCommHandshakeReusedEvent } from '@credo-ts/didcomm'
 
-import { DidCommOutOfBandEventTypes, DidCommHandshakeReusedEvent } from '@credo-ts/didcomm'
+import { DidCommOutOfBandEventTypes } from '@credo-ts/didcomm'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'

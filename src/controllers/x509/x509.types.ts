@@ -1,5 +1,5 @@
+import type { Curve } from '../types'
 import type { X509ExtendedKeyUsage, X509KeyUsage } from '@credo-ts/core'
-import { Curve } from '../types'
 
 // Enum remains the same
 export enum GeneralNameType {

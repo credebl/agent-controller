@@ -1,8 +1,9 @@
 import type { RestMultiTenantAgentModules } from '../cliAgent'
 import type { ServerConfig } from '../utils/ServerConfig'
 import type { Agent } from '@credo-ts/core'
+import type { DidCommCredentialStateChangedEvent } from '@credo-ts/didcomm'
 
-import { DidCommCredentialEventTypes, DidCommCredentialStateChangedEvent } from '@credo-ts/didcomm'
+import { DidCommCredentialEventTypes } from '@credo-ts/didcomm'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'

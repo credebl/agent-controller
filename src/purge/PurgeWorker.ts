@@ -1,3 +1,5 @@
+import type { PurgeJob } from './PurgeTypes'
+import type { PurgeRecordType } from './PurgeTypes'
 import type { Agent } from '@credo-ts/core'
 import type { Consumer } from 'nats'
 
@@ -7,8 +9,6 @@ import { StringCodec } from 'nats'
 import { PURGE_CONSUMER_MAX_DELIVER, PURGE_WORKER_RESTART_DELAY_MS } from './PurgeConstants'
 import { deletePurgeRecord } from './PurgeDeleteRecord'
 import { sendPurgeWebhook, PurgeDeletionStatus } from './PurgeWebhook'
-import type { PurgeJob } from './PurgeTypes'
-import { PurgeRecordType } from './PurgeTypes'
 
 const sc = StringCodec()
 

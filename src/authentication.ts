@@ -1,15 +1,15 @@
 import type { RestAgentModules, RestMultiTenantAgentModules } from './cliAgent'
+import type { TenantAgent } from '@credo-ts/tenants'
 import type { Request } from 'express'
 
 import { Agent, LogLevel } from '@credo-ts/core'
 import jwt, { decode } from 'jsonwebtoken'
+import { randomUUID as uuid } from 'node:crypto'
 import { container } from 'tsyringe'
 
 import { AgentRole, ErrorMessages, SCOPES } from './enums'
 import { StatusException } from './errors'
 import { TsLogger } from './utils/logger'
-import { TenantAgent } from '@credo-ts/tenants'
-import { randomUUID as uuid } from 'node:crypto'
 
 // export type AgentType = Agent<RestAgentModules> | Agent<RestMultiTenantAgentModules> | TenantAgent<RestAgentModules>
 

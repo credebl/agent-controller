@@ -3,7 +3,6 @@ import type { RecipientKeyOption, CreateInvitationOptions, AgentMessageType } fr
 import type { PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
 import { createPeerDidDocumentFromServices, JsonTransformer, PeerDidNumAlgo } from '@credo-ts/core'
-
 import {
   DidCommConnectionRecordProps,
   DidCommRouting,
@@ -13,6 +12,7 @@ import {
 import { Request as Req } from 'express'
 import { Body, Controller, Delete, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
+
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
 import { InternalServerError, NotFoundError } from '../../../errors'

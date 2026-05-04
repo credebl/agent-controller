@@ -1,6 +1,8 @@
 import type { ServerConfig } from '../utils/ServerConfig'
 import type { Agent } from '@credo-ts/core'
-import { DidCommBasicMessageEventTypes, DidCommBasicMessageStateChangedEvent } from '@credo-ts/didcomm'
+import type { DidCommBasicMessageStateChangedEvent } from '@credo-ts/didcomm'
+
+import { DidCommBasicMessageEventTypes } from '@credo-ts/didcomm'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'

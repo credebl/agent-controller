@@ -14,8 +14,8 @@ import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
-import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { PurgeRecordType } from '../../../purge/PurgeTypes'
+import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { AgentType } from '../../../types'
 import { CredentialExchangeRecordExample, RecordId } from '../../examples'
 import {

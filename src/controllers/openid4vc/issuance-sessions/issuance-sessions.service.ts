@@ -6,9 +6,8 @@ import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc'
 
 import { CredentialFormat, SignerMethod } from '../../../enums/enum'
 import { BadRequestError, NotFoundError } from '../../../errors/errors'
-
-import { checkAndCreateStatusList, getServerUrl, revokeCredentialInStatusList } from '../../../utils/statusListService'
 import { STATUS_LISTS_PATH } from '../../../utils/constant'
+import { checkAndCreateStatusList, getServerUrl, revokeCredentialInStatusList } from '../../../utils/statusListService'
 
 class IssuanceSessionsService {
   public async createCredentialOffer(options: OpenId4VcIssuanceSessionsCreateOffer, agentReq: Req) {

@@ -1,21 +1,20 @@
 import type { PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
+import { PeerDidNumAlgo, createPeerDidDocumentFromServices } from '@credo-ts/core'
 import {
   AcceptProofRequestOptions,
   DidCommProofExchangeRecordProps,
   ProofsProtocolVersionType,
   DidCommRouting,
 } from '@credo-ts/didcomm'
-
-import { PeerDidNumAlgo, createPeerDidDocumentFromServices } from '@credo-ts/core'
 import { Request as Req } from 'express'
 import { Body, Controller, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
-import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { PurgeRecordType } from '../../../purge/PurgeTypes'
+import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { ProofRecordExample, RecordId } from '../../examples'
 import {
   AcceptProofProposal,

@@ -1,3 +1,4 @@
+import type { PurgeConfig } from '../PurgeTypes'
 import type { Agent } from '@credo-ts/core'
 import type { ScheduledTask } from 'node-cron'
 
@@ -6,9 +7,8 @@ import { OpenId4VcIssuanceSessionRepository, OpenId4VcVerificationSessionReposit
 import cron from 'node-cron'
 
 import { deletePurgeRecord } from '../PurgeDeleteRecord'
-import { sendPurgeWebhook, PurgeDeletionStatus } from '../PurgeWebhook'
-import type { PurgeConfig } from '../PurgeTypes'
 import { PurgeRecordType } from '../PurgeTypes'
+import { sendPurgeWebhook, PurgeDeletionStatus } from '../PurgeWebhook'
 
 export class CronPurgeScheduler {
   private job: ScheduledTask | null = null

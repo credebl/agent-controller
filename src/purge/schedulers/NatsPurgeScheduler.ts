@@ -1,10 +1,11 @@
+import type { AgentMode, PurgeConfig, PurgeJob } from '../PurgeTypes'
+import type { PurgeRecordType } from '../PurgeTypes'
 import type { Agent } from '@credo-ts/core'
 import type { JetStreamClient, JetStreamManager, NatsConnection } from 'nats'
 
 import { AckPolicy, DiscardPolicy, RetentionPolicy, StorageType, StringCodec, connect, headers } from 'nats'
 
 import { buildNatsAuthenticator } from '../../utils/NatsAuthenticator'
-
 import {
   NATS_ERR_CONSUMER_ALREADY_EXISTS,
   NATS_ERR_STREAM_ALREADY_EXISTS,
@@ -21,8 +22,6 @@ import {
   PURGE_STREAM,
   PURGE_STREAM_BUFFER_NS,
 } from '../PurgeConstants'
-import type { AgentMode, PurgeConfig, PurgeJob } from '../PurgeTypes'
-import { PurgeRecordType } from '../PurgeTypes'
 import { PurgeWorker } from '../PurgeWorker'
 
 const sc = StringCodec()

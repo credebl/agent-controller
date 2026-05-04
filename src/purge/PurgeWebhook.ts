@@ -1,8 +1,9 @@
+import type { PurgeRecordType } from './PurgeTypes'
 import type { Logger } from '@credo-ts/core'
 
 import { sleep } from '../utils/webhook'
+
 import { PURGE_WEBHOOK_PATHS, PURGE_WEBHOOK_RETRY_DELAYS_MS } from './PurgeConstants'
-import type { PurgeRecordType } from './PurgeTypes'
 
 export enum PurgeDeletionStatus {
   DELETED = 'deleted',

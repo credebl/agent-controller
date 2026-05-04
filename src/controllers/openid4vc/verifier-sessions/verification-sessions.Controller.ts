@@ -5,8 +5,8 @@ import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
-import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { PurgeRecordType } from '../../../purge/PurgeTypes'
+import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { CreateAuthorizationRequest, OpenId4VCDCQLVerificationSessionRecord } from '../types/verifier.types'
 
 import { VerificationSessionsService } from './verification-sessions.service'

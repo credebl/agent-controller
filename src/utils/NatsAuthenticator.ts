@@ -1,9 +1,8 @@
-import { readFileSync } from 'node:fs'
-
-import type { Authenticator } from 'nats'
-import { credsAuthenticator, nkeyAuthenticator, usernamePasswordAuthenticator } from 'nats'
-
 import type { NatsConfig } from '../purge/PurgeTypes'
+import type { Authenticator } from 'nats'
+
+import { credsAuthenticator, nkeyAuthenticator, usernamePasswordAuthenticator } from 'nats'
+import { readFileSync } from 'node:fs'
 
 export type NatsAuthType = 'nkey' | 'creds' | 'usernamePassword' | 'none'
 

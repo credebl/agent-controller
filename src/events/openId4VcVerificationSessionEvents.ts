@@ -1,9 +1,11 @@
 import type { ServerConfig } from '../utils/ServerConfig'
 import type { Agent } from '@credo-ts/core'
+import type { OpenId4VcVerificationSessionStateChangedEvent } from '@credo-ts/openid4vc'
+
+import { OpenId4VcVerifierEvents } from '@credo-ts/openid4vc'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
-import { OpenId4VcVerificationSessionStateChangedEvent, OpenId4VcVerifierEvents } from '@credo-ts/openid4vc'
 
 export const openId4VcVerificationSessionEvents = async (agent: Agent, config: ServerConfig) => {
   agent.events.on(

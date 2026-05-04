@@ -1,7 +1,8 @@
+import type { NatsConfig, PurgeConfig } from './PurgeTypes'
+
 import { connect } from 'nats'
 
 import { buildNatsAuthenticator } from '../utils/NatsAuthenticator'
-import type { NatsConfig, PurgeConfig } from './PurgeTypes'
 
 export async function validatePurgeConfig(config: PurgeConfig): Promise<void> {
   const { natsConfig, cronConfig } = config

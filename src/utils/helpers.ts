@@ -1,7 +1,8 @@
 import type { Curve, EcCurve, EcType, OkpCurve, OkpType } from '../controllers/types'
+import type { DidDocument, VerificationMethod } from '@credo-ts/core'
 import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
-import { JsonEncoder, JsonTransformer, DidDocument, VerificationMethod } from '@credo-ts/core'
+import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
 import axios from 'axios'
 import { randomBytes } from 'crypto'
 
