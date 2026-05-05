@@ -22,7 +22,7 @@ async function pemToRawEcPrivateKey(pem: string): Promise<string> {
 /**
  * Extracts the raw private key (hex) from a PEM-encoded Ed25519 private key.
  */
-export async function pemToRawEd25519PrivateKey(derKey: string | Buffer): Promise<string> {
+export async function pemToRawPrivateKey(derKey: string | Buffer): Promise<string> {
   // If it's a base64 string, convert to Buffer
   const keyBuffer = typeof derKey === 'string' ? Buffer.from(derKey, 'base64') : derKey
 

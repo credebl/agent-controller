@@ -18,7 +18,7 @@ import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import { keyAlgorithmToCurve } from '../../utils/constant'
 import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } from '../../utils/helpers'
 
-import { pemToRawEd25519PrivateKey } from './crypto-util'
+import { pemToRawPrivateKey } from './crypto-util'
 import { type X509CreateCertificateOptionsDto } from './x509.types'
 
 class x509Service {
@@ -131,7 +131,7 @@ class x509Service {
     const agent = agentReq.agent
     if (!options.privateKey) throw new Error('[ImportX509Certificates] privateKey is required')
     agent.config.logger.debug(`Start validating keys`)
-    const secretHexKey = await pemToRawEd25519PrivateKey(options.privateKey)
+    const secretHexKey = await pemToRawPrivateKey(options.privateKey)
     const privateKey = TypedArrayEncoder.fromHex(secretHexKey)
 
     agent.config.logger.debug(`Decode certificate`)
