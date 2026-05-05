@@ -1,7 +1,7 @@
 import type { SchemaMetadata } from '../types'
 
 import { generateSecp256k1KeyPair } from '@ayanworks/credo-polygon-w3c-module'
-import { DidOperation, DidOperationOptions } from '@ayanworks/credo-polygon-w3c-module/build/ledger'
+import { DidOperation, DidOperationOptions } from '@ayanworks/credo-polygon-w3c-module'
 import { Request as Req } from 'express'
 import * as fs from 'fs'
 import { Route, Tags, Security, Controller, Post, Body, Get, Path, Request } from 'tsoa'
@@ -107,8 +107,7 @@ export class Polygon extends Controller {
   ): Promise<unknown> {
     try {
       const { operation } = estimateTransactionRequest
-
-      if (!(operation in DidOperation)) {
+      if (!Object.values(DidOperation).includes(operation)) {
         throw new BadRequestError('Invalid method parameter!')
       }
       if (operation === DidOperation.Create) {

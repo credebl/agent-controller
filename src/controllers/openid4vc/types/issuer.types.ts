@@ -1,0 +1,185 @@
+import type { SignerMethod } from '../../../enums/enum'
+import type { MdocNameSpaces, W3cCredential } from '@credo-ts/core'
+import type { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
+
+import { Kms } from '@credo-ts/core'
+import { OpenId4VciCreateCredentialOfferOptions, OpenId4VciSignCredentials } from '@credo-ts/openid4vc'
+
+export interface OpenId4VciOfferCredentials {
+  credentialSupportedId: string
+  format: OpenId4VciCredentialFormatProfile
+  signerOptions: {
+    method: SignerMethod
+    did?: string
+    x5c?: string[]
+    keyId?: string
+  }
+  statusListDetails?: {
+    listId: string
+    index: number
+    listSize?: number
+  }
+}
+
+export interface DisclosureFrameForOffer {
+  _sd?: string[]
+  [claim: string]: DisclosureFrameForOffer | DisclosureFrameForOffer[] | string[] | undefined
+}
+
+export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentials {
+  payload: {
+    vct?: string
+    [key: string]: unknown
+  }
+  disclosureFrame?: DisclosureFrameForOffer
+}
+export interface ValidityInfo {
+  signed: Date
+  validFrom: Date
+  validUntil: Date
+  expectedUpdate?: Date
+}
+
+export interface OpenId4VciOfferMdocCredential extends OpenId4VciOfferCredentials {
+  payload: {
+    docType: 'org.iso.18013.5.1.mDL' | (string & {})
+    validityInfo?: Partial<ValidityInfo>
+    namespaces: MdocNameSpaces
+  }
+}
+
+export interface OpenId4VciOfferW3cCredential extends OpenId4VciOfferCredentials {
+  payload: {
+    verificationMethod: string
+    credential: W3cCredential
+  }
+}
+
+export interface OpenId4VcIssuanceSessionsCreateOffer {
+  publicIssuerId: string
+  credentials: Array<OpenId4VciOfferSdJwtCredential | OpenId4VciOfferMdocCredential | OpenId4VciOfferW3cCredential>
+  authorizationCodeFlowConfig?: {
+    authorizationServerUrl: string
+    requirePresentationDuringIssuance?: boolean
+    issuerState?: string
+  }
+  preAuthorizedCodeFlowConfig?: {
+    txCode?: {
+      description?: string
+      length?: number
+      input_mode?: 'numeric' | 'text'
+    }
+    authorizationServerUrl?: string
+  }
+  issuanceMetadata?: Record<string, unknown>
+  statusListDetails?: {
+    listId: string
+    index: number
+    listSize?: number
+  }
+  isRevocable?: boolean
+}
+
+export interface X509GenericRecordContent {
+  dcs?: string | string[]
+  root?: string
+}
+
+export interface X509GenericRecord {
+  id: string
+  content?: X509GenericRecordContent
+}
+
+export interface Logo {
+  uri?: string
+  alt_text?: string
+  [key: string]: unknown
+}
+
+export interface CredentialDisplay {
+  name?: string
+  locale?: string
+  logo?: Logo
+  [key: string]: unknown
+}
+
+export interface AuthorizationServerClientAuth {
+  clientId: string
+  clientSecret: string
+}
+
+export interface AuthorizationServerConfig {
+  issuer: string
+  clientAuthentication?: AuthorizationServerClientAuth
+}
+
+export interface BatchCredentialIssuanceOptions {
+  batchSize: number
+}
+
+export interface KeyAttestationRequiredRecords {
+  key_storage: string[]
+  user_authentication: string[]
+}
+export interface ProofTypeConfig {
+  proof_signing_alg_values_supported: string[]
+  key_attestations_required?: KeyAttestationRequiredRecords
+}
+
+export interface CredentialConfigurationDisplay {
+  name: string
+  locale?: string
+  logo?: Logo
+  description?: string
+  background_color?: string
+  background_image?: Logo
+  text_color?: string
+}
+
+export interface CredentialDefinition {
+  type: string[]
+  [key: string]: any
+}
+
+export interface Claim {
+  path: string[]
+  display?: ClaimDisplay[]
+  mandatory?: boolean
+}
+
+export interface ClaimDisplay {
+  name: string
+  locale: string
+}
+export interface CredentialMetadata {
+  display: CredentialDisplay[]
+  claims: Claim[]
+}
+
+export interface CredentialConfigurationSupportedWithFormats {
+  format: 'vc+sd-jwt' | 'mso_mdoc' | 'jwt_vc_json' | string
+  vct?: string
+  doctype?: string
+  scope?: string
+  cryptographic_binding_methods_supported?: string[]
+  credential_signing_alg_values_supported?: string[] | number[]
+  proof_types_supported?: Record<string, ProofTypeConfig>
+  credential_definition?: CredentialDefinition
+  credential_metadata?: CredentialMetadata
+}
+export interface CreateIssuerOptions {
+  issuerId?: string
+  accessTokenSignerKeyType?: any
+  display?: CredentialDisplay[]
+  authorizationServerConfigs?: AuthorizationServerConfig[]
+  dpopSigningAlgValuesSupported?: string[]
+  credentialConfigurationsSupported: Record<string, CredentialConfigurationSupportedWithFormats>
+  batchCredentialIssuance?: BatchCredentialIssuanceOptions
+}
+
+export interface UpdateIssuerRecordOptions {
+  display?: CredentialDisplay[]
+  dpopSigningAlgValuesSupported?: string[]
+  credentialConfigurationsSupported: Record<string, CredentialConfigurationSupportedWithFormats>
+  batchCredentialIssuance?: BatchCredentialIssuanceOptions
+}

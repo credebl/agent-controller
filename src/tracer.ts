@@ -27,6 +27,8 @@ const resource = new resourceFromAttributes({
   [SemanticResourceAttributes.SERVICE_INSTANCE_ID]: process.env.HOSTNAME,
 })
 
+const otelEnabled = process.env.OTEL_ENABLED === 'true'
+
 const traceExporter = new OTLPTraceExporter({
   url: process.env.OTEL_TRACES_OTLP_ENDPOINT,
   headers: {
@@ -40,8 +42,13 @@ const logExporter = new OTLPLogExporter({
     Authorization: `Api-Key ${process.env.OTEL_HEADERS_KEY}`,
   },
 })
+
 const logProvider = new LoggerProvider({ resource })
-logProvider.addLogRecordProcessor(new BatchLogRecordProcessor(logExporter))
+// Only add the BatchLogRecordProcessor when OTEL is enabled — otherwise it
+// tries to connect to localhost:4318 on every flush even if SDK never started.
+if (otelEnabled) {
+  logProvider.addLogRecordProcessor(new BatchLogRecordProcessor(logExporter))
+}
 export const otelLogger: Logger = logProvider.getLogger('credo-controller-logger')
 export const otelLoggerProviderInstance = logProvider
 

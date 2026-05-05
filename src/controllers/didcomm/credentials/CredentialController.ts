@@ -1,23 +1,21 @@
-import type {
-  CredentialExchangeRecordProps,
-  CredentialProtocolVersionType,
-  PeerDidNumAlgo2CreateOptions,
-  Routing,
-} from '@credo-ts/core'
+import type { PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
+import { W3cCredentialService, createPeerDidDocumentFromServices, PeerDidNumAlgo } from '@credo-ts/core'
 import {
-  CredentialState,
-  W3cCredentialService,
-  CredentialRole,
-  createPeerDidDocumentFromServices,
-  PeerDidNumAlgo,
-} from '@credo-ts/core'
+  DidCommCredentialExchangeRecordProps,
+  CredentialProtocolVersionType,
+  DidCommCredentialState,
+  DidCommCredentialRole,
+  DidCommRouting,
+} from '@credo-ts/didcomm'
 import { Request as Req } from 'express'
 import { Body, Controller, Get, Path, Post, Route, Tags, Example, Query, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
+import { PurgeRecordType } from '../../../purge/PurgeTypes'
+import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { AgentType } from '../../../types'
 import { CredentialExchangeRecordExample, RecordId } from '../../examples'
 import {
@@ -49,18 +47,18 @@ export class CredentialController extends Controller {
    *
    * @returns CredentialExchangeRecord[]
    */
-  @Example<CredentialExchangeRecordProps[]>([CredentialExchangeRecordExample])
+  @Example<DidCommCredentialExchangeRecordProps[]>([CredentialExchangeRecordExample])
   @Get('/')
   public async getAllCredentials(
     @Request() request: Req,
     @Query('threadId') threadId?: ThreadId,
     @Query('parentThreadId') parentThreadId?: ThreadId,
     @Query('connectionId') connectionId?: RecordId,
-    @Query('state') state?: CredentialState,
-    @Query('role') role?: CredentialRole,
+    @Query('state') state?: DidCommCredentialState,
+    @Query('role') role?: DidCommCredentialRole,
   ) {
     try {
-      const credentials = await request.agent.credentials.findAllByQuery({
+      const credentials = await request.agent.modules.didcomm.credentials.findAllByQuery({
         connectionId,
         threadId,
         state,
@@ -106,11 +104,11 @@ export class CredentialController extends Controller {
    * @param credentialRecordId
    * @returns CredentialExchangeRecord
    */
-  @Example<CredentialExchangeRecordProps>(CredentialExchangeRecordExample)
+  @Example<DidCommCredentialExchangeRecordProps>(CredentialExchangeRecordExample)
   @Get('/:credentialRecordId')
   public async getCredentialById(@Request() request: Req, @Path('credentialRecordId') credentialRecordId: RecordId) {
     try {
-      const credential = await request.agent.credentials.getById(credentialRecordId)
+      const credential = await request.agent.modules.didcomm.credentials.getById(credentialRecordId)
       return credential.toJSON()
     } catch (error) {
       throw ErrorHandlingService.handle(error)
@@ -124,11 +122,11 @@ export class CredentialController extends Controller {
    * @param options
    * @returns CredentialExchangeRecord
    */
-  @Example<CredentialExchangeRecordProps>(CredentialExchangeRecordExample)
+  @Example<DidCommCredentialExchangeRecordProps>(CredentialExchangeRecordExample)
   @Post('/propose-credential')
   public async proposeCredential(@Request() request: Req, @Body() proposeCredentialOptions: ProposeCredentialOptions) {
     try {
-      const credential = await request.agent.credentials.proposeCredential(proposeCredentialOptions)
+      const credential = await request.agent.modules.didcomm.credentials.proposeCredential(proposeCredentialOptions)
       return credential
     } catch (error) {
       throw ErrorHandlingService.handle(error)
@@ -143,14 +141,14 @@ export class CredentialController extends Controller {
    * @param options
    * @returns CredentialExchangeRecord
    */
-  @Example<CredentialExchangeRecordProps>(CredentialExchangeRecordExample)
+  @Example<DidCommCredentialExchangeRecordProps>(CredentialExchangeRecordExample)
   @Post('/accept-proposal')
   public async acceptProposal(
     @Request() request: Req,
     @Body() acceptCredentialProposal: AcceptCredentialProposalOptions,
   ) {
     try {
-      const credential = await request.agent.credentials.acceptProposal(acceptCredentialProposal)
+      const credential = await request.agent.modules.didcomm.credentials.acceptProposal(acceptCredentialProposal)
 
       return credential
     } catch (error) {
@@ -165,11 +163,12 @@ export class CredentialController extends Controller {
    * @param options
    * @returns AgentMessage, CredentialExchangeRecord
    */
-  @Example<CredentialExchangeRecordProps>(CredentialExchangeRecordExample)
+  @Example<DidCommCredentialExchangeRecordProps>(CredentialExchangeRecordExample)
   @Post('/create-offer')
+  @SchedulePurge(PurgeRecordType.DIDCOMM_CREDENTIAL, (r) => (r as any)?.id)
   public async createOffer(@Request() request: Req, @Body() createOfferOptions: CreateOfferOptions) {
     try {
-      const offer = await request.agent.credentials.offerCredential(createOfferOptions)
+      const offer = await request.agent.modules.didcomm.credentials.offerCredential(createOfferOptions)
       return offer
     } catch (error) {
       throw ErrorHandlingService.handle(error)
@@ -177,35 +176,40 @@ export class CredentialController extends Controller {
   }
 
   @Post('/create-offer-oob')
+  @SchedulePurge(PurgeRecordType.DIDCOMM_CREDENTIAL, (r) => (r as any)?.credentialExchangeRecordId)
   public async createOfferOob(@Request() request: Req, @Body() outOfBandOption: CreateOfferOobOptions) {
     try {
       let invitationDid: string | undefined
-      let routing: Routing
+      let routing: DidCommRouting
       await this.ensureLinkSecretExists(request.agent)
 
       if (outOfBandOption?.invitationDid) {
         invitationDid = outOfBandOption?.invitationDid
       } else {
-        routing = await request.agent.mediationRecipient.getRouting({})
-        const didDocument = createPeerDidDocumentFromServices([
-          {
-            id: 'didcomm',
-            recipientKeys: [routing.recipientKey],
-            routingKeys: routing.routingKeys,
-            serviceEndpoint: routing.endpoints[0],
-          },
-        ])
+        routing = await request.agent.modules.didcomm.mediationRecipient.getRouting({})
+        const { didDocument, keys } = createPeerDidDocumentFromServices(
+          [
+            {
+              id: 'didcomm',
+              recipientKeys: [routing.recipientKey],
+              routingKeys: routing.routingKeys,
+              serviceEndpoint: routing.endpoints[0],
+            },
+          ],
+          true,
+        )
         const did = await request.agent.dids.create<PeerDidNumAlgo2CreateOptions>({
           didDocument,
           method: 'peer',
           options: {
+            keys,
             numAlgo: PeerDidNumAlgo.MultipleInceptionKeyWithoutDoc,
           },
         })
         invitationDid = did.didState.did
       }
 
-      const offerOob = await request.agent.credentials.createOffer({
+      const offerOob = await request.agent.modules.didcomm.credentials.createOffer({
         protocolVersion: outOfBandOption.protocolVersion as CredentialProtocolVersionType<[]>,
         credentialFormats: outOfBandOption.credentialFormats,
         autoAcceptCredential: outOfBandOption.autoAcceptCredential,
@@ -213,7 +217,7 @@ export class CredentialController extends Controller {
       })
 
       const credentialMessage = offerOob.message
-      const outOfBandRecord = await request.agent.oob.createInvitation({
+      const outOfBandRecord = await request.agent.modules.didcomm.oob.createInvitation({
         label: outOfBandOption.label,
         messages: [credentialMessage],
         autoAcceptConnection: true,
@@ -223,15 +227,16 @@ export class CredentialController extends Controller {
       })
       return {
         invitationUrl: outOfBandRecord.outOfBandInvitation.toUrl({
-          domain: request.agent.config.endpoints[0],
+          domain: request.agent.modules.didcomm.config.endpoints[0],
         }),
         invitation: outOfBandRecord.outOfBandInvitation.toJSON({
-          useDidSovPrefixWhereAllowed: request.agent.config.useDidSovPrefixWhereAllowed,
+          useDidSovPrefixWhereAllowed: request.agent.modules.didcomm.config.useDidSovPrefixWhereAllowed,
         }),
         outOfBandRecord: outOfBandRecord.toJSON(),
         outOfBandRecordId: outOfBandRecord.id,
-        credentialRequestThId: offerOob.credentialRecord.threadId,
-        invitationDid: outOfBandOption?.invitationDid ? '' : invitationDid,
+        credentialExchangeRecordId: offerOob.credentialExchangeRecord.id,
+        credentialRequestThId: offerOob.credentialExchangeRecord.threadId,
+        invitationDid,
       }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
@@ -246,12 +251,12 @@ export class CredentialController extends Controller {
    * @param options
    * @returns CredentialExchangeRecord
    */
-  @Example<CredentialExchangeRecordProps>(CredentialExchangeRecordExample)
+  @Example<DidCommCredentialExchangeRecordProps>(CredentialExchangeRecordExample)
   @Post('/accept-offer')
   public async acceptOffer(@Request() request: Req, @Body() acceptCredentialOfferOptions: CredentialOfferOptions) {
     try {
       await this.ensureLinkSecretExists(request.agent)
-      const acceptOffer = await request.agent.credentials.acceptOffer(acceptCredentialOfferOptions)
+      const acceptOffer = await request.agent.modules.didcomm.credentials.acceptOffer(acceptCredentialOfferOptions)
       return acceptOffer
     } catch (error) {
       throw ErrorHandlingService.handle(error)
@@ -266,14 +271,14 @@ export class CredentialController extends Controller {
    * @param options
    * @returns CredentialExchangeRecord
    */
-  @Example<CredentialExchangeRecordProps>(CredentialExchangeRecordExample)
+  @Example<DidCommCredentialExchangeRecordProps>(CredentialExchangeRecordExample)
   @Post('/accept-request')
   public async acceptRequest(
     @Request() request: Req,
     @Body() acceptCredentialRequestOptions: AcceptCredentialRequestOptions,
   ) {
     try {
-      const credential = await request.agent.credentials.acceptRequest(acceptCredentialRequestOptions)
+      const credential = await request.agent.modules.didcomm.credentials.acceptRequest(acceptCredentialRequestOptions)
       return credential
     } catch (error) {
       throw ErrorHandlingService.handle(error)
@@ -287,11 +292,11 @@ export class CredentialController extends Controller {
    * @param options
    * @returns CredentialExchangeRecord
    */
-  @Example<CredentialExchangeRecordProps>(CredentialExchangeRecordExample)
+  @Example<DidCommCredentialExchangeRecordProps>(CredentialExchangeRecordExample)
   @Post('/accept-credential')
   public async acceptCredential(@Request() request: Req, @Body() acceptCredential: AcceptCredential) {
     try {
-      const credential = await request.agent.credentials.acceptCredential(acceptCredential)
+      const credential = await request.agent.modules.didcomm.credentials.acceptCredential(acceptCredential)
       return credential
     } catch (error) {
       throw ErrorHandlingService.handle(error)
@@ -307,7 +312,7 @@ export class CredentialController extends Controller {
   @Get('/:credentialRecordId/form-data')
   public async credentialFormData(@Request() request: Req, @Path('credentialRecordId') credentialRecordId: string) {
     try {
-      const credentialDetails = await request.agent.credentials.getFormatData(credentialRecordId)
+      const credentialDetails = await request.agent.modules.didcomm.credentials.getFormatData(credentialRecordId)
       return credentialDetails
     } catch (error) {
       throw ErrorHandlingService.handle(error)

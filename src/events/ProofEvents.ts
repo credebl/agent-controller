@@ -1,26 +1,27 @@
 import type { ServerConfig } from '../utils/ServerConfig'
-import type { Agent, ProofStateChangedEvent } from '@credo-ts/core'
+import type { Agent } from '@credo-ts/core'
+import type { DidCommProofStateChangedEvent } from '@credo-ts/didcomm'
 
-import { ProofEventTypes } from '@credo-ts/core'
+import { DidCommProofEventTypes } from '@credo-ts/didcomm'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
 
 export const proofEvents = async (agent: Agent, config: ServerConfig) => {
-  agent.events.on(ProofEventTypes.ProofStateChanged, async (event: ProofStateChangedEvent) => {
+  agent.events.on(DidCommProofEventTypes.ProofStateChanged, async (event: DidCommProofStateChangedEvent) => {
     const record = event.payload.proofRecord
     const body = { ...record.toJSON(), ...event.metadata } as { proofData?: any }
-    if (event.metadata.contextCorrelationId !== 'default') {
+    if (event.metadata.contextCorrelationId && event.metadata.contextCorrelationId !== 'default') {
       const tenantAgent = await agent.modules.tenants.getTenantAgent({
-        tenantId: event.metadata.contextCorrelationId,
+        tenantId: event.metadata.contextCorrelationId.split('tenant-')[1],
       })
-      const data = await tenantAgent.proofs.getFormatData(record.id)
+      const data = await tenantAgent.modules.didcomm.proofs.getFormatData(record.id)
       body.proofData = data
     }
 
     //Emit webhook for dedicated agent
     if (event.metadata.contextCorrelationId === 'default') {
-      const data = await agent.proofs.getFormatData(record.id)
+      const data = await agent.modules.didcomm.proofs.getFormatData(record.id)
       body.proofData = data
     }
 

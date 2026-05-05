@@ -12,6 +12,11 @@ import ErrorHandlingService from '../../../errorHandlingService'
 import { ENDORSER_DID_NOT_PRESENT } from '../../../errorMessages'
 import { BadRequestError, InternalServerError, NotFoundError } from '../../../errors/errors'
 import { CredentialDefinitionExample, CredentialDefinitionId } from '../../examples'
+import {
+  CredentialDefinitionStates,
+  GetCredentialDefinitionReturn,
+  RegisterCredentialDefinitionReturn,
+} from '../../types'
 
 @Tags('Anoncreds - Credential Definitions')
 @Route('/anoncreds/credential-definitions')
@@ -29,7 +34,7 @@ export class CredentialDefinitionController extends Controller {
   public async getCredentialDefinitionById(
     @Request() request: Req,
     @Path('credentialDefinitionId') credentialDefinitionId: CredentialDefinitionId,
-  ) {
+  ): Promise<GetCredentialDefinitionReturn> {
     try {
       const credentialDefinitionResult =
         await request.agent.modules.anoncreds.getCredentialDefinition(credentialDefinitionId)
@@ -73,7 +78,7 @@ export class CredentialDefinitionController extends Controller {
       endorse?: boolean
       endorserDid?: string
     },
-  ) {
+  ): Promise<RegisterCredentialDefinitionReturn | CredentialDefinitionStates> {
     try {
       const { issuerId, schemaId, tag, endorse, endorserDid } = credentialDefinitionRequest
       credentialDefinitionRequest.endorse = credentialDefinitionRequest.endorse
@@ -108,7 +113,10 @@ export class CredentialDefinitionController extends Controller {
         await request.agent.modules.anoncreds.registerCredentialDefinition(credentialDefinitionPayload)
 
       if (registerCredentialDefinitionResult.credentialDefinitionState.state === CredentialEnum.Failed) {
-        throw new InternalServerError('Falied to register credef on ledger')
+        const failureReason =
+          registerCredentialDefinitionResult.credentialDefinitionState?.reason ??
+          'Failed to register credential definition on ledger'
+        throw new InternalServerError(failureReason)
       }
 
       if (registerCredentialDefinitionResult.credentialDefinitionState.state === CredentialEnum.Wait) {

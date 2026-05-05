@@ -3,55 +3,55 @@ import type { InitConfig } from '@credo-ts/core'
 import { PolygonModule } from '@ayanworks/credo-polygon-w3c-module'
 import {
   AnonCredsModule,
-  LegacyIndyCredentialFormatService,
-  LegacyIndyProofFormatService,
-  V1CredentialProtocol,
-  V1ProofProtocol,
-  AnonCredsCredentialFormatService,
-  AnonCredsProofFormatService,
+  LegacyIndyDidCommProofFormatService,
+  DidCommCredentialV1Protocol,
+  DidCommProofV1Protocol,
+  AnonCredsDidCommProofFormatService,
+  LegacyIndyDidCommCredentialFormatService,
+  AnonCredsDidCommCredentialFormatService,
 } from '@credo-ts/anoncreds'
 import { AskarModule } from '@credo-ts/askar'
+import { DidsModule, KeyDidRegistrar, KeyDidResolver, WebDidResolver, Agent, LogLevel } from '@credo-ts/core'
 import {
-  AutoAcceptCredential,
-  CredentialsModule,
-  DidsModule,
-  JsonLdCredentialFormatService,
-  KeyDidRegistrar,
-  KeyDidResolver,
-  DifPresentationExchangeProofFormatService,
-  ProofsModule,
-  V2CredentialProtocol,
-  V2ProofProtocol,
-  WebDidResolver,
-  Agent,
-  ConnectionInvitationMessage,
-  HttpOutboundTransport,
-  LogLevel,
-} from '@credo-ts/core'
+  DidCommHttpOutboundTransport,
+  DidCommJsonLdCredentialFormatService,
+  DidCommDifPresentationExchangeProofFormatService,
+  DidCommAutoAcceptCredential,
+  DidCommProofV2Protocol,
+  DidCommCredentialV2Protocol,
+  DidCommModule,
+  DidCommConnectionInvitationMessage,
+  parseInvitationUrl,
+} from '@credo-ts/didcomm'
 import { IndyVdrAnonCredsRegistry, IndyVdrModule } from '@credo-ts/indy-vdr'
-import { agentDependencies, HttpInboundTransport } from '@credo-ts/node'
+import { agentDependencies, DidCommHttpInboundTransport } from '@credo-ts/node'
 import { TenantsModule } from '@credo-ts/tenants'
 import { anoncreds } from '@hyperledger/anoncreds-nodejs'
-import { ariesAskar } from '@hyperledger/aries-askar-nodejs'
 import { indyVdr } from '@hyperledger/indy-vdr-nodejs'
+import { askar } from '@openwallet-foundation/askar-nodejs'
 
 import { TsLogger } from './logger'
 
-export const setupAgent = async ({ name, endpoints, port }: { name: string; endpoints: string[]; port: number }) => {
+export const setupAgent = async ({
+  endpoints,
+  port,
+  id,
+  key,
+}: {
+  endpoints: string[]
+  port: number
+  id: string
+  key: string
+}) => {
   const logger = new TsLogger(LogLevel.debug)
 
   const config: InitConfig = {
-    label: name,
-    endpoints: endpoints,
-    walletConfig: {
-      id: name,
-      key: name,
-    },
     logger: logger,
+    allowInsecureHttpUrls: process.env.ALLOW_INSECURE_HTTP_URLS?.toLowerCase() === 'true' ? true : false,
   }
 
-  const legacyIndyCredentialFormat = new LegacyIndyCredentialFormatService()
-  const legacyIndyProofFormat = new LegacyIndyProofFormatService()
+  const legacyIndyCredentialFormat = new LegacyIndyDidCommCredentialFormatService()
+  const legacyIndyProofFormat = new LegacyIndyDidCommProofFormatService()
   const agent = new Agent({
     config: config,
     modules: {
@@ -67,7 +67,11 @@ export const setupAgent = async ({ name, endpoints, port }: { name: string; endp
         ],
       }),
       askar: new AskarModule({
-        ariesAskar,
+        askar,
+        store: {
+          id: id,
+          key: key,
+        },
       }),
 
       anoncreds: new AnonCredsModule({
@@ -79,69 +83,96 @@ export const setupAgent = async ({ name, endpoints, port }: { name: string; endp
         registrars: [new KeyDidRegistrar()],
         resolvers: [new KeyDidResolver(), new WebDidResolver()],
       }),
-      proofs: new ProofsModule({
-        proofProtocols: [
-          new V1ProofProtocol({
-            indyProofFormat: legacyIndyProofFormat,
-          }),
-          new V2ProofProtocol({
-            proofFormats: [
-              legacyIndyProofFormat,
-              new AnonCredsProofFormatService(),
-              new DifPresentationExchangeProofFormatService(),
-            ],
-          }),
-        ],
-      }),
-      credentials: new CredentialsModule({
-        autoAcceptCredentials: AutoAcceptCredential.ContentApproved,
-        credentialProtocols: [
-          new V1CredentialProtocol({
-            indyCredentialFormat: legacyIndyCredentialFormat,
-          }),
-          new V2CredentialProtocol({
-            credentialFormats: [
-              legacyIndyCredentialFormat,
-              new JsonLdCredentialFormatService(),
-              new AnonCredsCredentialFormatService(),
-            ],
-          }),
-        ],
-      }),
       tenants: new TenantsModule(),
+      didcomm: new DidCommModule({
+        processDidCommMessagesConcurrently: true,
+        anoncreds: new AnonCredsModule({
+          registries: [new IndyVdrAnonCredsRegistry()],
+          anoncreds,
+        }),
+        oob: true,
+        mediationRecipient: true,
+        messagePickup: true,
+        basicMessages: true,
+        connections: {
+          autoAcceptConnections: true,
+        },
+        proofs: {
+          proofProtocols: [
+            new DidCommProofV1Protocol({
+              indyProofFormat: legacyIndyProofFormat,
+            }),
+            new DidCommProofV2Protocol({
+              proofFormats: [
+                legacyIndyProofFormat,
+                new AnonCredsDidCommProofFormatService(),
+                new DidCommDifPresentationExchangeProofFormatService(),
+              ],
+            }),
+          ],
+        },
+        credentials: {
+          autoAcceptCredentials: DidCommAutoAcceptCredential.Always,
+          credentialProtocols: [
+            new DidCommCredentialV1Protocol({
+              indyCredentialFormat: legacyIndyCredentialFormat,
+            }),
+            new DidCommCredentialV2Protocol({
+              credentialFormats: [
+                legacyIndyCredentialFormat,
+                new DidCommJsonLdCredentialFormatService(),
+                new AnonCredsDidCommCredentialFormatService(),
+              ],
+            }),
+          ],
+        },
+      }),
       polygon: new PolygonModule({
-        didContractAddress: '',
-        schemaManagerContractAddress: '',
-        fileServerToken: '',
-        rpcUrl: '',
-        serverUrl: '',
+        didContractAddress: process.env.DID_CONTRACT_ADDRESS as string,
+        schemaManagerContractAddress: process.env.SCHEMA_MANAGER_CONTRACT_ADDRESS as string,
+        fileServerToken: process.env.FILE_SERVER_TOKEN as string,
+        rpcUrl: process.env.RPC_URL as string,
+        serverUrl: process.env.SERVER_URL as string,
       }),
     },
     dependencies: agentDependencies,
   })
 
-  const httpInbound = new HttpInboundTransport({
+  const httpInbound = new DidCommHttpInboundTransport({
     port: port,
   })
 
-  agent.registerInboundTransport(httpInbound)
+  agent.modules.didcomm.registerInboundTransport(httpInbound)
 
-  agent.registerOutboundTransport(new HttpOutboundTransport())
+  agent.modules.didcomm.registerOutboundTransport(new DidCommHttpOutboundTransport())
 
-  httpInbound.app.get('/invitation', async (req, res) => {
-    if (typeof req.query.d_m === 'string') {
-      const invitation = await ConnectionInvitationMessage.fromUrl(req.url.replace('d_m=', 'c_i='))
-      res.send(invitation.toJSON())
-    }
-    if (typeof req.query.c_i === 'string') {
-      const invitation = await ConnectionInvitationMessage.fromUrl(req.url)
-      res.send(invitation.toJSON())
-    } else {
-      const { outOfBandInvitation } = await agent.oob.createInvitation()
+  httpInbound.app.get(
+    '/invitation',
+    async (
+      req: { query: { d_m: any; c_i: any; oob: any }; url: string },
+      res: { send: (arg0: any) => void; status: (code: number) => { send: (arg0: any) => void } },
+    ) => {
+      try {
+        if (typeof req.query.d_m === 'string') {
+          const invitation = DidCommConnectionInvitationMessage.fromUrl(req.url.replace('d_m=', 'c_i='))
+          res.send(invitation.toJSON())
+        } else if (typeof req.query.c_i === 'string') {
+          const invitation = DidCommConnectionInvitationMessage.fromUrl(req.url)
+          res.send(invitation.toJSON())
+        } else if (typeof req.query.oob === 'string') {
+          const invitation = parseInvitationUrl(req.url)
+          res.send(invitation.toJSON())
+        } else {
+          const { outOfBandInvitation } = await agent.modules.didcomm.oob.createInvitation()
 
-      res.send(outOfBandInvitation.toUrl({ domain: endpoints + '/invitation' }))
-    }
-  })
+          res.send(outOfBandInvitation.toUrl({ domain: endpoints[0] + '/invitation' }))
+        }
+      } catch (err: any) {
+        logger.error('[/invitation] Failed to handle invitation request', { error: err?.message })
+        res.status(500).send({ error: 'Failed to process invitation request' })
+      }
+    },
+  )
 
   await agent.initialize()
 

@@ -1,30 +1,34 @@
 import type { ServerConfig } from '../utils/ServerConfig'
-import type { Agent, BasicMessageStateChangedEvent } from '@credo-ts/core'
+import type { Agent } from '@credo-ts/core'
+import type { DidCommBasicMessageStateChangedEvent } from '@credo-ts/didcomm'
 
-import { BasicMessageEventTypes } from '@credo-ts/core'
+import { DidCommBasicMessageEventTypes } from '@credo-ts/didcomm'
 
 import { sendWebSocketEvent } from './WebSocketEvents'
 import { sendWebhookEvent } from './WebhookEvent'
 
 export const basicMessageEvents = async (agent: Agent, config: ServerConfig) => {
-  agent.events.on(BasicMessageEventTypes.BasicMessageStateChanged, async (event: BasicMessageStateChangedEvent) => {
-    const record = event.payload.basicMessageRecord
-    const body = record.toJSON()
+  agent.events.on(
+    DidCommBasicMessageEventTypes.DidCommBasicMessageStateChanged,
+    async (event: DidCommBasicMessageStateChangedEvent) => {
+      const record = event.payload.basicMessageRecord
+      const body = record.toJSON()
 
-    // Only send webhook if webhook url is configured
-    if (config.webhookUrl) {
-      await sendWebhookEvent(config.webhookUrl + '/basic-messages', body, agent.config.logger)
-    }
+      // Only send webhook if webhook url is configured
+      if (config.webhookUrl) {
+        await sendWebhookEvent(config.webhookUrl + '/basic-messages', body, agent.config.logger)
+      }
 
-    if (config.socketServer) {
-      // Always emit websocket event to clients (could be 0)
-      sendWebSocketEvent(config.socketServer, {
-        ...event,
-        payload: {
-          message: event.payload.message.toJSON(),
-          basicMessageRecord: body,
-        },
-      })
-    }
-  })
+      if (config.socketServer) {
+        // Always emit websocket event to clients (could be 0)
+        sendWebSocketEvent(config.socketServer, {
+          ...event,
+          payload: {
+            message: event.payload.message.toJSON(),
+            basicMessageRecord: body,
+          },
+        })
+      }
+    },
+  )
 }

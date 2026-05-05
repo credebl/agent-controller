@@ -7,7 +7,7 @@ import type { ServerConfig } from './utils/ServerConfig'
 import type { Response as ExResponse, Request as ExRequest, NextFunction, ErrorRequestHandler } from 'express'
 
 import { Agent } from '@credo-ts/core'
-import { TenantAgent } from '@credo-ts/tenants/build/TenantAgent'
+import { TenantAgent } from '@credo-ts/tenants'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import dotenv from 'dotenv'
@@ -27,8 +27,11 @@ import { credentialEvents } from './events/CredentialEvents'
 import { proofEvents } from './events/ProofEvents'
 import { questionAnswerEvents } from './events/QuestionAnswerEvents'
 import { reuseConnectionEvents } from './events/ReuseConnectionEvents'
+import { openId4VcIssuanceSessionEvents } from './events/openId4VcIssuanceSessionEvents'
+import { openId4VcVerificationSessionEvents } from './events/openId4VcVerificationSessionEvents'
 import { RegisterRoutes } from './routes/routes'
 import { SecurityMiddleware } from './securityMiddleware'
+import { validateAuthConfig } from './utils/auth'
 
 dotenv.config()
 
@@ -37,8 +40,13 @@ export const setupServer = async (
   config: ServerConfig,
   apiKey?: string,
 ) => {
-  await otelSDK.start()
-  agent.config.logger.info('OpenTelemetry SDK started')
+  if (process.env.OTEL_ENABLED === 'true') {
+    await otelSDK.start()
+    agent.config.logger.info('OpenTelemetry SDK started')
+  } else {
+    agent.config.logger.info('OpenTelemetry SDK disabled (set OTEL_ENABLED=true to enable)')
+  }
+  validateAuthConfig()
   container.registerInstance(Agent, agent as Agent)
   fs.writeFileSync('config.json', JSON.stringify(config, null, 2))
 
@@ -50,6 +58,8 @@ export const setupServer = async (
     basicMessageEvents(agent, config)
     connectionEvents(agent, config)
     credentialEvents(agent, config)
+    openId4VcIssuanceSessionEvents(agent, config)
+    openId4VcVerificationSessionEvents(agent, config)
     proofEvents(agent, config)
     reuseConnectionEvents(agent, config)
   }
@@ -58,13 +68,13 @@ export const setupServer = async (
   app.use(
     bodyParser.urlencoded({
       extended: true,
-      limit: '50mb',
+      limit: process.env.APP_URL_ENCODED_BODY_SIZE ?? '5mb',
     }),
   )
 
   setDynamicApiKey(apiKey ? apiKey : '')
 
-  app.use(bodyParser.json({ limit: '50mb' }))
+  app.use(bodyParser.json({ limit: process.env.APP_JSON_BODY_SIZE ?? '5mb' }))
   app.use('/docs', serve, (_req: ExRequest, res: ExResponse, next: NextFunction) => {
     import('./routes/swagger.json')
       .then((swaggerJson) => {

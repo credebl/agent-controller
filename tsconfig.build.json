@@ -14,7 +14,7 @@
     "skipLibCheck": true,
     "outDir": "./build",
     "types": ["node"],
-    "lib": ["ES2021.Promise"]
+    "lib": ["ESNext"]
   },
   "include": ["src/**/*", "src/routes"],
   "exclude": [

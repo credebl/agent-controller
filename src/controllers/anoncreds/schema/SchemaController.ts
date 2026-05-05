@@ -1,4 +1,4 @@
-import { getUnqualifiedSchemaId, parseIndySchemaId } from '@credo-ts/anoncreds'
+import { getUnqualifiedSchemaId, parseIndySchemaId, RegisterSchemaReturnStateFinished } from '@credo-ts/anoncreds'
 import { Request as Req } from 'express'
 import { Example, Get, Post, Route, Tags, Security, Path, Body, Controller, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
@@ -8,7 +8,7 @@ import ErrorHandlingService from '../../../errorHandlingService'
 import { ENDORSER_DID_NOT_PRESENT } from '../../../errorMessages'
 import { BadRequestError, InternalServerError, NotFoundError } from '../../../errors/errors'
 import { CreateSchemaSuccessful, SchemaExample, SchemaId } from '../../examples'
-import { CreateSchemaInput } from '../../types'
+import { CreateSchemaInput, RegisterSchemaReturn, SchemaResponseDTO } from '../../types'
 
 @Tags('Anoncreds - Schemas')
 @Route('/anoncreds/schemas')
@@ -26,7 +26,10 @@ export class SchemaController extends Controller {
    */
   @Example(SchemaExample)
   @Get('/:schemaId')
-  public async getSchemaById(@Request() request: Req, @Path('schemaId') schemaId: SchemaId) {
+  public async getSchemaById(
+    @Request() request: Req,
+    @Path('schemaId') schemaId: SchemaId,
+  ): Promise<SchemaResponseDTO> {
     try {
       const schemBySchemaId = await request.agent.modules.anoncreds.getSchema(schemaId)
 
@@ -58,7 +61,10 @@ export class SchemaController extends Controller {
    */
   @Post('/')
   @Example(CreateSchemaSuccessful)
-  public async createSchema(@Request() request: Req, @Body() schema: CreateSchemaInput) {
+  public async createSchema(
+    @Request() request: Req,
+    @Body() schema: CreateSchemaInput,
+  ): Promise<RegisterSchemaReturn | RegisterSchemaReturnStateFinished> {
     try {
       const { issuerId, name, version, attributes } = schema
 
@@ -118,6 +124,8 @@ export class SchemaController extends Controller {
         }
         return createSchemaTxResult
       }
+      // If none of the above conditions are met, throw an error or return a default value
+      throw new InternalServerError('Unexpected schema creation state.')
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }

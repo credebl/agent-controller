@@ -1,13 +1,8 @@
 import type { BaseError } from './errors/errors'
 
 import { AnonCredsError, AnonCredsRsError, AnonCredsStoreRecordError } from '@credo-ts/anoncreds'
-import {
-  CredoError,
-  RecordNotFoundError,
-  RecordDuplicateError,
-  ClassValidationError,
-  MessageSendingError,
-} from '@credo-ts/core'
+import { CredoError, RecordNotFoundError, RecordDuplicateError, ClassValidationError } from '@credo-ts/core'
+import { MessageSendingError } from '@credo-ts/didcomm'
 import { IndyVdrError } from '@hyperledger/indy-vdr-nodejs'
 
 import { RecordDuplicateError as CustomRecordDuplicateError, NotFoundError, InternalServerError } from './errors/errors'

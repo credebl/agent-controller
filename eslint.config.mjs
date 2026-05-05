@@ -10,11 +10,11 @@ const __dirname = dirname(__filename);
 
 export default [
   {
+    ignores: ['**/build/**', '**/*.js', '**/*.d.ts'],
+  },
+  {
     ignores: [
-      '**/tests/*', 
-      '**/build/**', 
-      '**/*.js',
-      '**/*.d.ts',
+      '**/tests/*',
     ],
     files: ['**/*.ts'],
     languageOptions: {

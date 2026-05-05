@@ -44,7 +44,11 @@ export enum NetworkTypes {
 
 export enum IndicioAcceptanceMechanism {
   Wallet_Agreement = 'wallet_agreement',
-  Accept = 'accept',
+  At_Submission = 'at_submission',
+  For_Session = 'for_session',
+  On_File = 'on_file',
+  Product_Eula = 'product_eula',
+  Service_Agreement = 'service_agreement',
 }
 
 export enum EndorserMode {
@@ -92,4 +96,26 @@ export enum SCOPES {
   MULTITENANT_BASE_AGENT = 'Basewallet',
   TENANT_AGENT = 'tenant',
   DEDICATED_AGENT = 'dedicated',
+}
+
+export enum SignerMethod {
+  Did = 'did',
+  X5c = 'x5c',
+}
+export enum KeyAlgorithmCurve {
+  Ed25519 = 'Ed25519',
+  X25519 = 'X25519',
+  P256 = 'P-256',
+  P384 = 'P-384',
+  P521 = 'P-521',
+  secp256k1 = 'secp256k1',
+  Bls12381G2 = 'bls12381g2',
+}
+
+export enum CredentialFormat {
+  VcSdJwt = 'vc+sd-jwt',
+  DcSdJwt = 'dc+sd-jwt',
+  JwtVcJson = 'jwt_vc_json',
+  JwtVcJsonLd = 'jwt_vc_json-ld',
+  LdpVc = 'ldp_vc',
 }

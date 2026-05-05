@@ -1,0 +1,27 @@
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
+index 195af1d..30d1638 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
++++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
+@@ -5,4 +5,5 @@ import { AgentContext } from "../../../../agent/context/AgentContext.mjs";
+ type DocumentLoaderWithContext = (agentContext: AgentContext) => DocumentLoader;
+ //#endregion
+ export { DocumentLoaderWithContext };
++export declare function defaultDocumentLoader(agentContext: AgentContext): DocumentLoader;
+ //# sourceMappingURL=documentLoader.d.mts.map
+\ No newline at end of file
+diff --git a/node_modules/@credo-ts/core/package.json b/node_modules/@credo-ts/core/package.json
+index 8198ea2..5d23e62 100644
+--- a/node_modules/@credo-ts/core/package.json
++++ b/node_modules/@credo-ts/core/package.json
+@@ -7,6 +7,11 @@
+       "import": "./build/modules/kms/index.mjs",
+       "require": "./build/modules/kms/index.mjs",
+       "types": "./build/modules/kms/index.d.mts"
++    },
++    "./build/modules/vc/data-integrity/libraries/documentLoader.mjs": {
++      "import": "./build/modules/vc/data-integrity/libraries/documentLoader.mjs",
++      "require": "./build/modules/vc/data-integrity/libraries/documentLoader.mjs",
++      "types": "./build/modules/vc/data-integrity/libraries/documentLoader.d.mts"
+     }
+   },
+   "version": "0.6.2",

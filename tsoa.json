@@ -5,6 +5,7 @@
   "spec": {
     "outputDirectory": "src/routes",
     "specVersion": 3,
+    "tsconfig": "tsconfig.build.json",
     "securityDefinitions": {
       "apiKey": {
         "type": "apiKey",
@@ -20,6 +21,7 @@
   },
   "routes": {
     "routesDir": "./src/routes",
+    "tsconfig": "tsconfig.build.json",
     "iocModule": "./src/utils/tsyringeTsoaIocContainer",
     "authenticationModule": "src/authentication"
   }

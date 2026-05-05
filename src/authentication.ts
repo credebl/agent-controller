@@ -1,10 +1,10 @@
 import type { RestAgentModules, RestMultiTenantAgentModules } from './cliAgent'
-import type { TenantAgent } from '@credo-ts/tenants/build/TenantAgent'
+import type { TenantAgent } from '@credo-ts/tenants'
 import type { Request } from 'express'
 
 import { Agent, LogLevel } from '@credo-ts/core'
-import { uuid } from '@credo-ts/core/build/utils/uuid'
 import jwt, { decode } from 'jsonwebtoken'
+import { randomUUID as uuid } from 'node:crypto'
 import { container } from 'tsyringe'
 
 import { AgentRole, ErrorMessages, SCOPES } from './enums'
@@ -24,9 +24,6 @@ export const setInCache = (key: string, value: string) => cache.set(key, value)
 export async function expressAuthentication(request: Request, securityName: string, scopes?: string[]) {
   const logger = new TsLogger(LogLevel.info)
   const agent = container.resolve(Agent<RestMultiTenantAgentModules>)
-
-  logger.info(`securityName::: ${securityName}`)
-  logger.info(`scopes::: ${scopes}`)
 
   if (scopes && scopes?.includes(SCOPES.UNPROTECTED)) {
     // Skip authentication for this route or controller
