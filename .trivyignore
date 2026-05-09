@@ -1,0 +1,31 @@
+# Trivy Ignore File
+# This file contains CVEs that are acknowledged but cannot be fixed at this time
+
+# Debian 12 (Bookworm) base image vulnerabilities with no available fixes
+# These CVEs are in the upstream Debian repositories and patches are not yet available
+
+# glibc vulnerabilities - affects libc-bin, libc6
+CVE-2026-0861
+
+# libcap2 vulnerability - privilege escalation via TOCTOU race condition
+CVE-2026-4878
+
+# libgcrypt20 vulnerability - DoS and buffer overflow
+CVE-2026-41989
+
+# libgnutls30 vulnerabilities - multiple security issues
+CVE-2026-33845
+CVE-2026-33846
+CVE-2026-3833
+CVE-2026-42010
+CVE-2026-42011
+
+# systemd vulnerabilities - affects libsystemd0, libudev1
+CVE-2026-29111
+
+# ncurses vulnerabilities - affects libtinfo6, ncurses-base, ncurses-bin
+CVE-2025-69720
+
+# zlib vulnerability
+CVE-2026-4879
+CVE-2023-45853

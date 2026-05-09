@@ -69,7 +69,7 @@
     "@types/ref-struct-di": "^1.1.12",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
-    "axios": "1.13.5",
+    "axios": "1.15.2",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -124,7 +124,16 @@
   "resolutions": {
     "@credo-ts/core": "0.6.2",
     "@credo-ts/askar": "0.6.2",
-    "flatted": "3.4.0",
-    "undici": "6.24.0"
+    "flatted": "3.4.2",
+    "undici": "6.24.0",
+    "axios": "1.15.2",
+    "handlebars": "4.7.9",
+    "fast-uri": "3.1.2",
+    "@hapi/content": "6.0.1",
+    "minimatch": "10.2.1",
+    "path-to-regexp": "0.1.13",
+    "picomatch": "4.0.4",
+    "protobufjs": "8.0.1",
+    "tar": "7.5.3"
   }
 }
