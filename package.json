@@ -61,7 +61,7 @@
     "@opentelemetry/instrumentation-nestjs-core": "^0.48.0",
     "@opentelemetry/resources": "^2.0.1",
     "@opentelemetry/sdk-logs": "^0.202.0",
-    "@opentelemetry/sdk-node": "^0.202.0",
+    "@opentelemetry/sdk-node": "^0.217.0",
     "@opentelemetry/semantic-conventions": "^1.34.0",
     "@openwallet-foundation/askar-nodejs": "^0.4.3",
     "@tsoa/runtime": "^6.6.0",
