@@ -6,56 +6,72 @@ updates:
   # =========================
   # Yarn Dependencies (via npm ecosystem)
   # =========================
-  - package-ecosystem: 'npm' # ← use "npm", not "yarn"
-    directory: '/' # or "/client" if package.json is inside a subfolder
-    target-branch: 'main' # always open PRs against main
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "main"
     schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-      timezone: 'Asia/Kolkata'
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Kolkata"
     open-pull-requests-limit: 10
 
+    # Group 1: all PATCH updates in one PR
     groups:
+      patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+
+    # Group 2: all MINOR updates in another PR
       minor-updates:
         patterns:
-          - '*'
+          - "*"
         update-types:
-          - 'minor'
+          - "minor"
 
     allow:
-      - dependency-type: 'all'
+      - dependency-type: "all"
 
     labels:
-      - 'dependencies'
-      - 'yarn' # you can keep this label for clarity
+      - "dependencies"
+      - "yarn"
 
     commit-message:
-      prefix: 'chore'
-      include: 'scope'
+      prefix: "chore"
+      include: "scope"
+
 
   # =========================
   # GitHub Actions
   # =========================
-  - package-ecosystem: 'github-actions'
-    directory: '/'
-    target-branch: 'main' # always open PRs against main
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "main"
     schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '09:00'
-      timezone: 'Asia/Kolkata'
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Kolkata"
 
     labels:
-      - 'dependencies'
-      - 'github-actions'
+      - "dependencies"
+      - "github-actions"
 
     commit-message:
-      prefix: 'ci'
+      prefix: "ci"
 
+    # Same logic: one PR for minor, one for patch actions
     groups:
-      minor-updates:
+      actions-patch-updates:
         patterns:
-          - '*'
+          - "*"
         update-types:
-          - 'minor'
+          - "patch"
+
+      actions-minor-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
