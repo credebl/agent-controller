@@ -4,10 +4,11 @@ version: 2
 
 updates:
   # =========================
-  # Yarn Dependencies
+  # Yarn Dependencies (on main branch)
   # =========================
   - package-ecosystem: "yarn"
     directory: "/"              # or "/client" if package.json is inside a subfolder
+    target-branch: "main"       # always open PRs against main
     schedule:
       interval: "weekly"
       day: "monday"
@@ -34,10 +35,11 @@ updates:
       include: "scope"
 
   # =========================
-  # GitHub Actions
+  # GitHub Actions (on main branch)
   # =========================
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "main"       # always open PRs against main
     schedule:
       interval: "weekly"
       day: "monday"
