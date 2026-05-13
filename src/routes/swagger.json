@@ -3242,6 +3242,118 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"VerifyDataOptions": {
+				"properties": {
+					"signature": {
+						"type": "string"
+					},
+					"publicKeyBase58": {
+						"type": "string"
+					},
+					"keyType": {},
+					"data": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"signature",
+					"publicKeyBase58",
+					"keyType",
+					"data"
+				],
+				"type": "object"
+			},
+			"W3cCredentialRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"W3cJsonIssuer": {
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id"
+				],
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"W3cJsonCredentialSubject": {
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"SingleOrArray_W3cJsonCredentialSubject_": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/W3cJsonCredentialSubject"
+					},
+					{
+						"items": {
+							"$ref": "#/components/schemas/W3cJsonCredentialSubject"
+						},
+						"type": "array"
+					}
+				]
+			},
+			"W3cJsonCredential": {
+				"properties": {
+					"@context": {
+						"items": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"$ref": "#/components/schemas/JsonObject"
+								}
+							]
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"issuer": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"$ref": "#/components/schemas/W3cJsonIssuer"
+							}
+						]
+					},
+					"issuanceDate": {
+						"type": "string"
+					},
+					"expirationDate": {
+						"type": "string"
+					},
+					"credentialSubject": {
+						"$ref": "#/components/schemas/SingleOrArray_W3cJsonCredentialSubject_"
+					}
+				},
+				"required": [
+					"@context",
+					"type",
+					"issuer",
+					"issuanceDate",
+					"credentialSubject"
+				],
+				"type": "object",
+				"additionalProperties": {}
+			},
 			"Partial_W3cCredentialValidations_": {
 				"properties": {},
 				"type": "object",
@@ -4040,9 +4152,6 @@
 					"holder"
 				],
 				"type": "string"
-			},
-			"W3cCredentialRecord": {
-				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
 			"DidCommCredentialExchangeRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
@@ -9055,6 +9164,111 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/agent/verify": {
+			"post": {
+				"operationId": "Verify",
+				"responses": {
+					"200": {
+						"description": "isValidSignature - true if signature is valid, false otherwise",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "boolean"
+								}
+							}
+						}
+					}
+				},
+				"description": "Verify data using a key",
+				"tags": [
+					"Agent"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Verify options\ndata - Data has to be in base64 format\npublicKeyBase58 - Public key in base58 format\nsignature - Signature in base64 format",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/VerifyDataOptions",
+								"description": "Verify options\ndata - Data has to be in base64 format\npublicKeyBase58 - Public key in base58 format\nsignature - Signature in base64 format"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/agent/credential/sign": {
+			"post": {
+				"operationId": "SignCredential",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"anyOf": [
+										{
+											"type": "string"
+										},
+										{
+											"$ref": "#/components/schemas/W3cCredentialRecord"
+										},
+										{
+											"$ref": "#/components/schemas/W3cJsonCredential"
+										}
+									]
+								}
+							}
+						}
+					}
+				},
+				"description": "Sign credential or raw data",
+				"tags": [
+					"Agent"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "storeCredential",
+						"required": true,
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"in": "query",
+						"name": "dataTypeToSign",
+						"required": true,
+						"schema": {}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {}
+						}
+					}
+				}
 			}
 		},
 		"/agent/credential/verify": {

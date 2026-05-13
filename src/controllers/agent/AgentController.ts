@@ -1,13 +1,30 @@
-import type { AgentInfo, AgentToken, SafeW3cJsonLdVerifyCredentialOptions } from '../types'
+import type { 
+  AgentInfo, 
+  AgentToken, 
+  SafeW3cJsonLdVerifyCredentialOptions, 
+  CustomW3cJsonLdSignCredentialOptions, 
+  SignDataOptions,
+  VerifyDataOptions
+} from '../types'
 
-import { JsonTransformer, W3cJsonLdVerifiableCredential } from '@credo-ts/core'
+import { 
+  JsonTransformer, 
+  W3cJsonLdVerifiableCredential, 
+  TypedArrayEncoder, 
+  ClaimFormat, 
+  W3cCredentialRecord,
+  DidDocument,
+  verkeyToPublicJwk
+} from '@credo-ts/core'
+import { getKmsKeyIdForVerifiacationMethod } from '@credo-ts/core'
 import { Request as Req } from 'express'
 import jwt from 'jsonwebtoken'
-import { Controller, Get, Route, Tags, Security, Request, Post, Body } from 'tsoa'
+import { Controller, Get, Route, Tags, Security, Request, Post, Body, Query } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { AgentRole, SCOPES } from '../../enums'
 import ErrorHandlingService from '../../errorHandlingService'
+import { BadRequestError } from '../../errors/errors'
 
 @Tags('Agent')
 @Route('/agent')
@@ -54,108 +71,158 @@ export class AgentController extends Controller {
     }
   }
 
-  //   /**
-  //    * Delete wallet
-  //    */
-  //   @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
-  //   @Delete('/wallet')
-  //   public async deleteWallet(@Request() request: Req) {
-  //     try {
-  //       const deleteWallet = await request.agent.wallet.delete()
-  //       return deleteWallet
-  //     } catch (error) {
-  //       throw ErrorHandlingService.handle(error)
-  //     }
-  //   }
+  /**
+   * Verify data using a key
+   *
+   * @param body Verify options
+   *  data - Data has to be in base64 format
+   *  publicKeyBase58 - Public key in base58 format
+   *  signature - Signature in base64 format
+   * @returns isValidSignature - true if signature is valid, false otherwise
+   */
+  @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
+  @Post('/verify')
+  public async verify(@Request() request: Req, @Body() body: VerifyDataOptions) {
+    try {
+      const algorithmMap: Record<string, string> = {
+        'ed25519': 'EdDSA',
+        'p256': 'ES256',
+        'secp256k1': 'ES256K'
+      }
 
-  //   /**
-  //    * Verify data using a key
-  //    *
-  //    * @param tenantId Tenant identifier
-  //    * @param request Verify options
-  //    *  data - Data has to be in base64 format
-  //    *  publicKeyBase58 - Public key in base58 format
-  //    *  signature - Signature in base64 format
-  //    * @returns isValidSignature - true if signature is valid, false otherwise
-  //    */
-  //   @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
-  //   @Post('/verify')
-  //   public async verify(@Request() request: Req, @Body() body: VerifyDataOptions) {
-  //     try {
-  //       assertAskarWallet(request.agent.context.wallet)
-  //       const isValidSignature = await request.agent.context.wallet.verify({
-  //         data: TypedArrayEncoder.fromBase64(body.data),
-  //         key: Key.fromPublicKeyBase58(body.publicKeyBase58, body.keyType),
-  //         signature: TypedArrayEncoder.fromBase64(body.signature),
-  //       })
-  //       return isValidSignature
-  //     } catch (error) {
-  //       throw ErrorHandlingService.handle(error)
-  //     }
-  //   }
+      // Convert verkey to JWK
+      const publicJwkWrapper = verkeyToPublicJwk(body.publicKeyBase58) as any
+      const publicJwk = publicJwkWrapper.jwk?.jwk || publicJwkWrapper.jwk || publicJwkWrapper
 
-  //   //Triage: Do we want the BW to be able to sign and verify as well?
-  //   @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
-  //   @Post('/credential/sign')
-  //   public async signCredential(
-  //     @Request() request: Req,
-  //     @Query('storeCredential') storeCredential: boolean,
-  //     @Query('dataTypeToSign') dataTypeToSign: 'rawData' | 'jsonLd',
-  //     @Body() data: CustomW3cJsonLdSignCredentialOptions | SignDataOptions | unknown,
-  //   ) {
-  //     try {
-  //       // JSON-LD VC Signing
-  //       if (dataTypeToSign === 'jsonLd') {
-  //         const credentialData = data as unknown as W3cJsonLdSignCredentialOptions
-  //         credentialData.format = ClaimFormat.LdpVc
-  //         const signedCredential = (await request.agent.w3cCredentials.signCredential(
-  //           credentialData,
-  //         )) as W3cJsonLdVerifiableCredential
-  //         if (storeCredential) {
-  //           return await request.agent.w3cCredentials.storeCredential({ credential: signedCredential })
-  //         }
-  //         return signedCredential.toJson()
-  //       }
+      const result = await request.agent.kms.verify({
+        data: TypedArrayEncoder.fromBase64(body.data),
+        signature: TypedArrayEncoder.fromBase64(body.signature),
+        key: {
+          publicJwk: publicJwk as any
+        },
+        algorithm: (algorithmMap[body.keyType.toLowerCase()] || body.keyType) as any
+      })
+      
+      return result.verified
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
 
-  //       // Raw Data Signing
-  //       const rawData = data as SignDataOptions
-  //       if (!rawData.data) throw new BadRequestError('Missing "data" for raw data signing.')
+  /**
+   * Sign credential or raw data
+   */
+  @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
+  @Post('/credential/sign')
+  public async signCredential(
+    @Request() request: Req,
+    @Query('storeCredential') storeCredential: boolean,
+    @Query('dataTypeToSign') dataTypeToSign: 'rawData' | 'jsonLd' | string,
+    @Body() data: any,
+  ) {
+    try {
+      const typeToSign = (dataTypeToSign || 'rawData').toLowerCase()
+      request.agent.config.logger.info(`[SignCredential] dataTypeToSign: ${dataTypeToSign}, typeToSign: ${typeToSign}, storeCredential: ${storeCredential}`);
 
-  //       const hasDidOrMethod = rawData.did || rawData.method
-  //       const hasPublicKey = rawData.publicKeyBase58 && rawData.keyType
-  //       if (!hasDidOrMethod && !hasPublicKey) {
-  //         throw new BadRequestError('Either (did or method) OR (publicKeyBase58 and keyType) must be provided.')
-  //       }
+      // JSON-LD VC Signing
+      if (typeToSign === 'jsonld') {
+        const credentialData = data as any
+        
+        // Ensure signerOptions is populated if top-level fields are provided
+        if (!credentialData.signerOptions && (credentialData.verificationMethod || credentialData.proofType)) {
+          credentialData.signerOptions = {
+            verificationMethod: credentialData.verificationMethod,
+            type: credentialData.proofType,
+            method: 'did' // default to did if not specified
+          }
+        }
+        
+        credentialData.format = ClaimFormat.LdpVc
+        const signedCredential = (await request.agent.w3cCredentials.signCredential(
+          credentialData,
+        )) as W3cJsonLdVerifiableCredential
+        
+        if (storeCredential) {
+          const record = W3cCredentialRecord.fromCredential(signedCredential)
+          return await request.agent.w3cCredentials.store({ record })
+        }
+        return signedCredential.toJson()
+      }
 
-  //       let keyToUse: Key
-  //       if (hasDidOrMethod) {
-  //         const dids = await request.agent.dids.getCreatedDids({
-  //           method: rawData.method || undefined,
-  //           did: rawData.did || undefined,
-  //         })
-  //         const verificationMethod = dids[0]?.didDocument?.verificationMethod?.[0]?.publicKeyBase58
-  //         if (!verificationMethod) {
-  //           throw new BadRequestError('No publicKeyBase58 found for the given DID or method.')
-  //         }
-  //         keyToUse = Key.fromPublicKeyBase58(verificationMethod, rawData.keyType)
-  //       } else {
-  //         keyToUse = Key.fromPublicKeyBase58(rawData.publicKeyBase58, rawData.keyType)
-  //       }
+      // Raw Data Signing
+      const rawData = data as SignDataOptions
+      if (!rawData.data) throw new BadRequestError('Missing "data" for raw data signing.')
 
-  //       if (!keyToUse) {
-  //         throw new Error('Unable to construct signing key. ')
-  //       }
+      const hasDidOrMethod = rawData.did || rawData.method
+      const hasPublicKey = rawData.publicKeyBase58 && rawData.keyType
+      if (!hasDidOrMethod && !hasPublicKey) {
+        throw new BadRequestError('Either (did or method) OR (publicKeyBase58 and keyType) must be provided.')
+      }
 
-  //       const signature = await request.agent.context.wallet.sign({
-  //         data: TypedArrayEncoder.fromBase64(rawData.data),
-  //         key: keyToUse,
-  //       })
+      let kmsKeyId: string | undefined = undefined
+      if (hasDidOrMethod) {
+        let didDocument: DidDocument | undefined | null = undefined
+        const dids = await request.agent.dids.getCreatedDids({
+          method: rawData.method || undefined,
+          did: rawData.did || undefined,
+        })
+        
+        const didRecord = dids[0]
+        if (didRecord) {
+          didDocument = didRecord.didDocument
+          if (didRecord.keys && didRecord.keys.length > 0) {
+            kmsKeyId = didRecord.keys[0].kmsKeyId
+          }
+        }
 
-  //       return TypedArrayEncoder.toBase64(signature)
-  //     } catch (error) {
-  //       throw ErrorHandlingService.handle(error)
-  //     }
-  //   }
+        if (!didDocument && rawData.did) {
+          const resolution = await request.agent.dids.resolve(rawData.did)
+          didDocument = resolution.didDocument
+        }
+
+        if (!didDocument) {
+          throw new BadRequestError('No DID document found.')
+        }
+
+        if (!kmsKeyId) {
+          const verificationMethod = didDocument.verificationMethod?.[0]
+          if (!verificationMethod) {
+            throw new BadRequestError('No verification method found on DID document.')
+          }
+
+          // Try multiple ways to get the kmsKeyId
+          const derivedKeyId = getKmsKeyIdForVerifiacationMethod(verificationMethod)
+          const publicKeyBase58 = (verificationMethod as any).publicKeyBase58
+          const vmId = verificationMethod.id || ''
+          const idPart = vmId.includes('#') ? vmId.split('#')[1] : undefined
+
+          kmsKeyId = (derivedKeyId || publicKeyBase58 || idPart || vmId) as string
+          
+          request.agent.config.logger.info(`[SignCredential] Resolved kmsKeyId via fallback: ${kmsKeyId}`);
+        }
+      } else {
+        kmsKeyId = rawData.publicKeyBase58
+      }
+
+      const algorithmMap: Record<string, string> = {
+        'ed25519': 'EdDSA',
+        'p256': 'ES256',
+        'secp256k1': 'ES256K'
+      }
+
+      const signature = await request.agent.kms.sign({
+        data: TypedArrayEncoder.fromBase64(rawData.data),
+        keyId: kmsKeyId as string,
+        algorithm: (rawData.keyType ? (algorithmMap[rawData.keyType.toLowerCase()] || rawData.keyType) : 'EdDSA') as any
+      })
+
+      return TypedArrayEncoder.toBase64(signature.signature)
+    } catch (error) {
+      const err = error as any
+      request.agent.config.logger.error(`[SignCredential] Error: ${err.message}`, { stack: err.stack });
+      throw ErrorHandlingService.handle(error)
+    }
+  }
 
   @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
   @Post('/credential/verify')
