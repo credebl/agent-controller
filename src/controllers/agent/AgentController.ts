@@ -2,7 +2,6 @@ import type {
   AgentInfo, 
   AgentToken, 
   SafeW3cJsonLdVerifyCredentialOptions, 
-  CustomW3cJsonLdSignCredentialOptions, 
   SignDataOptions,
   VerifyDataOptions
 } from '../types'
@@ -14,9 +13,9 @@ import {
   ClaimFormat, 
   W3cCredentialRecord,
   DidDocument,
-  verkeyToPublicJwk
+  verkeyToPublicJwk,
+  getKmsKeyIdForVerifiacationMethod
 } from '@credo-ts/core'
-import { getKmsKeyIdForVerifiacationMethod } from '@credo-ts/core'
 import { Request as Req } from 'express'
 import jwt from 'jsonwebtoken'
 import { Controller, Get, Route, Tags, Security, Request, Post, Body, Query } from 'tsoa'
