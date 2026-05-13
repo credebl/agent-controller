@@ -464,9 +464,14 @@ export type ExtensibleW3cCredential = W3cCredential & {
   credentialSubject: SingleOrArray<ExtensibleW3cCredentialSubject>
 }
 
-export type CustomW3cJsonLdSignCredentialOptions = Omit<W3cJsonLdSignCredentialOptions, 'format'> & {
+export type CustomW3cJsonLdSignCredentialOptions = Omit<W3cJsonLdSignCredentialOptions, 'format' | 'credential'> & {
+  credential: Omit<W3cCredential, 'context' | 'credentialSubject'> & {
+    '@context': Array<string | Record<string, unknown>>,
+    credentialSubject: SingleOrArray<JsonObject>
+  }
   [key: string]: unknown
 }
+
 
 export type DisclosureFrame = {
   [key: string]: boolean | DisclosureFrame
@@ -550,10 +555,10 @@ export interface SchemaResponseDTO {
 export interface RegisterSchemaReturn {
   jobId?: string
   schemaState:
-    | RegisterSchemaReturnStateWait
-    | RegisterSchemaReturnStateAction
-    | RegisterSchemaReturnStateFinished
-    | RegisterSchemaReturnStateFailed
+  | RegisterSchemaReturnStateWait
+  | RegisterSchemaReturnStateAction
+  | RegisterSchemaReturnStateFinished
+  | RegisterSchemaReturnStateFailed
   schemaMetadata: Record<string, unknown>
   registrationMetadata: Record<string, unknown>
 }

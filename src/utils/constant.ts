@@ -29,3 +29,9 @@ export const curveToKty = {
 export const verkey = '#verkey'
 export const p521 = 'p521'
 export const STATUS_LISTS_PATH = 'status-lists'
+
+export const ALGORITHM_MAP: Record<string, string> = {
+  ed25519: 'EdDSA',
+  p256: 'ES256',
+  secp256k1: 'ES256K',
+}
