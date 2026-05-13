@@ -1,17 +1,17 @@
-import type { 
-  AgentInfo, 
-  AgentToken, 
-  SafeW3cJsonLdVerifyCredentialOptions, 
+import type {
+  AgentInfo,
+  AgentToken,
+  SafeW3cJsonLdVerifyCredentialOptions,
   CustomW3cJsonLdSignCredentialOptions,
   SignDataOptions,
   VerifyDataOptions
 } from '../types'
 
-import { 
-  JsonTransformer, 
-  W3cJsonLdVerifiableCredential, 
-  TypedArrayEncoder, 
-  ClaimFormat, 
+import {
+  JsonTransformer,
+  W3cJsonLdVerifiableCredential,
+  TypedArrayEncoder,
+  ClaimFormat,
   W3cCredentialRecord,
   DidDocument,
   verkeyToPublicJwk,
@@ -101,7 +101,7 @@ export class AgentController extends Controller {
         },
         algorithm: (ALGORITHM_MAP[body.keyType.toLowerCase()] || body.keyType) as any
       })
-      
+
       return { verified: result.verified }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
