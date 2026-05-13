@@ -4,7 +4,7 @@ import type {
   SafeW3cJsonLdVerifyCredentialOptions,
   CustomW3cJsonLdSignCredentialOptions,
   SignDataOptions,
-  VerifyDataOptions
+  VerifyDataOptions,
 } from '../types'
 
 import {
@@ -15,7 +15,7 @@ import {
   W3cCredentialRecord,
   DidDocument,
   verkeyToPublicJwk,
-  getKmsKeyIdForVerifiacationMethod
+  getKmsKeyIdForVerifiacationMethod,
 } from '@credo-ts/core'
 import { Request as Req } from 'express'
 import jwt from 'jsonwebtoken'
@@ -86,7 +86,9 @@ export class AgentController extends Controller {
   public async verify(@Request() request: Req, @Body() body: VerifyDataOptions): Promise<{ verified: boolean }> {
     try {
       if (!body.data || !body.signature || !body.publicKeyBase58 || !body.keyType) {
-        throw new BadRequestError('Missing required fields: data, signature, publicKeyBase58, and keyType are required.')
+        throw new BadRequestError(
+          'Missing required fields: data, signature, publicKeyBase58, and keyType are required.',
+        )
       }
 
       // Convert verkey to JWK
@@ -97,9 +99,9 @@ export class AgentController extends Controller {
         data: TypedArrayEncoder.fromBase64(body.data),
         signature: TypedArrayEncoder.fromBase64(body.signature),
         key: {
-          publicJwk: publicJwk as any
+          publicJwk: publicJwk as any,
         },
-        algorithm: (ALGORITHM_MAP[body.keyType.toLowerCase()] || body.keyType) as any
+        algorithm: (ALGORITHM_MAP[body.keyType.toLowerCase()] || body.keyType) as any,
       })
 
       return { verified: result.verified }
