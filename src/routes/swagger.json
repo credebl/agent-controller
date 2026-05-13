@@ -2016,7 +2016,7 @@
 			},
 			"W3cCredential": {
 				"properties": {
-					"context": {
+					"@context": {
 						"items": {
 							"anyOf": [
 								{
@@ -2065,7 +2065,7 @@
 					}
 				},
 				"required": [
-					"context",
+					"@context",
 					"type",
 					"issuer",
 					"issuanceDate",
@@ -3242,6 +3242,288 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"VerifyDataOptions": {
+				"properties": {
+					"signature": {
+						"type": "string"
+					},
+					"publicKeyBase58": {
+						"type": "string"
+					},
+					"keyType": {},
+					"data": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"signature",
+					"publicKeyBase58",
+					"keyType",
+					"data"
+				],
+				"type": "object"
+			},
+			"W3cCredentialRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"W3cJsonIssuer": {
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id"
+				],
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"W3cJsonCredentialSubject": {
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"SingleOrArray_W3cJsonCredentialSubject_": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/W3cJsonCredentialSubject"
+					},
+					{
+						"items": {
+							"$ref": "#/components/schemas/W3cJsonCredentialSubject"
+						},
+						"type": "array"
+					}
+				]
+			},
+			"W3cJsonCredential": {
+				"properties": {
+					"@context": {
+						"items": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"$ref": "#/components/schemas/JsonObject"
+								}
+							]
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"issuer": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"$ref": "#/components/schemas/W3cJsonIssuer"
+							}
+						]
+					},
+					"issuanceDate": {
+						"type": "string"
+					},
+					"expirationDate": {
+						"type": "string"
+					},
+					"credentialSubject": {
+						"$ref": "#/components/schemas/SingleOrArray_W3cJsonCredentialSubject_"
+					}
+				},
+				"required": [
+					"@context",
+					"type",
+					"issuer",
+					"issuanceDate",
+					"credentialSubject"
+				],
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"Pick_W3cJsonLdSignCredentialOptions.Exclude_keyofW3cJsonLdSignCredentialOptions.format-or-credential__": {
+				"properties": {
+					"proofType": {
+						"type": "string",
+						"description": "The proofType to be used for signing the credential.\n\nMust be a valid Linked Data Signature suite."
+					},
+					"proofPurpose": {},
+					"created": {
+						"type": "string"
+					},
+					"verificationMethod": {
+						"type": "string",
+						"description": "URI of the verificationMethod to be used for signing the credential.\n\nMust be a valid did url pointing to a key."
+					}
+				},
+				"required": [
+					"proofType",
+					"verificationMethod"
+				],
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"Omit_W3cJsonLdSignCredentialOptions.format-or-credential_": {
+				"$ref": "#/components/schemas/Pick_W3cJsonLdSignCredentialOptions.Exclude_keyofW3cJsonLdSignCredentialOptions.format-or-credential__",
+				"description": "Construct a type with the properties of T except for those in type K."
+			},
+			"Pick_W3cCredential.Exclude_keyofW3cCredential.context-or-credentialSubject__": {
+				"properties": {
+					"issuer": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"$ref": "#/components/schemas/W3cIssuer"
+							}
+						]
+					},
+					"type": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "string"
+					},
+					"@context": {
+						"items": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"$ref": "#/components/schemas/JsonObject"
+								}
+							]
+						},
+						"type": "array"
+					},
+					"issuanceDate": {
+						"type": "string"
+					},
+					"expirationDate": {
+						"type": "string"
+					},
+					"credentialSchema": {
+						"$ref": "#/components/schemas/SingleOrArray_W3cCredentialSchema_"
+					},
+					"credentialStatus": {
+						"$ref": "#/components/schemas/W3cCredentialStatus"
+					}
+				},
+				"required": [
+					"issuer",
+					"type",
+					"@context",
+					"issuanceDate"
+				],
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
+			"Omit_W3cCredential.context-or-credentialSubject_": {
+				"$ref": "#/components/schemas/Pick_W3cCredential.Exclude_keyofW3cCredential.context-or-credentialSubject__",
+				"description": "Construct a type with the properties of T except for those in type K."
+			},
+			"SingleOrArray_JsonObject_": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/JsonObject"
+					},
+					{
+						"items": {
+							"$ref": "#/components/schemas/JsonObject"
+						},
+						"type": "array"
+					}
+				]
+			},
+			"CustomW3cJsonLdSignCredentialOptions": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/Omit_W3cJsonLdSignCredentialOptions.format-or-credential_"
+					},
+					{
+						"properties": {
+							"credential": {
+								"allOf": [
+									{
+										"$ref": "#/components/schemas/Omit_W3cCredential.context-or-credentialSubject_"
+									},
+									{
+										"properties": {
+											"credentialSubject": {
+												"$ref": "#/components/schemas/SingleOrArray_JsonObject_"
+											},
+											"@context": {
+												"items": {
+													"anyOf": [
+														{
+															"type": "string"
+														},
+														{
+															"$ref": "#/components/schemas/Record_string.unknown_"
+														}
+													]
+												},
+												"type": "array"
+											}
+										},
+										"required": [
+											"credentialSubject",
+											"@context"
+										],
+										"type": "object"
+									}
+								]
+							}
+						},
+						"additionalProperties": {},
+						"required": [
+							"credential"
+						],
+						"type": "object"
+					}
+				]
+			},
+			"SignDataOptions": {
+				"properties": {
+					"method": {
+						"type": "string"
+					},
+					"did": {
+						"type": "string"
+					},
+					"publicKeyBase58": {
+						"type": "string"
+					},
+					"keyType": {},
+					"data": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"publicKeyBase58",
+					"keyType",
+					"data"
+				],
+				"type": "object"
+			},
 			"Partial_W3cCredentialValidations_": {
 				"properties": {},
 				"type": "object",
@@ -3474,7 +3756,7 @@
 			},
 			"W3cJsonLdVerifiableCredential": {
 				"properties": {
-					"context": {
+					"@context": {
 						"items": {
 							"anyOf": [
 								{
@@ -3526,7 +3808,7 @@
 					}
 				},
 				"required": [
-					"context",
+					"@context",
 					"type",
 					"issuer",
 					"issuanceDate",
@@ -4041,9 +4323,6 @@
 				],
 				"type": "string"
 			},
-			"W3cCredentialRecord": {
-				"$ref": "#/components/schemas/Record_string.unknown_"
-			},
 			"DidCommCredentialExchangeRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
@@ -4123,19 +4402,6 @@
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"SingleOrArray_JsonObject_": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/JsonObject"
-					},
-					{
-						"items": {
-							"$ref": "#/components/schemas/JsonObject"
-						},
-						"type": "array"
-					}
-				]
 			},
 			"JsonCredential": {
 				"properties": {
@@ -9055,6 +9321,134 @@
 					}
 				],
 				"parameters": []
+			}
+		},
+		"/agent/verify": {
+			"post": {
+				"operationId": "Verify",
+				"responses": {
+					"200": {
+						"description": "isValidSignature - true if signature is valid, false otherwise",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"verified": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"verified"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Verify data using a key",
+				"tags": [
+					"Agent"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"description": "Verify options\ndata - Data has to be in base64 format\npublicKeyBase58 - Public key in base58 format\nsignature - Signature in base64 format",
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/VerifyDataOptions",
+								"description": "Verify options\ndata - Data has to be in base64 format\npublicKeyBase58 - Public key in base58 format\nsignature - Signature in base64 format"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/agent/credential/sign": {
+			"post": {
+				"operationId": "SignCredential",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"anyOf": [
+										{
+											"type": "string"
+										},
+										{
+											"$ref": "#/components/schemas/W3cCredentialRecord"
+										},
+										{
+											"$ref": "#/components/schemas/W3cJsonCredential"
+										}
+									]
+								}
+							}
+						}
+					}
+				},
+				"description": "Sign credential or raw data",
+				"tags": [
+					"Agent"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "query",
+						"name": "storeCredential",
+						"required": true,
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"in": "query",
+						"name": "dataTypeToSign",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"enum": [
+								"rawData",
+								"jsonLd"
+							]
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"anyOf": [
+									{
+										"$ref": "#/components/schemas/CustomW3cJsonLdSignCredentialOptions"
+									},
+									{
+										"$ref": "#/components/schemas/SignDataOptions"
+									}
+								]
+							}
+						}
+					}
+				}
 			}
 		},
 		"/agent/credential/verify": {
