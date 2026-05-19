@@ -12,7 +12,8 @@ export const credentialEvents = async (agent: Agent, config: ServerConfig) => {
     DidCommCredentialEventTypes.DidCommCredentialStateChanged,
     async (event: DidCommCredentialStateChangedEvent) => {
       const record = event.payload.credentialExchangeRecord
-      const tenantId = (!event.metadata.contextCorrelationId || event.metadata.contextCorrelationId === 'default') ? event.metadata.contextCorrelationId : event.metadata.contextCorrelationId.split('tenant-')[1]
+      const contextId = event.metadata.contextCorrelationId || 'default'
+      const tenantId = (contextId === 'default' || !contextId.includes('tenant-')) ? contextId : contextId.split('tenant-')[1]
 
       const body: Record<string, unknown> = {
         ...record.toJSON(),

@@ -10,8 +10,10 @@ export const proofEvents = async (agent: Agent, config: ServerConfig) => {
     const record = event.payload.proofRecord
     const body = { ...record.toJSON(), ...event.metadata } as { proofData?: any }
     if (event.metadata.contextCorrelationId && event.metadata.contextCorrelationId !== 'default') {
+      const contextId = event.metadata.contextCorrelationId
+      const tenantId = contextId.includes('tenant-') ? contextId.split('tenant-')[1] : contextId
       const tenantAgent = await agent.modules.tenants.getTenantAgent({
-        tenantId: event.metadata.contextCorrelationId.split('tenant-')[1],
+        tenantId,
       })
       const data = await tenantAgent.modules.didcomm.proofs.getFormatData(record.id)
       body.proofData = data

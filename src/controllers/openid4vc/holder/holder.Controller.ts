@@ -35,6 +35,14 @@ export class HolderController extends Controller {
   }
 
   /**
+   * Fetch all W3C credentials in wallet
+   */
+  @Get('/w3c-vcs')
+  public async getW3cCredentials(@Request() request: Req) {
+    return await holderService.getW3cCredentials(request)
+  }
+
+  /**
    * Decode mso mdoc credential in wallet
    */
   @Post('/mdoc-vcs/decode')

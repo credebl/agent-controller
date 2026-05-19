@@ -63,6 +63,7 @@ export class VerificationSessionsService {
     const options: any = {
       requestSigner,
       verifierId: dto.verifierId,
+      version: dto.version
     }
 
     if (dto.responseMode === ResponseModeEnum.DC_API || dto.responseMode === ResponseModeEnum.DC_API_JWT) {
@@ -71,15 +72,13 @@ export class VerificationSessionsService {
 
     if (dto.responseMode) options.responseMode = dto.responseMode
     if (dto.presentationExchange) {
-      // options.presentationExchange = dto.presentationExchange
-      throw new Error('Presentation Exchange is not supported for now')
+      options.presentationExchange = dto.presentationExchange
     }
     if (parsedCertificate) {
-      parsedCertificate.publicJwk.keyId = requestSigner.keyId
+      parsedCertificate.publicJwk.keyId = (requestSigner as any).keyId
+      options.requestSigner.x5c = [parsedCertificate]
     }
-    options.requestSigner.x5c = [parsedCertificate]
     options.dcql = dto.dcql
-    // }
     return (await verifier.createAuthorizationRequest(options)) as any
   }
 
