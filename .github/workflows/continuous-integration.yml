@@ -2,9 +2,11 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches:
+    - main
   push:
-    branches: [main, develop]
+    branches:
+    - main
 
 concurrency:
   # Cancel previous runs that are not completed yet
@@ -23,7 +25,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'bun'
+      
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
         run: bun install
