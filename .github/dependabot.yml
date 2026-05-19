@@ -14,7 +14,6 @@ updates:
       day: 'monday'
       time: '09:00'
       timezone: 'Asia/Kolkata'
-    open-pull-requests-limit: 10
 
     groups:
       minor-updates:
@@ -47,6 +46,7 @@ updates:
       timezone: 'Asia/Kolkata'
 
     labels:
+      - 'devops'
       - 'dependencies'
       - 'github-actions'
 
