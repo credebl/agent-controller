@@ -23,16 +23,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'yarn'
+          cache: 'bun'
 
       - name: Install dependencies
-        run: yarn install
+        run: bun install
 
       - name: Linting
-        run: yarn lint
+        run: bun lint
 
       - name: Prettier
-        run: yarn check-format
+        run: bun check-format
 
       - name: Compile
-        run: yarn check-types
+        run: bun check-types
