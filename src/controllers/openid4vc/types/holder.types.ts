@@ -35,4 +35,5 @@ export interface DeleteCredentialBody {
 export enum CredentialType {
   SD_JWT = 'sd-jwt-vc',
   MSO_MDOC = 'mso_mdoc',
+  W3C_VC = 'w3c-vc',
 }

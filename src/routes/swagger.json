@@ -1267,6 +1267,14 @@
 							"type": "string"
 						},
 						"type": "array"
+					},
+					"version": {
+						"type": "string",
+						"enum": [
+							"v1",
+							"v1.draft21",
+							"v1.draft24"
+						]
 					}
 				},
 				"required": [
@@ -1647,6 +1655,30 @@
 			"OpenId4VcIssuanceSessionRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
+			"IssuerObject": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id"
+				],
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"CredentialSubject": {
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": {}
+			},
 			"DisclosureFrameForOffer": {
 				"properties": {
 					"_sd": {
@@ -1748,6 +1780,51 @@
 					},
 					"payload": {
 						"properties": {
+							"validUntil": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "string",
+										"format": "date-time"
+									}
+								]
+							},
+							"validFrom": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "string",
+										"format": "date-time"
+									}
+								]
+							},
+							"credentialSubject": {
+								"anyOf": [
+									{
+										"$ref": "#/components/schemas/CredentialSubject"
+									},
+									{
+										"items": {
+											"$ref": "#/components/schemas/CredentialSubject"
+										},
+										"type": "array"
+									}
+								]
+							},
+							"issuer": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"$ref": "#/components/schemas/IssuerObject"
+									}
+								]
+							},
 							"vct": {
 								"type": "string"
 							}
@@ -1898,182 +1975,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"JsonObject": {
-				"properties": {},
-				"type": "object",
-				"additionalProperties": {
-					"$ref": "#/components/schemas/JsonValue"
-				}
-			},
-			"JsonValue": {
-				"anyOf": [
-					{
-						"type": "string"
-					},
-					{
-						"type": "number",
-						"format": "double"
-					},
-					{
-						"type": "boolean"
-					},
-					{
-						"$ref": "#/components/schemas/JsonObject"
-					},
-					{
-						"$ref": "#/components/schemas/JsonArray"
-					}
-				],
-				"nullable": true
-			},
-			"JsonArray": {
-				"items": {
-					"$ref": "#/components/schemas/JsonValue"
-				},
-				"type": "array"
-			},
-			"W3cIssuer": {
-				"properties": {
-					"id": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"W3cCredentialSubject": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"claims": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"SingleOrArray_W3cCredentialSubject_": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/W3cCredentialSubject"
-					},
-					{
-						"items": {
-							"$ref": "#/components/schemas/W3cCredentialSubject"
-						},
-						"type": "array"
-					}
-				]
-			},
-			"W3cCredentialSchema": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"type": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"SingleOrArray_W3cCredentialSchema_": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/W3cCredentialSchema"
-					},
-					{
-						"items": {
-							"$ref": "#/components/schemas/W3cCredentialSchema"
-						},
-						"type": "array"
-					}
-				]
-			},
-			"W3cCredentialStatus": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"type": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"type"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"W3cCredential": {
-				"properties": {
-					"@context": {
-						"items": {
-							"anyOf": [
-								{
-									"type": "string"
-								},
-								{
-									"$ref": "#/components/schemas/JsonObject"
-								}
-							]
-						},
-						"type": "array"
-					},
-					"id": {
-						"type": "string"
-					},
-					"type": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"issuer": {
-						"anyOf": [
-							{
-								"type": "string"
-							},
-							{
-								"$ref": "#/components/schemas/W3cIssuer"
-							}
-						]
-					},
-					"issuanceDate": {
-						"type": "string"
-					},
-					"expirationDate": {
-						"type": "string"
-					},
-					"credentialSubject": {
-						"$ref": "#/components/schemas/SingleOrArray_W3cCredentialSubject_"
-					},
-					"credentialSchema": {
-						"$ref": "#/components/schemas/SingleOrArray_W3cCredentialSchema_"
-					},
-					"credentialStatus": {
-						"$ref": "#/components/schemas/W3cCredentialStatus"
-					}
-				},
-				"required": [
-					"@context",
-					"type",
-					"issuer",
-					"issuanceDate",
-					"credentialSubject"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"OpenId4VciOfferW3cCredential": {
 				"properties": {
 					"credentialSupportedId": {
@@ -2127,17 +2028,91 @@
 					},
 					"payload": {
 						"properties": {
-							"credential": {
-								"$ref": "#/components/schemas/W3cCredential"
+							"type": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"items": {
+											"type": "string"
+										},
+										"type": "array"
+									}
+								]
+							},
+							"@context": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"items": {
+											"type": "string"
+										},
+										"type": "array"
+									}
+								]
+							},
+							"validUntil": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "string",
+										"format": "date-time"
+									}
+								]
+							},
+							"validFrom": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"type": "string",
+										"format": "date-time"
+									}
+								]
+							},
+							"issuer": {
+								"anyOf": [
+									{
+										"type": "string"
+									},
+									{
+										"properties": {
+											"id": {
+												"type": "string"
+											}
+										},
+										"additionalProperties": {},
+										"required": [
+											"id"
+										],
+										"type": "object"
+									}
+								]
+							},
+							"credentialSubject": {
+								"anyOf": [
+									{
+										"$ref": "#/components/schemas/CredentialSubject"
+									},
+									{
+										"items": {
+											"$ref": "#/components/schemas/CredentialSubject"
+										},
+										"type": "array"
+									}
+								]
 							},
 							"verificationMethod": {
 								"type": "string"
 							}
 						},
-						"required": [
-							"credential",
-							"verificationMethod"
-						],
+						"additionalProperties": {},
 						"type": "object"
 					}
 				},
@@ -2211,8 +2186,14 @@
 									}
 								},
 								"type": "object"
+							},
+							"preAuthorizedCode": {
+								"type": "string"
 							}
 						},
+						"required": [
+							"authorizationServerUrl"
+						],
 						"type": "object"
 					},
 					"issuanceMetadata": {
@@ -2240,6 +2221,13 @@
 					},
 					"isRevocable": {
 						"type": "boolean"
+					},
+					"version": {
+						"type": "string",
+						"enum": [
+							"v1.1",
+							"v2.0"
+						]
 					}
 				},
 				"required": [
@@ -2268,6 +2256,9 @@
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
 			"MdocRecord": {
+				"$ref": "#/components/schemas/Record_string.unknown_"
+			},
+			"W3cCredentialRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
 			"ResolveCredentialOfferBody": {
@@ -2366,7 +2357,8 @@
 			"CredentialType": {
 				"enum": [
 					"sd-jwt-vc",
-					"mso_mdoc"
+					"mso_mdoc",
+					"w3c-vc"
 				],
 				"type": "string"
 			},
@@ -2567,6 +2559,40 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"JsonValue": {
+				"anyOf": [
+					{
+						"type": "string"
+					},
+					{
+						"type": "number",
+						"format": "double"
+					},
+					{
+						"type": "boolean"
+					},
+					{
+						"$ref": "#/components/schemas/JsonObject"
+					},
+					{
+						"$ref": "#/components/schemas/JsonArray"
+					}
+				],
+				"nullable": true
+			},
+			"JsonObject": {
+				"properties": {},
+				"type": "object",
+				"additionalProperties": {
+					"$ref": "#/components/schemas/JsonValue"
+				}
+			},
+			"JsonArray": {
+				"items": {
+					"$ref": "#/components/schemas/JsonValue"
+				},
+				"type": "array"
 			},
 			"Pick_JwsGeneralFormat.Exclude_keyofJwsGeneralFormat.payload__": {
 				"properties": {
@@ -3263,9 +3289,6 @@
 				],
 				"type": "object"
 			},
-			"W3cCredentialRecord": {
-				"$ref": "#/components/schemas/Record_string.unknown_"
-			},
 			"W3cJsonIssuer": {
 				"properties": {
 					"id": {
@@ -3379,6 +3402,63 @@
 			"Omit_W3cJsonLdSignCredentialOptions.format-or-credential_": {
 				"$ref": "#/components/schemas/Pick_W3cJsonLdSignCredentialOptions.Exclude_keyofW3cJsonLdSignCredentialOptions.format-or-credential__",
 				"description": "Construct a type with the properties of T except for those in type K."
+			},
+			"W3cIssuer": {
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"W3cCredentialSchema": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SingleOrArray_W3cCredentialSchema_": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/W3cCredentialSchema"
+					},
+					{
+						"items": {
+							"$ref": "#/components/schemas/W3cCredentialSchema"
+						},
+						"type": "array"
+					}
+				]
+			},
+			"W3cCredentialStatus": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
 			},
 			"Pick_W3cCredential.Exclude_keyofW3cCredential.context-or-credentialSubject__": {
 				"properties": {
@@ -3749,6 +3829,31 @@
 									"$ref": "#/components/schemas/DataIntegrityProof"
 								}
 							]
+						},
+						"type": "array"
+					}
+				]
+			},
+			"W3cCredentialSubject": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"claims": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"SingleOrArray_W3cCredentialSubject_": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/W3cCredentialSubject"
+					},
+					{
+						"items": {
+							"$ref": "#/components/schemas/W3cCredentialSubject"
 						},
 						"type": "array"
 					}
@@ -5482,6 +5587,12 @@
 					},
 					"logo_uri": {
 						"type": "string"
+					},
+					"background_color": {
+						"type": "string"
+					},
+					"text_color": {
+						"type": "string"
 					}
 				},
 				"type": "object",
@@ -7067,6 +7178,39 @@
 					}
 				},
 				"description": "Fetch all mso mdoc credentials in wallet",
+				"tags": [
+					"oid4vc holders"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/openid4vc/holder/w3c-vcs": {
+			"get": {
+				"operationId": "GetW3cCredentials",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/W3cCredentialRecord"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Fetch all W3C credentials in wallet",
 				"tags": [
 					"oid4vc holders"
 				],

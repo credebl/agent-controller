@@ -14,7 +14,15 @@ import type {
 } from '@credo-ts/openid4vc'
 import type { Request as Req } from 'express'
 
-import { Mdoc, SdJwtVcRecord, MdocRecord } from '@credo-ts/core'
+import {
+  Mdoc,
+  SdJwtVcRecord,
+  MdocRecord,
+  W3cCredentialRecord,
+  W3cCredentialService,
+  // W3cV2CredentialRecord,
+  // W3cV2CredentialService,
+} from '@credo-ts/core'
 import {
   OpenId4VciAuthorizationFlow,
   authorizationCodeGrantIdentifier,
@@ -34,6 +42,22 @@ export class HolderService {
 
   public async getMdocCredentials(agentReq: Req) {
     return await agentReq.agent.mdoc.getAll()
+  }
+
+  public async getW3cCredentials(agentReq: Req) {
+    const w3cCredentialService = await agentReq.agent.dependencyManager.resolve(W3cCredentialService)
+    /* 
+    // W3C V2.0 Support
+    const w3cV2CredentialService = await agentReq.agent.dependencyManager.resolve(W3cV2CredentialService)
+
+    const [v1Records, v2Records] = await Promise.all([
+      w3cCredentialService.getAllCredentialRecords(agentReq.agent.context),
+      w3cV2CredentialService.getAllCredentialRecords(agentReq.agent.context),
+    ])
+
+    return [...v1Records, ...v2Records]
+    */
+    return await w3cCredentialService.getAllCredentialRecords(agentReq.agent.context)
   }
 
   public async decodeMdocCredential(
@@ -129,10 +153,28 @@ export class HolderService {
     const storedCredentials = await Promise.all(
       credentialResponse.credentials.map(async (response) => {
         const credentialRecord = response.record
-        // TODO: We can add this later
-        // if (credential instanceof W3cJwtVerifiableCredential || credential instanceof W3cJsonLdVerifiableCredential) {
-        //   return await agentReq.agent.w3cCredentials.storeCredential({ credential })
-        // }
+
+        if (credentialRecord instanceof W3cCredentialRecord || (credentialRecord as any).type === 'W3cCredentialRecord') {
+          const w3cCredentialService = await agentReq.agent.dependencyManager.resolve(W3cCredentialService)
+          return await w3cCredentialService.storeCredential(agentReq.agent.context, {
+            record: credentialRecord as W3cCredentialRecord,
+          })
+        }
+
+        /* 
+        W3C V2.0 Support
+        if (
+          credentialRecord instanceof W3cV2CredentialRecord ||
+          (credentialRecord as any).type === 'W3cV2CredentialRecord'
+        ) {
+          
+          const w3cCredentialService = await agentReq.agent.dependencyManager.resolve(W3cV2CredentialService)
+          return await w3cCredentialService.storeCredential(agentReq.agent.context, {
+            record: credentialRecord as W3cV2CredentialRecord,
+          })
+        }
+        */
+
         if (credentialRecord instanceof MdocRecord) {
           return await agentReq.agent.mdoc.store({ record: credentialRecord })
         }
@@ -141,7 +183,7 @@ export class HolderService {
             record: credentialRecord,
           })
         }
-        throw new Error(`Unsupported credential record type`)
+        throw new Error(`Unsupported credential record type: ${(credentialRecord as any)?.type || typeof credentialRecord}`)
       }),
     )
 
@@ -211,23 +253,26 @@ export class HolderService {
     )
     // const presentationExchangeService = agent.dependencyManager.resolve(DifPresentationExchangeService)
 
-    if (!resolved.dcql) throw new Error('Missing DCQL on request')
-    //
-    let dcqlCredentials
-    try {
-      dcqlCredentials = await agentReq.agent.modules.openid4vc.holder.selectCredentialsForDcqlRequest(
+    let acceptOptions: any = {
+      authorizationRequestPayload: resolved.authorizationRequestPayload,
+      origin: body.options?.origin,
+    }
+
+    if (resolved.dcql) {
+      const dcqlCredentials = await agentReq.agent.modules.openid4vc.holder.selectCredentialsForDcqlRequest(
         resolved.dcql.queryResult,
       )
-    } catch (error) {
-      throw error
+      acceptOptions.dcql = { credentials: dcqlCredentials as DcqlCredentialsForRequest }
+    } else if (resolved.presentationExchange) {
+      const pexCredentials = await agentReq.agent.modules.openid4vc.holder.selectCredentialsForPresentationExchangeRequest(
+        resolved.presentationExchange.credentialsForRequest
+      )
+      acceptOptions.presentationExchange = { credentials: pexCredentials }
+    } else {
+      throw new Error('Missing DCQL or Presentation Exchange on request')
     }
-    const submissionResult = await agentReq.agent.modules.openid4vc.holder.acceptOpenId4VpAuthorizationRequest({
-      authorizationRequestPayload: resolved.authorizationRequestPayload,
-      dcql: {
-        credentials: dcqlCredentials as DcqlCredentialsForRequest,
-      },
-      origin: body.options?.origin,
-    })
+
+    const submissionResult = await agentReq.agent.modules.openid4vc.holder.acceptOpenId4VpAuthorizationRequest(acceptOptions)
     if (submissionResult.serverResponse) {
       const { serverResponse, ...rest } = submissionResult
 
@@ -243,7 +288,20 @@ export class HolderService {
   }
 
   public async deleteCredential(agentReq: Req, { credentialId, credentialType }: DeleteCredentialBody) {
-    if (credentialType === CredentialType.SD_JWT) {
+    if (credentialType === CredentialType.W3C_VC) {
+      const w3cCredentialService = await agentReq.agent.dependencyManager.resolve(W3cCredentialService)
+      // const w3cV2CredentialService = await agentReq.agent.dependencyManager.resolve(W3cV2CredentialService)
+
+      try {
+        return await w3cCredentialService.removeCredentialRecord(agentReq.agent.context, credentialId)
+      } catch (error) {
+        /* 
+        // W3C V2.0 Support
+        return await w3cV2CredentialService.removeCredentialRecord(agentReq.agent.context, credentialId)
+        */
+        throw error
+      }
+    } else if (credentialType === CredentialType.SD_JWT) {
       const sdJwtRecord = await agentReq.agent.sdJwtVc.getById(credentialId)
       if (sdJwtRecord) {
         return await agentReq.agent.sdJwtVc.deleteById(credentialId)

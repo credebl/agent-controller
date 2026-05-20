@@ -17,11 +17,15 @@ import {
   X509Certificate,
   X509ModuleConfig,
   X509Service,
+  W3cCredential,
+  W3cV2Credential,
+  JsonTransformer,
 } from '@credo-ts/core'
+import * as fs from 'fs'
 import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 import { container } from 'tsyringe'
 
-import { SignerMethod } from '../enums/enum'
+import { SignerMethod, W3cContext } from '../enums/enum'
 
 import { validateAuthConfig } from './auth'
 import { checkX509Certificates, processIsoImages } from './helpers'
@@ -38,7 +42,8 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     agentContext,
     authorization,
   }) => {
-    const issuanceMetadata = issuanceSession.issuanceMetadata
+    try {
+      const issuanceMetadata = issuanceSession.issuanceMetadata
     if (!issuanceMetadata?.['credentials']) throw new Error('credential payload is not provided')
 
     const allCredentialPayload = issuanceMetadata?.['credentials']
@@ -185,7 +190,77 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       } satisfies OpenId4VciSignSdJwtCredentials
     }
 
-    throw new Error('Invalid request')
+      if (
+        credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJson ||
+        credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJsonLd
+      ) {
+        const payload = credentialPayload[0]?.payload;
+        const context = payload?.['@context'];
+        const contextArray = Array.isArray(context) ? context : context ? [context] : [];
+        const isV2 = contextArray.includes(W3cContext.V2) || !!payload?.validFrom;
+
+        return {
+          format: ClaimFormat.JwtVc,
+          credentials: holderBinding.keys.map((binding) => {
+            // If the binding is JWK and not DID, we should probably handle it or skip throwing
+            const rawSubject = { ...(payload.credentialSubject || {}) };
+            const { id: subjectIdRaw, ...claims } = rawSubject;
+            const subjectId = subjectIdRaw || (binding.method === 'did' ? (binding as any).didUrl : undefined);
+
+            if (subjectId) {
+              rawSubject.id = subjectId;
+            }
+
+            const issuer = payload.issuer || credential.signerOptions.did;
+            const finalIssuer = (isV2 && typeof issuer === 'string') ? { id: issuer } : issuer;
+
+            const mainContext = isV2 ? W3cContext.V2 : W3cContext.V1;
+
+            const finalContext = contextArray.includes(mainContext)
+              ? [mainContext, ...contextArray.filter(c => c !== mainContext)]
+              : [mainContext, ...contextArray];
+
+            const credentialJson: any = {
+              '@context': finalContext,
+              type: payload.type,
+              issuer: finalIssuer,
+              credentialSubject: rawSubject,
+            };
+
+            if (isV2) {
+              credentialJson.validFrom = payload.validFrom || payload.issuanceDate;
+              credentialJson.validUntil = payload.validUntil || payload.expirationDate;
+              // Add issuanceDate for JWT signer compatibility
+              credentialJson.issuanceDate = credentialJson.validFrom;
+              credentialJson.expirationDate = credentialJson.validUntil;
+            } else {
+              credentialJson.issuanceDate = payload.issuanceDate;
+              credentialJson.expirationDate = payload.expirationDate;
+            }
+
+            const credInstance: any = isV2
+              ? JsonTransformer.fromJSON(credentialJson, W3cV2Credential)
+              : JsonTransformer.fromJSON(credentialJson, W3cCredential);
+
+            if (credInstance.credentialSubject) {
+              credInstance.credentialSubject.id = subjectId;
+            }
+
+            return {
+              format: ClaimFormat.JwtVc,
+              verificationMethod: issuerDidVerificationMethod!,
+              credential: credInstance
+            };
+          }),
+          type: 'credentials',
+        } as any
+      }
+
+      throw new Error('Invalid request format ' + credentialConfiguration.format)
+    } catch (e: any) {
+      fs.appendFileSync('mapper-error.log', e.stack + '\n');
+      throw e;
+    }
   }
 }
 
@@ -232,6 +307,12 @@ export interface OpenId4VcIssuanceSessionCreateOfferSdJwtCredentialOptions {
    */
   payload: {
     vct?: string
+    issuer?: string | any
+    credentialSubject?: any
+    validFrom?: string
+    validUntil?: string
+    issuanceDate?: string
+    expirationDate?: string
     [key: string]: unknown
   }
 

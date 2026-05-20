@@ -1,9 +1,10 @@
-import type { SignerMethod } from '../../../enums/enum'
 import type { MdocNameSpaces, W3cCredential } from '@credo-ts/core'
 import type { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
 import { Kms } from '@credo-ts/core'
 import { OpenId4VciCreateCredentialOfferOptions, OpenId4VciSignCredentials } from '@credo-ts/openid4vc'
+
+import { SignerMethod } from '../../../enums/enum'
 
 export interface OpenId4VciOfferCredentials {
   credentialSupportedId: string
@@ -26,9 +27,24 @@ export interface DisclosureFrameForOffer {
   [claim: string]: DisclosureFrameForOffer | DisclosureFrameForOffer[] | string[] | undefined
 }
 
+export interface IssuerObject {
+  id: string
+  name?: string
+  [key: string]: unknown
+}
+
+export interface CredentialSubject {
+  id?: string
+  [key: string]: unknown
+}
+
 export interface OpenId4VciOfferSdJwtCredential extends OpenId4VciOfferCredentials {
   payload: {
     vct?: string
+    issuer?: string | IssuerObject
+    credentialSubject?: CredentialSubject | CredentialSubject[]
+    validFrom?: string | Date
+    validUntil?: string | Date
     [key: string]: unknown
   }
   disclosureFrame?: DisclosureFrameForOffer
@@ -50,8 +66,14 @@ export interface OpenId4VciOfferMdocCredential extends OpenId4VciOfferCredential
 
 export interface OpenId4VciOfferW3cCredential extends OpenId4VciOfferCredentials {
   payload: {
-    verificationMethod: string
-    credential: W3cCredential
+    verificationMethod?: string
+    credentialSubject?: CredentialSubject | CredentialSubject[]
+    issuer?: string | { id: string; [key: string]: unknown }
+    validFrom?: string | Date
+    validUntil?: string | Date
+    '@context'?: string | string[]
+    type?: string | string[]
+    [key: string]: unknown
   }
 }
 
@@ -64,12 +86,13 @@ export interface OpenId4VcIssuanceSessionsCreateOffer {
     issuerState?: string
   }
   preAuthorizedCodeFlowConfig?: {
+    preAuthorizedCode?: string
     txCode?: {
       description?: string
       length?: number
       input_mode?: 'numeric' | 'text'
     }
-    authorizationServerUrl?: string
+    authorizationServerUrl: string
   }
   issuanceMetadata?: Record<string, unknown>
   statusListDetails?: {
@@ -78,6 +101,7 @@ export interface OpenId4VcIssuanceSessionsCreateOffer {
     listSize?: number
   }
   isRevocable?: boolean
+  version?: 'v1.1' | 'v2.0'
 }
 
 export interface X509GenericRecordContent {
