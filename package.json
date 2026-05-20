@@ -134,6 +134,7 @@
     "@2060.io/ffi-napi",
     "@hyperledger/indy-vdr-nodejs",
     "@credo-ts/askar",
-    "@openwallet-foundation/askar-nodejs"
+    "@openwallet-foundation/askar-nodejs",
+    "@hyperledger/anoncreds-nodejs",
   ]
 }

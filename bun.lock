@@ -93,6 +93,7 @@
     "@hyperledger/indy-vdr-nodejs",
     "@credo-ts/askar",
     "node-gyp-build",
+    "@hyperledger/anoncreds-nodejs",
     "@2060.io/ref-napi",
     "patch-package",
     "@2060.io/ffi-napi",
