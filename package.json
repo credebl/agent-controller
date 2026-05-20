@@ -22,7 +22,7 @@
   },
   "scripts": {
     "check-types": "tsc --noEmit -p tsconfig.build.json",
-    "prettier": "prettier '**/*.+(js|json|ts|md|yml|yaml)'",
+    "prettier": "bunx prettier '**/*.+(js|json|ts|md|yml|yaml)'",
     "format": "bun prettier --write",
     "check-format": "bun prettier --list-different",
     "tsoa": "tsoa spec-and-routes",
