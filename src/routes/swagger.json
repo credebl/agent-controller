@@ -372,20 +372,187 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"AnyUint8Array": {
-				"$ref": "#/components/schemas/Uint8Array"
-			},
 			"X509Certificate": {
 				"properties": {
 					"publicJwk": {
 						"$ref": "#/components/schemas/PublicJwk"
 					},
 					"privateKey": {
-						"$ref": "#/components/schemas/AnyUint8Array"
+						"$ref": "#/components/schemas/Uint8Array"
 					}
 				},
 				"required": [
 					"publicJwk"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"JsonObject": {
+				"properties": {},
+				"type": "object",
+				"additionalProperties": {
+					"$ref": "#/components/schemas/JsonValue"
+				}
+			},
+			"JsonValue": {
+				"anyOf": [
+					{
+						"type": "string"
+					},
+					{
+						"type": "number",
+						"format": "double"
+					},
+					{
+						"type": "boolean"
+					},
+					{
+						"$ref": "#/components/schemas/JsonObject"
+					},
+					{
+						"$ref": "#/components/schemas/JsonArray"
+					}
+				],
+				"nullable": true
+			},
+			"JsonArray": {
+				"items": {
+					"$ref": "#/components/schemas/JsonValue"
+				},
+				"type": "array"
+			},
+			"W3cJsonIssuer": {
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id"
+				],
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"W3cJsonCredentialSubject": {
+				"properties": {
+					"id": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"SingleOrArray_W3cJsonCredentialSubject_": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/W3cJsonCredentialSubject"
+					},
+					{
+						"items": {
+							"$ref": "#/components/schemas/W3cJsonCredentialSubject"
+						},
+						"type": "array"
+					}
+				]
+			},
+			"W3cJsonCredential": {
+				"properties": {
+					"@context": {
+						"items": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"$ref": "#/components/schemas/JsonObject"
+								}
+							]
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"issuer": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"$ref": "#/components/schemas/W3cJsonIssuer"
+							}
+						]
+					},
+					"issuanceDate": {
+						"type": "string"
+					},
+					"expirationDate": {
+						"type": "string"
+					},
+					"credentialSubject": {
+						"$ref": "#/components/schemas/SingleOrArray_W3cJsonCredentialSubject_"
+					}
+				},
+				"required": [
+					"@context",
+					"type",
+					"issuer",
+					"issuanceDate",
+					"credentialSubject"
+				],
+				"type": "object",
+				"additionalProperties": {}
+			},
+			"BadRequestError": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"stack": {
+						"type": "string"
+					},
+					"statusCode": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"name",
+					"message",
+					"statusCode"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"InternalServerError": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"stack": {
+						"type": "string"
+					},
+					"statusCode": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"name",
+					"message",
+					"statusCode"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -1898,40 +2065,6 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"JsonObject": {
-				"properties": {},
-				"type": "object",
-				"additionalProperties": {
-					"$ref": "#/components/schemas/JsonValue"
-				}
-			},
-			"JsonValue": {
-				"anyOf": [
-					{
-						"type": "string"
-					},
-					{
-						"type": "number",
-						"format": "double"
-					},
-					{
-						"type": "boolean"
-					},
-					{
-						"$ref": "#/components/schemas/JsonObject"
-					},
-					{
-						"$ref": "#/components/schemas/JsonArray"
-					}
-				],
-				"nullable": true
-			},
-			"JsonArray": {
-				"items": {
-					"$ref": "#/components/schemas/JsonValue"
-				},
-				"type": "array"
-			},
 			"W3cIssuer": {
 				"properties": {
 					"id": {
@@ -2014,9 +2147,68 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"BitstringStatusPurpose": {
+				"type": "string",
+				"enum": [
+					"revocation",
+					"suspension"
+				]
+			},
+			"BitStringStatusListMessage": {
+				"properties": {
+					"status": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"status"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"BitStringStatusListEntry": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"statusPurpose": {
+						"$ref": "#/components/schemas/BitstringStatusPurpose"
+					},
+					"statusListIndex": {
+						"type": "string"
+					},
+					"statusListCredential": {
+						"type": "string"
+					},
+					"statusSize": {
+						"type": "string"
+					},
+					"statusMessage": {
+						"items": {
+							"$ref": "#/components/schemas/BitStringStatusListMessage"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"type",
+					"statusPurpose",
+					"statusListIndex",
+					"statusListCredential"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"W3cCredential": {
 				"properties": {
-					"@context": {
+					"context": {
 						"items": {
 							"anyOf": [
 								{
@@ -2061,11 +2253,18 @@
 						"$ref": "#/components/schemas/SingleOrArray_W3cCredentialSchema_"
 					},
 					"credentialStatus": {
-						"$ref": "#/components/schemas/W3cCredentialStatus"
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/W3cCredentialStatus"
+							},
+							{
+								"$ref": "#/components/schemas/BitStringStatusListEntry"
+							}
+						]
 					}
 				},
 				"required": [
-					"@context",
+					"context",
 					"type",
 					"issuer",
 					"issuanceDate",
@@ -3266,94 +3465,6 @@
 			"W3cCredentialRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
-			"W3cJsonIssuer": {
-				"properties": {
-					"id": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id"
-				],
-				"type": "object",
-				"additionalProperties": {}
-			},
-			"W3cJsonCredentialSubject": {
-				"properties": {
-					"id": {
-						"type": "string"
-					}
-				},
-				"type": "object",
-				"additionalProperties": {}
-			},
-			"SingleOrArray_W3cJsonCredentialSubject_": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/W3cJsonCredentialSubject"
-					},
-					{
-						"items": {
-							"$ref": "#/components/schemas/W3cJsonCredentialSubject"
-						},
-						"type": "array"
-					}
-				]
-			},
-			"W3cJsonCredential": {
-				"properties": {
-					"@context": {
-						"items": {
-							"anyOf": [
-								{
-									"type": "string"
-								},
-								{
-									"$ref": "#/components/schemas/JsonObject"
-								}
-							]
-						},
-						"type": "array"
-					},
-					"id": {
-						"type": "string"
-					},
-					"type": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					},
-					"issuer": {
-						"anyOf": [
-							{
-								"type": "string"
-							},
-							{
-								"$ref": "#/components/schemas/W3cJsonIssuer"
-							}
-						]
-					},
-					"issuanceDate": {
-						"type": "string"
-					},
-					"expirationDate": {
-						"type": "string"
-					},
-					"credentialSubject": {
-						"$ref": "#/components/schemas/SingleOrArray_W3cJsonCredentialSubject_"
-					}
-				},
-				"required": [
-					"@context",
-					"type",
-					"issuer",
-					"issuanceDate",
-					"credentialSubject"
-				],
-				"type": "object",
-				"additionalProperties": {}
-			},
 			"Pick_W3cJsonLdSignCredentialOptions.Exclude_keyofW3cJsonLdSignCredentialOptions.format-or-credential__": {
 				"properties": {
 					"proofType": {
@@ -3401,19 +3512,6 @@
 					"id": {
 						"type": "string"
 					},
-					"@context": {
-						"items": {
-							"anyOf": [
-								{
-									"type": "string"
-								},
-								{
-									"$ref": "#/components/schemas/JsonObject"
-								}
-							]
-						},
-						"type": "array"
-					},
 					"issuanceDate": {
 						"type": "string"
 					},
@@ -3424,13 +3522,19 @@
 						"$ref": "#/components/schemas/SingleOrArray_W3cCredentialSchema_"
 					},
 					"credentialStatus": {
-						"$ref": "#/components/schemas/W3cCredentialStatus"
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/W3cCredentialStatus"
+							},
+							{
+								"$ref": "#/components/schemas/BitStringStatusListEntry"
+							}
+						]
 					}
 				},
 				"required": [
 					"issuer",
 					"type",
-					"@context",
 					"issuanceDate"
 				],
 				"type": "object",
@@ -3756,7 +3860,7 @@
 			},
 			"W3cJsonLdVerifiableCredential": {
 				"properties": {
-					"@context": {
+					"context": {
 						"items": {
 							"anyOf": [
 								{
@@ -3801,14 +3905,21 @@
 						"$ref": "#/components/schemas/SingleOrArray_W3cCredentialSchema_"
 					},
 					"credentialStatus": {
-						"$ref": "#/components/schemas/W3cCredentialStatus"
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/W3cCredentialStatus"
+							},
+							{
+								"$ref": "#/components/schemas/BitStringStatusListEntry"
+							}
+						]
 					},
 					"proof": {
 						"$ref": "#/components/schemas/SingleOrArray_LinkedDataProof-or-DataIntegrityProof_"
 					}
 				},
 				"required": [
-					"@context",
+					"context",
 					"type",
 					"issuer",
 					"issuanceDate",
@@ -5739,6 +5850,209 @@
 								},
 								"required": [
 									"certificate"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/status-list/create-bslc": {
+			"post": {
+				"operationId": "CreateBitstringStatusListCredential",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"BSLCId": {
+											"type": "string"
+										},
+										"signedCredential": {
+											"$ref": "#/components/schemas/W3cJsonCredential"
+										}
+									},
+									"required": [
+										"BSLCId",
+										"signedCredential"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Create a Bitstring Status List Credential (BSLC) and upload it to the BSLC server.",
+				"tags": [
+					"Status List"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"verificationMethodId": {
+										"type": "string"
+									},
+									"statusPurpose": {
+										"type": "string"
+									},
+									"issuerDID": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"verificationMethodId",
+									"statusPurpose",
+									"issuerDID"
+								],
+								"type": "object"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/status-list/get-empty-bslc-index/{bslcUrl}/{bslcId}": {
+			"get": {
+				"operationId": "GetEmptyIndexForBSLC",
+				"responses": {
+					"200": {
+						"description": "An unused index from the Bitstring Status List",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"index": {
+											"type": "number",
+											"format": "double"
+										}
+									},
+									"required": [
+										"index"
+									],
+									"type": "object"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"index": 132
+										}
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid request parameters",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BadRequestError"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Internal server error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/InternalServerError"
+								}
+							}
+						}
+					}
+				},
+				"description": "Get an unused index from the Bitstring Status List Credential.",
+				"tags": [
+					"Status List"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "URL of the BSLC",
+						"in": "path",
+						"name": "bslcUrl",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"description": "ID of the BSLC",
+						"in": "path",
+						"name": "bslcId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/status-list/change-status": {
+			"post": {
+				"operationId": "ChangeStatus",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {}
+							}
+						}
+					}
+				},
+				"description": "Revoke or change the status of a W3C credential using its revocationId.",
+				"tags": [
+					"Status List"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"properties": {
+									"credentialId": {
+										"type": "string"
+									},
+									"revocationId": {
+										"type": "string"
+									}
+								},
+								"required": [
+									"credentialId",
+									"revocationId"
 								],
 								"type": "object"
 							}
@@ -9387,10 +9701,10 @@
 											"type": "string"
 										},
 										{
-											"$ref": "#/components/schemas/W3cCredentialRecord"
+											"$ref": "#/components/schemas/W3cJsonCredential"
 										},
 										{
-											"$ref": "#/components/schemas/W3cJsonCredential"
+											"$ref": "#/components/schemas/W3cCredentialRecord"
 										}
 									]
 								}

@@ -1,0 +1,23 @@
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
+--- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
++++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
+@@ -14,7 +14,7 @@
+   verificationMethod: string | VerificationMethod;
+   [key: string]: JsonValue;
+ }
+-interface DocumentLoaderResult {
++export interface DocumentLoaderResult {
+   contextUrl?: string | null;
+   documentUrl: string;
+   document: Record<string, unknown>;
+diff --git a/node_modules/@credo-ts/core/build/utils/version.d.mts b/node_modules/@credo-ts/core/build/utils/version.d.mts
+--- a/node_modules/@credo-ts/core/build/utils/version.d.mts
++++ b/node_modules/@credo-ts/core/build/utils/version.d.mts
+@@ -1,5 +1,5 @@
+ //#region src/utils/version.d.ts
+-type VersionString = `${number}.${number}` | `${number}.${number}.${number}`;
++type VersionString = string;
+ //#endregion
+ export { VersionString };
+ //# sourceMappingURL=version.d.mts.map
+\ No newline at end of file

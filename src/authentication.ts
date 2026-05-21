@@ -22,7 +22,7 @@ export const getFromCache = (key: string) => cache.get(key)
 export const setInCache = (key: string, value: string) => cache.set(key, value)
 
 export async function expressAuthentication(request: Request, securityName: string, scopes?: string[]) {
-  const logger = new TsLogger(LogLevel.info)
+  const logger = new TsLogger(LogLevel.Info)
   const agent = container.resolve(Agent<RestMultiTenantAgentModules>)
 
   if (scopes && scopes?.includes(SCOPES.UNPROTECTED)) {

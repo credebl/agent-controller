@@ -119,3 +119,26 @@ export enum CredentialFormat {
   JwtVcJsonLd = 'jwt_vc_json-ld',
   LdpVc = 'ldp_vc',
 }
+
+export enum CredentialContext {
+  V1 = 'https://www.w3.org/2018/credentials/v1',
+  V2 = 'https://www.w3.org/ns/credentials/v2',
+}
+
+export enum BSLCredentialType {
+  VerifiableCredential = 'VerifiableCredential',
+  BitstringStatusListCredential = 'BitstringStatusListCredential',
+}
+
+export enum RevocationListType {
+  Bitstring = 'BitstringStatusList',
+}
+
+export enum W3CRevocationStatus {
+  Revoked = 'REVOCATION',
+  Suspended = 'SUSPENSION',
+}
+
+export enum BSLSignatureType {
+  Ed25519Signature2018 = 'Ed25519Signature2018',
+}

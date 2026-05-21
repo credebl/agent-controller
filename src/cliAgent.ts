@@ -396,7 +396,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     ...afjConfig
   } = restConfig
 
-  const logger = new TsLogger(logLevel ?? LogLevel.error)
+  const logger = new TsLogger(logLevel ?? LogLevel.Error)
 
   const agentConfig: InitConfig = {
     ...afjConfig,

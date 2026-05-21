@@ -27,7 +27,7 @@ import { validateAuthConfig } from './auth'
 import { checkX509Certificates, processIsoImages } from './helpers'
 import { TsLogger } from './logger'
 
-const logger = new TsLogger(LogLevel.info)
+const logger = new TsLogger(LogLevel.Info)
 
 export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredentialRequestToCredentialMapper {
   return async ({

@@ -41,16 +41,16 @@
   "dependencies": {
     "@ayanworks/credo-polygon-w3c-module": "2.0.2",
     "@sd-jwt/jwt-status-list": "0.19.0",
-    "@credo-ts/anoncreds": "0.6.2",
-    "@credo-ts/askar": "0.6.2",
-    "@credo-ts/core": "0.6.2",
-    "@credo-ts/didcomm": "0.6.2",
-    "@credo-ts/indy-vdr": "0.6.2",
-    "@credo-ts/node": "0.6.2",
-    "@credo-ts/openid4vc": "0.6.2",
+    "@credo-ts/anoncreds": "0.7.0",
+    "@credo-ts/askar": "0.7.0",
+    "@credo-ts/core": "file:./credo-ts-core-0.7.0.tgz",
+    "@credo-ts/didcomm": "0.7.0",
+    "@credo-ts/indy-vdr": "0.7.0",
+    "@credo-ts/node": "0.7.0",
+    "@credo-ts/openid4vc": "0.7.0",
     "@credo-ts/push-notifications": "^0.7.1",
-    "@credo-ts/question-answer": "0.6.2",
-    "@credo-ts/tenants": "0.6.2",
+    "@credo-ts/question-answer": "0.7.0",
+    "@credo-ts/tenants": "0.7.0",
     "@hyperledger/anoncreds-nodejs": "^0.3.4",
     "@hyperledger/indy-vdr-nodejs": "^0.2.3",
     "@opentelemetry/api": "^1.9.0",
@@ -122,8 +122,8 @@
     "typescript": "^5.8.3"
   },
   "resolutions": {
-    "@credo-ts/core": "0.6.2",
-    "@credo-ts/askar": "0.6.2",
+    "@credo-ts/core": "file:./credo-ts-core-0.7.0.tgz",
+    "@credo-ts/askar": "0.7.0",
     "flatted": "3.4.0",
     "undici": "6.24.0"
   }

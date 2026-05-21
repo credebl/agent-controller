@@ -581,3 +581,78 @@ export interface RegisterCredentialDefinitionReturn {
   credentialDefinitionMetadata: Record<string, unknown>
   registrationMetadata: Record<string, unknown>
 }
+
+export interface BSLCredentialPayload {
+  '@context': string[]
+  id: string
+  type: string[]
+  issuer: {
+    id: string
+  }
+  issuanceDate: string
+  credentialSubject: {
+    id: string
+    type: string
+    statusPurpose: string
+    encodedList: string
+  }
+  credentialStatus: {
+    id: string
+    type: string
+  }
+}
+
+export interface SignedBslCredential {
+  context: string[]
+  id: string
+  type: string[]
+  issuer: {
+    id: string
+  }
+  issuanceDate: string
+  credentialSubject: {
+    id: string
+    claims: {
+      type: string
+      statusPurpose: string
+      encodedList: string
+    }
+  }
+  credentialStatus: {
+    id: string
+    type: string
+  }
+  proof: {
+    verificationMethod: string
+    type: string
+    created: string
+    proofPurpose: string
+    jws: string
+  }
+}
+
+export interface BSLCSignedPayload {
+  id: string
+  bslcObject: Record<string, unknown>
+}
+
+export enum BSLStatusPurpose {
+  REVOCATION = 'REVOCATION',
+  SUSPENSION = 'SUSPENSION',
+  REFRESH = 'REFRESH',
+  MESSAGE = 'MESSAGE',
+}
+
+export interface CredentialMetadata {
+  id: string
+  revocationId: string
+  credentialId: string
+  bslcId: string
+  bslcUrl: string
+  index: number
+  issuerId: string
+  statusPurpose: BSLStatusPurpose
+  isValid: boolean
+  createdAt: Date
+  updatedAt: Date
+}

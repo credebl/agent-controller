@@ -15,13 +15,13 @@ export class TsLogger extends BaseLogger {
 
   // Map our log levels to tslog levels
   private tsLogLevelMap = {
-    [LogLevel.test]: 'silly',
-    [LogLevel.trace]: 'trace',
-    [LogLevel.debug]: 'debug',
-    [LogLevel.info]: 'info',
-    [LogLevel.warn]: 'warn',
-    [LogLevel.error]: 'error',
-    [LogLevel.fatal]: 'fatal',
+    [LogLevel.Test]: 'silly',
+    [LogLevel.Trace]: 'trace',
+    [LogLevel.Debug]: 'debug',
+    [LogLevel.Info]: 'info',
+    [LogLevel.Warn]: 'warn',
+    [LogLevel.Error]: 'error',
+    [LogLevel.Fatal]: 'fatal',
   } as const
 
   public constructor(logLevel: LogLevel, name: string = 'credo-controller-service' as string) {
@@ -29,7 +29,7 @@ export class TsLogger extends BaseLogger {
 
     this.logger = new Logger({
       name,
-      minLevel: this.logLevel == LogLevel.off ? undefined : this.tsLogLevelMap[this.logLevel],
+      minLevel: this.logLevel === LogLevel.Off ? undefined : this.tsLogLevelMap[this.logLevel as Exclude<LogLevel, LogLevel.Off>],
       ignoreStackLevels: 5,
       attachedTransports: [
         {
@@ -50,7 +50,7 @@ export class TsLogger extends BaseLogger {
   }
 
   private log(
-    level: Exclude<LogLevel, LogLevel.off>,
+    level: Exclude<LogLevel, LogLevel.Off>,
     message: string | { message: string },
     data?: Record<string, any>,
   ): void {
@@ -98,30 +98,30 @@ export class TsLogger extends BaseLogger {
   }
 
   public test(message: string, data?: Record<string, any>): void {
-    this.log(LogLevel.test, message, data)
+    this.log(LogLevel.Test, message, data)
   }
 
   public trace(message: string, data?: Record<string, any>): void {
-    this.log(LogLevel.trace, message, data)
+    this.log(LogLevel.Trace, message, data)
   }
 
   public debug(message: string, data?: Record<string, any>): void {
-    this.log(LogLevel.debug, message, data)
+    this.log(LogLevel.Debug, message, data)
   }
 
   public info(message: string, data?: Record<string, any>): void {
-    this.log(LogLevel.info, message, data)
+    this.log(LogLevel.Info, message, data)
   }
 
   public warn(message: string, data?: Record<string, any>): void {
-    this.log(LogLevel.warn, message, data)
+    this.log(LogLevel.Warn, message, data)
   }
 
   public error(message: string, data?: Record<string, any>): void {
-    this.log(LogLevel.error, message, data)
+    this.log(LogLevel.Error, message, data)
   }
 
   public fatal(message: string, data?: Record<string, any>): void {
-    this.log(LogLevel.fatal, message, data)
+    this.log(LogLevel.Fatal, message, data)
   }
 }

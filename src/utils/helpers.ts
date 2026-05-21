@@ -6,6 +6,8 @@ import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
 import axios from 'axios'
 import { randomBytes } from 'crypto'
 
+import { BadRequestError, InternalServerError } from '../errors/errors'
+
 import { TRUST_SERVICE_ENV_KEYS, curveToKty, keyAlgorithmToCurve } from './constant'
 const TOKEN_EXPIRY_BUFFER_SECONDS = 60
 const tokenCache = new Map<string, { token: string; expiresAt: number }>()
@@ -32,7 +34,7 @@ function getCachedToken(clientId: string): string | null {
 
 export function objectToJson<T>(result: T) {
   const serialized = JsonTransformer.serialize(result)
-  return JsonEncoder.fromString(serialized)
+  return JsonEncoder.fromUtf8String(serialized)
 }
 
 export async function generateSecretKey(length: number = 32): Promise<string> {
@@ -319,4 +321,46 @@ export async function checkX509Certificates(
   const token = await fetchPlatformToken(tokenUrl, clientId, clientSecret, label)
 
   return checkTrustCertificatesExist(trustListUrl, x509Certificates, label, resolvedTenantId, token)
+}
+
+export function customInflate(encodedList: string): string {
+  if (!encodedList || typeof encodedList !== 'string') {
+    throw new BadRequestError('Invalid input: encodedList must be a non-empty string')
+  }
+
+  try {
+    console.log('Encoded List:', encodedList)
+    const compressedData = Buffer.from(encodedList, 'base64url')
+    const decompressedData = new Uint8Array(compressedData)
+    return Array.from(decompressedData)
+      .map((byte) => byte.toString(2).padStart(8, '0'))
+      .join('')
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new InternalServerError(`Failed to decompress and process the encoded list: ${error.message}`)
+    } else {
+      throw new InternalServerError('Failed to decompress and process the encoded list: Unknown error')
+    }
+  }
+}
+
+export function customDeflate(data: string): string {
+  if (!data || typeof data !== 'string') {
+    throw new BadRequestError('Invalid input: data must be a non-empty string')
+  }
+
+  try {
+    const binaryArray = data.match(/.{1,8}/g)?.map((byte) => parseInt(byte, 2))
+    if (!binaryArray) {
+      throw new Error('Failed to parse binary string into bytes')
+    }
+    const compressedData = new Uint8Array(binaryArray)
+    return Buffer.from(compressedData).toString('base64url')
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new InternalServerError(`Failed to compress data: ${error.message}`)
+    } else {
+      throw new InternalServerError('Failed to compress data: Unknown error')
+    }
+  }
 }

@@ -1,0 +1,13 @@
+diff --git a/node_modules/@ayanworks/credo-polygon-w3c-module/build/dids/PolygonDidRegistrar.mjs b/node_modules/@ayanworks/credo-polygon-w3c-module/build/dids/PolygonDidRegistrar.mjs
+index f866853..3253b01 100644
+--- a/node_modules/@ayanworks/credo-polygon-w3c-module/build/dids/PolygonDidRegistrar.mjs
++++ b/node_modules/@ayanworks/credo-polygon-w3c-module/build/dids/PolygonDidRegistrar.mjs
+@@ -4,7 +4,7 @@ import { buildDid, createSecp256k1PublicJwk, getSecp256k1DidDoc, validateSpecCom
+ import { PolygonModuleConfig } from "../PolygonModuleConfig.mjs";
+ import { PolygonLedgerService } from "../ledger/PolygonLedgerService.mjs";
+ import "../ledger/index.mjs";
+-import { Buffer, CredoError, DidDocument, DidDocumentBuilder, DidDocumentRole, DidRecord, DidRepository, JsonTransformer, TypedArrayEncoder } from "@credo-ts/core";
++import { CredoError, DidDocument, DidDocumentBuilder, DidDocumentRole, DidRecord, DidRepository, JsonTransformer, TypedArrayEncoder } from "@credo-ts/core";
+ import { KeyManagementApi, KeyManagementKeyNotFoundError } from "@credo-ts/core/kms";
+ import { JsonRpcProvider, SigningKey, Wallet } from "ethers";
+ import { getResolver } from "@ayanworks/polygon-did-resolver";
