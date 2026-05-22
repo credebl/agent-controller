@@ -4,7 +4,9 @@ import type { Request as Req } from 'express'
 import { type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
 import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc'
 
-import { CredentialFormat, SignerMethod, W3cContext } from '../../../enums/enum'
+import { CREDENTIALS_CONTEXT_V1_URL, CREDENTIALS_CONTEXT_V2_URL } from '@credo-ts/core'
+
+import { CredentialFormat, SignerMethod } from '../../../enums/enum'
 import { BadRequestError, NotFoundError } from '../../../errors/errors'
 import { STATUS_LISTS_PATH } from '../../../utils/constant'
 import { checkAndCreateStatusList, getServerUrl, revokeCredentialInStatusList } from '../../../utils/statusListService'
@@ -68,8 +70,7 @@ class IssuanceSessionsService {
       credentialConfigurationIds: credentials.map((c) => c.credentialSupportedId),
       preAuthorizedCodeFlowConfig: options.preAuthorizedCodeFlowConfig,
       authorizationCodeFlowConfig: options.authorizationCodeFlowConfig,
-      // version: options.version ? 'v1.draft15' : 'v1',
-      version: options.version ? 'v1' : 'v1',
+      version: 'v1',
     })
 
     return { credentialOffer, issuanceSession }
@@ -85,8 +86,15 @@ class IssuanceSessionsService {
       )
     }
 
-    if (!cred.payload?.credentialSubject) {
-      throw new BadRequestError(`Credential payload for '${cred.credentialSupportedId}' must contain 'credentialSubject'`)
+    const isW3cFormat =
+      cred.format === CredentialFormat.JwtVcJson ||
+      cred.format === CredentialFormat.JwtVcJsonLd ||
+      cred.format === CredentialFormat.LdpVc
+
+    if (isW3cFormat && !cred.payload?.credentialSubject) {
+      throw new BadRequestError(
+        `Credential payload for '${cred.credentialSupportedId}' must contain 'credentialSubject'`,
+      )
     }
 
     if (version === 'v2.0') {
@@ -117,9 +125,7 @@ class IssuanceSessionsService {
     }
   }
 
-  // W3C V2.0 Support (Commented out for reference)
   private transformPayloadForVersion(payload: any, version: 'v1.1' | 'v2.0' | undefined) {
-    /* 
     if (version !== 'v2.0') {
       return payload
     }
@@ -144,7 +150,6 @@ class IssuanceSessionsService {
     // Rule: issuanceDate -> validFrom
     if (transformed.issuanceDate && !transformed.validFrom) {
       transformed.validFrom = transformed.issuanceDate
-
     }
 
     // Rule: expirationDate -> validUntil
@@ -163,8 +168,8 @@ class IssuanceSessionsService {
     }
 
     // Rule: Update @context for v2.0
-    const v1Context = W3cContext.V1
-    const v2Context = W3cContext.V2
+    const v1Context = CREDENTIALS_CONTEXT_V1_URL
+    const v2Context = CREDENTIALS_CONTEXT_V2_URL
 
     if (version === 'v2.0') {
       const currentCtx = Array.isArray(transformed['@context'])
@@ -192,8 +197,6 @@ class IssuanceSessionsService {
     }
 
     return transformed
-    */
-    return payload
   }
 
   private async processStatusList(

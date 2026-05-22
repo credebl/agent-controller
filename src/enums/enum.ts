@@ -119,8 +119,3 @@ export enum CredentialFormat {
   JwtVcJsonLd = 'jwt_vc_json-ld',
   LdpVc = 'ldp_vc',
 }
-
-export enum W3cContext {
-  V1 = 'https://www.w3.org/2018/credentials/v1',
-  V2 = 'https://www.w3.org/ns/credentials/v2',
-}

@@ -45,19 +45,16 @@ export class HolderService {
   }
 
   public async getW3cCredentials(agentReq: Req) {
-    const w3cCredentialService = await agentReq.agent.dependencyManager.resolve(W3cCredentialService)
     /* 
     // W3C V2.0 Support
-    const w3cV2CredentialService = await agentReq.agent.dependencyManager.resolve(W3cV2CredentialService)
-
     const [v1Records, v2Records] = await Promise.all([
-      w3cCredentialService.getAllCredentialRecords(agentReq.agent.context),
-      w3cV2CredentialService.getAllCredentialRecords(agentReq.agent.context),
+      agentReq.agent.w3cCredentials.getAll(),
+      agentReq.agent.w3cV2Credentials.getAll(),
     ])
 
     return [...v1Records, ...v2Records]
     */
-    return await w3cCredentialService.getAllCredentialRecords(agentReq.agent.context)
+    return await agentReq.agent.w3cCredentials.getAll()
   }
 
   public async decodeMdocCredential(
@@ -154,9 +151,11 @@ export class HolderService {
       credentialResponse.credentials.map(async (response) => {
         const credentialRecord = response.record
 
-        if (credentialRecord instanceof W3cCredentialRecord || (credentialRecord as any).type === 'W3cCredentialRecord') {
-          const w3cCredentialService = await agentReq.agent.dependencyManager.resolve(W3cCredentialService)
-          return await w3cCredentialService.storeCredential(agentReq.agent.context, {
+        if (
+          credentialRecord instanceof W3cCredentialRecord ||
+          (credentialRecord as any).type === 'W3cCredentialRecord'
+        ) {
+          return await agentReq.agent.w3cCredentials.store({
             record: credentialRecord as W3cCredentialRecord,
           })
         }
@@ -167,9 +166,7 @@ export class HolderService {
           credentialRecord instanceof W3cV2CredentialRecord ||
           (credentialRecord as any).type === 'W3cV2CredentialRecord'
         ) {
-          
-          const w3cCredentialService = await agentReq.agent.dependencyManager.resolve(W3cV2CredentialService)
-          return await w3cCredentialService.storeCredential(agentReq.agent.context, {
+          return await agentReq.agent.w3cV2Credentials.store({
             record: credentialRecord as W3cV2CredentialRecord,
           })
         }
@@ -183,7 +180,9 @@ export class HolderService {
             record: credentialRecord,
           })
         }
-        throw new Error(`Unsupported credential record type: ${(credentialRecord as any)?.type || typeof credentialRecord}`)
+        throw new Error(
+          `Unsupported credential record type: ${(credentialRecord as any)?.type || typeof credentialRecord}`,
+        )
       }),
     )
 
@@ -264,15 +263,17 @@ export class HolderService {
       )
       acceptOptions.dcql = { credentials: dcqlCredentials as DcqlCredentialsForRequest }
     } else if (resolved.presentationExchange) {
-      const pexCredentials = await agentReq.agent.modules.openid4vc.holder.selectCredentialsForPresentationExchangeRequest(
-        resolved.presentationExchange.credentialsForRequest
-      )
+      const pexCredentials =
+        await agentReq.agent.modules.openid4vc.holder.selectCredentialsForPresentationExchangeRequest(
+          resolved.presentationExchange.credentialsForRequest,
+        )
       acceptOptions.presentationExchange = { credentials: pexCredentials }
     } else {
       throw new Error('Missing DCQL or Presentation Exchange on request')
     }
 
-    const submissionResult = await agentReq.agent.modules.openid4vc.holder.acceptOpenId4VpAuthorizationRequest(acceptOptions)
+    const submissionResult =
+      await agentReq.agent.modules.openid4vc.holder.acceptOpenId4VpAuthorizationRequest(acceptOptions)
     if (submissionResult.serverResponse) {
       const { serverResponse, ...rest } = submissionResult
 
