@@ -4,31 +4,34 @@ version: 2
 
 updates:
   # =========================
-  # Yarn Dependencies (via npm ecosystem)
+  # yarn Dependencies (via npm ecosystem)
   # =========================
-  - package-ecosystem: 'npm' # ← use "npm", not "yarn"
-    directory: '/' # or "/client" if package.json is inside a subfolder
-    target-branch: 'main' # always open PRs against main
+  - package-ecosystem: 'npm'
+    directory: '/' # or "/client", "/frontend" if needed
+    target-branch: 'main'
     schedule:
       interval: 'weekly'
       day: 'monday'
       time: '09:00'
       timezone: 'Asia/Kolkata'
-    open-pull-requests-limit: 10
 
     groups:
+      # 1) All patch updates in one PR
+      patch-updates:
+        patterns:
+          - '*'
+        update-types:
+          - 'patch'
+      # 2) All minor updates in one PR
       minor-updates:
         patterns:
           - '*'
         update-types:
           - 'minor'
 
-    allow:
-      - dependency-type: 'all'
-
     labels:
       - 'dependencies'
-      - 'yarn' # you can keep this label for clarity
+      - 'yarn'
 
     commit-message:
       prefix: 'chore'
@@ -39,23 +42,101 @@ updates:
   # =========================
   - package-ecosystem: 'github-actions'
     directory: '/'
-    target-branch: 'main' # always open PRs against main
+    target-branch: 'main'
     schedule:
       interval: 'weekly'
       day: 'monday'
       time: '09:00'
       timezone: 'Asia/Kolkata'
 
-    labels:
-      - 'dependencies'
-      - 'github-actions'
-
-    commit-message:
-      prefix: 'ci'
-
     groups:
-      minor-updates:
+      # 1) All patch updates in one PR
+      patch-actions:
+        patterns:
+          - '*'
+        update-types:
+          - 'patch'
+      # 2) All minor updates in one PR
+      minor-actions:
         patterns:
           - '*'
         update-types:
           - 'minor'
+
+    labels:
+      - 'dependencies'
+      - 'github-actions'
+      - 'devops'
+
+    commit-message:
+      prefix: 'ci'
+
+  # =========================
+  # Docker
+  # =========================
+  - package-ecosystem: 'docker'
+    directories:
+      - '/'
+    target-branch: 'main'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Kolkata'
+
+    groups:
+      # 1) All patch‑style updates in one PR
+      patch-docker:
+        patterns:
+          - '*'
+        update-types:
+          - 'patch'
+      # 2) All minor‑style updates in one PR
+      minor-docker:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+
+    labels:
+      - 'dependencies'
+      - 'docker'
+      - 'devops'
+
+    commit-message:
+      prefix: 'build'
+
+  # =========================
+  # Docker Compose
+  # =========================
+  - package-ecosystem: 'docker-compose'
+    directories:
+      - '/'
+    target-branch: 'main'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Kolkata'
+
+    groups:
+      # 1) All patch‑style updates in one PR
+      patch-docker-compose:
+        patterns:
+          - '*'
+        update-types:
+          - 'patch'
+      # 2) All minor‑style updates in one PR
+      minor-docker-compose:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+
+    labels:
+      - 'dependencies'
+      - 'docker-compose'
+      - 'devops'
+
+    commit-message:
+      prefix: 'build'
