@@ -6,140 +6,137 @@ updates:
   # =========================
   # yarn Dependencies (via npm ecosystem)
   # =========================
-  - package-ecosystem: "npm"
-    directory: "/"              # or "/client", "/frontend" if needed
-    target-branch: "main"
+  - package-ecosystem: 'npm'
+    directory: '/' # or "/client", "/frontend" if needed
+    target-branch: 'main'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Kolkata"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Kolkata'
 
     groups:
       # 1) All patch updates in one PR
       patch-updates:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "patch"
+          - 'patch'
       # 2) All minor updates in one PR
       minor-updates:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
+          - 'minor'
 
     labels:
-      - "dependencies"
-      - "yarn"
+      - 'dependencies'
+      - 'yarn'
 
     commit-message:
-      prefix: "chore"
-      include: "scope"
-
+      prefix: 'chore'
+      include: 'scope'
 
   # =========================
   # GitHub Actions
   # =========================
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    target-branch: "main"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    target-branch: 'main'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Kolkata"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Kolkata'
 
     groups:
       # 1) All patch updates in one PR
       patch-actions:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "patch"
+          - 'patch'
       # 2) All minor updates in one PR
       minor-actions:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
+          - 'minor'
 
     labels:
-      - "dependencies"
-      - "github-actions"
-      - "devops"
+      - 'dependencies'
+      - 'github-actions'
+      - 'devops'
 
     commit-message:
-      prefix: "ci"
-
+      prefix: 'ci'
 
   # =========================
   # Docker
   # =========================
-  - package-ecosystem: "docker"
+  - package-ecosystem: 'docker'
     directories:
-      - "/"
-    target-branch: "main"
+      - '/'
+    target-branch: 'main'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Kolkata"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Kolkata'
 
     groups:
       # 1) All patch‑style updates in one PR
       patch-docker:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "patch"
+          - 'patch'
       # 2) All minor‑style updates in one PR
       minor-docker:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
+          - 'minor'
 
     labels:
-      - "dependencies"
-      - "docker"
-      - "devops"
+      - 'dependencies'
+      - 'docker'
+      - 'devops'
 
     commit-message:
-      prefix: "build"
-
+      prefix: 'build'
 
   # =========================
   # Docker Compose
   # =========================
-  - package-ecosystem: "docker-compose"
+  - package-ecosystem: 'docker-compose'
     directories:
-      - "/"
-    target-branch: "main"
+      - '/'
+    target-branch: 'main'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Kolkata"
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Kolkata'
 
     groups:
       # 1) All patch‑style updates in one PR
       patch-docker-compose:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "patch"
+          - 'patch'
       # 2) All minor‑style updates in one PR
       minor-docker-compose:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
+          - 'minor'
 
     labels:
-      - "dependencies"
-      - "docker-compose"
-      - "devops"
+      - 'dependencies'
+      - 'docker-compose'
+      - 'devops'
 
     commit-message:
-      prefix: "build"
+      prefix: 'build'
