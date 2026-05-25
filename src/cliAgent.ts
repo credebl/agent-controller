@@ -211,8 +211,8 @@ const getModules = (
     }),
     w3cCredentials: isCustomDocumentLoaderEnabled()
       ? new W3cCredentialsModule({
-          documentLoader: CustomDocumentLoader,
-        })
+        documentLoader: CustomDocumentLoader,
+      })
       : new W3cCredentialsModule(),
     didcomm: new DidCommModule({
       processDidCommMessagesConcurrently: true,

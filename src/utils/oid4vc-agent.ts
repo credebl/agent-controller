@@ -20,12 +20,13 @@ import {
   W3cCredential,
   W3cV2Credential,
   JsonTransformer,
+  CREDENTIALS_CONTEXT_V1_URL,
+  CREDENTIALS_CONTEXT_V2_URL,
 } from '@credo-ts/core'
-import * as fs from 'fs'
 import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 import { container } from 'tsyringe'
 
-import { SignerMethod, W3cContext } from '../enums/enum'
+import { SignerMethod } from '../enums/enum'
 
 import { validateAuthConfig } from './auth'
 import { checkX509Certificates, processIsoImages } from './helpers'
@@ -42,8 +43,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     agentContext,
     authorization,
   }) => {
-    try {
-      const issuanceMetadata = issuanceSession.issuanceMetadata
+    const issuanceMetadata = issuanceSession.issuanceMetadata
     if (!issuanceMetadata?.['credentials']) throw new Error('credential payload is not provided')
 
     const allCredentialPayload = issuanceMetadata?.['credentials']
@@ -123,22 +123,26 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
         throw new Error(`'doctype' not found in credential configuration,`)
       }
 
-      const parsedCertificate = X509Service.parseCertificate(agentContext, {
-        encodedCertificate: issuerx509certificate[0],
+      const parsedCertificates = issuerx509certificate.map((cert) => {
+        return X509Service.parseCertificate(agentContext, {
+          encodedCertificate: cert,
+        })
       })
 
-      parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
+      parsedCertificates[0].publicJwk.keyId = credential.signerOptions.keyId
       const updatedNamespaces = processIsoImages(credential.payload.namespaces)
       credential.payload.namespaces = updatedNamespaces
       return {
         type: 'credentials',
         format: ClaimFormat.MsoMdoc,
         credentials: holderBinding.keys.map((holderBindingDetails) => ({
-          issuerCertificate: parsedCertificate,
+          issuerCertificate: parsedCertificates as any,
           holderKey: holderBindingDetails.jwk,
           ...credential.payload,
           validityInfo: {
-            ...credential.payload.validityInfo,
+            signed: credential.payload.validityInfo.signed
+              ? new Date(credential.payload.validityInfo.signed)
+              : new Date(),
             validFrom: new Date(credential.payload.validityInfo.validFrom),
             validUntil: new Date(credential.payload.validityInfo.validUntil),
           },
@@ -190,77 +194,100 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       } satisfies OpenId4VciSignSdJwtCredentials
     }
 
-      if (
-        credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJson ||
-        credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJsonLd
-      ) {
-        const payload = credentialPayload[0]?.payload;
-        const context = payload?.['@context'];
-        const contextArray = Array.isArray(context) ? context : context ? [context] : [];
-        const isV2 = contextArray.includes(W3cContext.V2) || !!payload?.validFrom;
-
-        return {
-          format: ClaimFormat.JwtVc,
-          credentials: holderBinding.keys.map((binding) => {
-            // If the binding is JWK and not DID, we should probably handle it or skip throwing
-            const rawSubject = { ...(payload.credentialSubject || {}) };
-            const { id: subjectIdRaw, ...claims } = rawSubject;
-            const subjectId = subjectIdRaw || (binding.method === 'did' ? (binding as any).didUrl : undefined);
-
-            if (subjectId) {
-              rawSubject.id = subjectId;
-            }
-
-            const issuer = payload.issuer || credential.signerOptions.did;
-            const finalIssuer = (isV2 && typeof issuer === 'string') ? { id: issuer } : issuer;
-
-            const mainContext = isV2 ? W3cContext.V2 : W3cContext.V1;
-
-            const finalContext = contextArray.includes(mainContext)
-              ? [mainContext, ...contextArray.filter(c => c !== mainContext)]
-              : [mainContext, ...contextArray];
-
-            const credentialJson: any = {
-              '@context': finalContext,
-              type: payload.type,
-              issuer: finalIssuer,
-              credentialSubject: rawSubject,
-            };
-
-            if (isV2) {
-              credentialJson.validFrom = payload.validFrom || payload.issuanceDate;
-              credentialJson.validUntil = payload.validUntil || payload.expirationDate;
-              // Add issuanceDate for JWT signer compatibility
-              credentialJson.issuanceDate = credentialJson.validFrom;
-              credentialJson.expirationDate = credentialJson.validUntil;
-            } else {
-              credentialJson.issuanceDate = payload.issuanceDate;
-              credentialJson.expirationDate = payload.expirationDate;
-            }
-
-            const credInstance: any = isV2
-              ? JsonTransformer.fromJSON(credentialJson, W3cV2Credential)
-              : JsonTransformer.fromJSON(credentialJson, W3cCredential);
-
-            if (credInstance.credentialSubject) {
-              credInstance.credentialSubject.id = subjectId;
-            }
-
-            return {
-              format: ClaimFormat.JwtVc,
-              verificationMethod: issuerDidVerificationMethod!,
-              credential: credInstance
-            };
-          }),
-          type: 'credentials',
-        } as any
+    if (
+      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJson ||
+      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJsonLd
+    ) {
+      if (credential.signerOptions.method === SignerMethod.X5c) {
+        throw new Error(`X5c signing method is not supported for W3C VC formats (${credentialConfiguration.format})`)
       }
 
-      throw new Error('Invalid request format ' + credentialConfiguration.format)
-    } catch (e: any) {
-      fs.appendFileSync('mapper-error.log', e.stack + '\n');
-      throw e;
+      const payload = credentialPayload[0]?.payload
+      const context = payload?.['@context']
+      const contextArray = Array.isArray(context) ? context : context ? [context] : []
+      const isV2 = contextArray.includes(CREDENTIALS_CONTEXT_V2_URL) || !!payload?.validFrom
+
+      return {
+        format: ClaimFormat.JwtVc,
+        credentials: holderBinding.keys.map((binding) => {
+          let rawSubject: any
+          let subjectId: string | undefined = undefined
+          const bindingDid = binding.method === 'did' ? (binding as any).didUrl : undefined
+
+          if (Array.isArray(payload.credentialSubject)) {
+            rawSubject = payload.credentialSubject.map((subj: any) => {
+              if (subj && typeof subj === 'object') {
+                const itemId = subj.id || bindingDid
+                return itemId ? { ...subj, id: itemId } : { ...subj }
+              }
+              return subj
+            })
+            const firstWithId = rawSubject.find((s: any) => s?.id)
+            subjectId = firstWithId?.id || bindingDid
+          } else {
+            const origSubject = payload.credentialSubject || {}
+            subjectId = origSubject.id || bindingDid
+
+            rawSubject = { ...origSubject }
+            if (subjectId) {
+              rawSubject.id = subjectId
+            }
+          }
+
+          const issuer = payload.issuer || credential.signerOptions.did
+          const finalIssuer = isV2 && typeof issuer === 'string' ? { id: issuer } : issuer
+
+          const mainContext = isV2 ? CREDENTIALS_CONTEXT_V2_URL : CREDENTIALS_CONTEXT_V1_URL
+
+          const finalContext = contextArray.includes(mainContext)
+            ? [mainContext, ...contextArray.filter((c) => c !== mainContext)]
+            : [mainContext, ...contextArray]
+
+          const credentialJson: any = {
+            '@context': finalContext,
+            type: payload.type,
+            issuer: finalIssuer,
+            credentialSubject: rawSubject,
+          }
+
+          if (isV2) {
+            credentialJson.validFrom = payload.validFrom || payload.issuanceDate
+            credentialJson.validUntil = payload.validUntil || payload.expirationDate
+            // Add issuanceDate for JWT signer compatibility
+            credentialJson.issuanceDate = credentialJson.validFrom
+            credentialJson.expirationDate = credentialJson.validUntil
+          } else {
+            credentialJson.issuanceDate = payload.issuanceDate
+            credentialJson.expirationDate = payload.expirationDate
+          }
+
+          const credInstance: any = isV2
+            ? JsonTransformer.fromJSON(credentialJson, W3cV2Credential)
+            : JsonTransformer.fromJSON(credentialJson, W3cCredential)
+
+          if (credInstance.credentialSubject) {
+            if (Array.isArray(credInstance.credentialSubject)) {
+              for (const item of credInstance.credentialSubject) {
+                if (item && typeof item === 'object') {
+                  item.id = item.id || subjectId
+                }
+              }
+            } else {
+              credInstance.credentialSubject.id = subjectId
+            }
+          }
+
+          return {
+            format: ClaimFormat.JwtVc,
+            verificationMethod: issuerDidVerificationMethod,
+            credential: credInstance,
+          }
+        }),
+        type: 'credentials',
+      } as any
     }
+
+    throw new Error('Invalid request format ' + credentialConfiguration.format)
   }
 }
 
