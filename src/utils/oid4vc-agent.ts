@@ -114,9 +114,9 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     }
 
     if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.MsoMdoc) {
-      if (!issuerx509certificate)
+      if (!issuerx509certificate || issuerx509certificate.length === 0)
         throw new Error(
-          `issuerx509certificate is not provided for credential type ${OpenId4VciCredentialFormatProfile.MsoMdoc}`,
+          `issuerx509certificate is not provided or empty for credential type ${OpenId4VciCredentialFormatProfile.MsoMdoc}`,
         )
 
       if (!credentialConfiguration.doctype) {
@@ -205,7 +205,8 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       const payload = credentialPayload[0]?.payload
       const context = payload?.['@context']
       const contextArray = Array.isArray(context) ? context : context ? [context] : []
-      const isV2 = contextArray.includes(CREDENTIALS_CONTEXT_V2_URL) || !!payload?.validFrom
+      const isV2 =
+        contextArray.includes(CREDENTIALS_CONTEXT_V2_URL) || !!payload?.validFrom || !!payload?.validUntil
 
       return {
         format: ClaimFormat.JwtVc,
