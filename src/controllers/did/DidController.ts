@@ -49,12 +49,15 @@ export class DidController extends Controller {
   public async getDidRecordByDid(@Request() request: Req, @Path('did') did: Did) {
     try {
       const resolveResult = await request.agent.dids.resolve(did)
-      const importDid = await request.agent.dids.import({
-        did,
-        overwrite: true,
-      })
       if (!resolveResult.didDocument) {
-        throw new InternalServerError(`Error resolving DID docs for did: ${importDid}`)
+        throw new InternalServerError(`Error resolving DID docs for did: ${did}`)
+      }
+
+      // Only import if not already stored locally — importing with overwrite:true and no
+      // keys would wipe the kmsKeyId mapping stored during DID creation.
+      const [existingRecord] = await request.agent.dids.getCreatedDids({ did })
+      if (!existingRecord) {
+        await request.agent.dids.import({ did, didDocument: resolveResult.didDocument })
       }
 
       return { ...resolveResult, didDocument: resolveResult.didDocument.toJSON() }

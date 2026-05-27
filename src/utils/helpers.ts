@@ -5,6 +5,7 @@ import type { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import { JsonEncoder, JsonTransformer } from '@credo-ts/core'
 import axios from 'axios'
 import { randomBytes } from 'crypto'
+import { deflate, inflate } from 'pako'
 
 import { BadRequestError, InternalServerError } from '../errors/errors'
 
@@ -323,17 +324,20 @@ export async function checkX509Certificates(
   return checkTrustCertificatesExist(trustListUrl, x509Certificates, label, resolvedTenantId, token)
 }
 
+/**
+ * Decode a BSL encodedList (base64url-encoded gzip-compressed bitstring) into a binary string of 0s and 1s.
+ * Compatible with pako.inflate used by @credo-ts/core's bitstringStatusListVerify.
+ */
 export function customInflate(encodedList: string): string {
   if (!encodedList || typeof encodedList !== 'string') {
     throw new BadRequestError('Invalid input: encodedList must be a non-empty string')
   }
 
   try {
-    console.log('Encoded List:', encodedList)
-    const compressedData = Buffer.from(encodedList, 'base64url')
-    const decompressedData = new Uint8Array(compressedData)
-    return Array.from(decompressedData)
-      .map((byte) => byte.toString(2).padStart(8, '0'))
+    const compressedBytes = new Uint8Array(Buffer.from(encodedList, 'base64url'))
+    const decompressedBytes = inflate(compressedBytes) as Uint8Array
+    return Array.from(decompressedBytes)
+      .map((byte: number) => byte.toString(2).padStart(8, '0').split('').reverse().join(''))
       .join('')
   } catch (error) {
     if (error instanceof Error) {
@@ -344,18 +348,22 @@ export function customInflate(encodedList: string): string {
   }
 }
 
+/**
+ * Encode a binary string (0s and 1s) into a BSL encodedList: gzip-compress then base64url-encode.
+ * Compatible with pako.inflate used by @credo-ts/core's bitstringStatusListVerify.
+ */
 export function customDeflate(data: string): string {
   if (!data || typeof data !== 'string') {
     throw new BadRequestError('Invalid input: data must be a non-empty string')
   }
 
   try {
-    const binaryArray = data.match(/.{1,8}/g)?.map((byte) => parseInt(byte, 2))
-    if (!binaryArray) {
+    const bytes = data.match(/.{1,8}/g)?.map((chunk) => parseInt(chunk.split('').reverse().join(''), 2))
+    if (!bytes) {
       throw new Error('Failed to parse binary string into bytes')
     }
-    const compressedData = new Uint8Array(binaryArray)
-    return Buffer.from(compressedData).toString('base64url')
+    const compressed = deflate(new Uint8Array(bytes), { level: 9 })
+    return Buffer.from(compressed).toString('base64url')
   } catch (error) {
     if (error instanceof Error) {
       throw new InternalServerError(`Failed to compress data: ${error.message}`)

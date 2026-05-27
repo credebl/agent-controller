@@ -36,6 +36,6 @@ export const ALGORITHM_MAP: Record<string, string> = {
   secp256k1: 'ES256K',
 }
 
-export const initialBitsEncoded = `uH4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA`
+export const initialBitsEncoded = `H4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA`
 export const bitstringStatusListEntry = `BitstringStatusListEntry`
 export const BSLC_ENDPOINT = '/bslc'

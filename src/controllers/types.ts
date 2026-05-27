@@ -465,9 +465,11 @@ export type ExtensibleW3cCredential = W3cCredential & {
 }
 
 export type CustomW3cJsonLdSignCredentialOptions = Omit<W3cJsonLdSignCredentialOptions, 'format' | 'credential'> & {
-  credential: Omit<W3cCredential, 'context' | 'credentialSubject'> & {
+  credential: Omit<W3cCredential, 'context' | 'credentialSubject' | 'credentialStatus'> & {
     '@context': Array<string | Record<string, unknown>>
     credentialSubject: SingleOrArray<JsonObject>
+    /** Open type so TSOA preserves all credentialStatus fields (e.g. BSL statusPurpose, statusListIndex). */
+    credentialStatus?: Record<string, unknown>
   }
   [key: string]: unknown
 }
@@ -645,14 +647,14 @@ export enum BSLStatusPurpose {
 
 export interface CredentialMetadata {
   id: string
-  revocationId: string
-  credentialId: string
-  bslcId: string
-  bslcUrl: string
+  revocation_id: string
+  credential_id: string
+  bslc_id: string
+  bslc_url: string
   index: number
-  issuerId: string
-  statusPurpose: BSLStatusPurpose
-  isValid: boolean
-  createdAt: Date
-  updatedAt: Date
+  issuer_id: string
+  status_purpose: string
+  is_valid: boolean
+  created_at: string
+  updated_at: string
 }

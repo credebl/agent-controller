@@ -7,7 +7,7 @@ import { Request as Req } from 'express'
 import { Controller, Get, Path, Security, Tags, Example, Response, Route, Post, Body, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
-import { initialBitsEncoded, BSLC_ENDPOINT } from '../../utils/constant'
+import { BSLC_ENDPOINT } from '../../utils/constant'
 import { CredentialContext, BSLCredentialType, RevocationListType, BSLSignatureType, SCOPES } from '../../enums/enum'
 import ErrorHandlingService from '../../errorHandlingService'
 import { BadRequestError, InternalServerError } from '../../errors/errors'
@@ -28,6 +28,10 @@ export class StatusListController extends Controller {
 
   // ─── Private helpers ──────────────────────────────────────────────────────
 
+  private static readonly MIN_BITSTRING_LENGTH = 1_000
+  private static readonly MAX_BITSTRING_LENGTH = 500_000
+  private static readonly DEFAULT_BITSTRING_LENGTH = 131_072
+
   private getBslcConfig(): { serverUrl: string; apiKey: string } {
     const serverUrl = process.env.BSLC_SERVER_URL
     const apiKey = process.env.BSLC_SERVER_TOKEN
@@ -36,9 +40,13 @@ export class StatusListController extends Controller {
     return { serverUrl, apiKey }
   }
 
-  private buildBSLCPayload(issuerDID: string, statusPurpose: string, bslcId: string): BSLCredentialPayload {
+  private generateInitialEncodedList(length: number): string {
+    return customDeflate('0'.repeat(length))
+  }
+
+  private buildBSLCPayload(issuerDID: string, statusPurpose: string, bslcId: string, encodedList: string): BSLCredentialPayload {
     const { serverUrl } = this.getBslcConfig()
-    const credentialId = `${serverUrl}${process.env.BSLC_ROUTE}/${bslcId}`
+    const credentialId = `${serverUrl}${process.env.BSLC_ROUTE}${BSLC_ENDPOINT}/${bslcId}`
 
     return {
       '@context': [CredentialContext.V1, CredentialContext.V2],
@@ -50,7 +58,7 @@ export class StatusListController extends Controller {
         id: credentialId,
         type: RevocationListType.Bitstring,
         statusPurpose,
-        encodedList: initialBitsEncoded,
+        encodedList,
       },
       credentialStatus: {
         id: credentialId,
@@ -64,23 +72,31 @@ export class StatusListController extends Controller {
   /**
    * Create a Bitstring Status List Credential (BSLC) and upload it to the BSLC server.
    */
-  //TODO: Add logic to create initial bitstring based on the input for total credentials supported in the BSLC
   @Post('/create-bslc')
   public async createBitstringStatusListCredential(
     @Request() request: Req,
-    @Body() body: { issuerDID: string; statusPurpose: string; verificationMethodId: string },
+    @Body() body: { issuerDID: string; statusPurpose: string; verificationMethodId: string; listLength?: number },
   ) {
     try {
-      const { issuerDID, statusPurpose, verificationMethodId } = body
+      const { issuerDID, statusPurpose, verificationMethodId, listLength } = body
 
       const missingField = [['issuerDID', issuerDID], ['statusPurpose', statusPurpose], ['verificationMethodId', verificationMethodId]].find(([, v]) => !v)?.[0]
       if (missingField) throw new BadRequestError(`${missingField} is required`)
+
+      const resolvedLength = listLength ?? StatusListController.DEFAULT_BITSTRING_LENGTH
+      if (resolvedLength < StatusListController.MIN_BITSTRING_LENGTH) {
+        throw new BadRequestError(`listLength must be at least ${StatusListController.MIN_BITSTRING_LENGTH}`)
+      }
+      if (resolvedLength > StatusListController.MAX_BITSTRING_LENGTH) {
+        throw new BadRequestError(`listLength must not exceed ${StatusListController.MAX_BITSTRING_LENGTH}`)
+      }
 
       const { serverUrl, apiKey } = this.getBslcConfig()
       if (!process.env.BSLC_ROUTE) throw new InternalServerError('BSLC_ROUTE is not configured')
 
       const bslcId = utils.uuid()
-      const credentialPayload = this.buildBSLCPayload(issuerDID, statusPurpose, bslcId)
+      const encodedList = this.generateInitialEncodedList(resolvedLength)
+      const credentialPayload = this.buildBSLCPayload(issuerDID, statusPurpose, bslcId, encodedList)
 
       let signedCredential: W3cJsonLdVerifiableCredential
       try {
@@ -194,31 +210,34 @@ export class StatusListController extends Controller {
       if (!credentialId) throw new BadRequestError('credentialId is required')
 
       const { serverUrl, apiKey } = this.getBslcConfig()
+      const bslcRoute = process.env.BSLC_ROUTE ?? '/bslc-server'
 
-      // Fetch credential metadata
-      const metaResponse = (await this.apiService.getRequest(`${serverUrl}/credentials/${credentialId}`, apiKey)) as {
-        data: { data: object }
-      }
-      if (!metaResponse || typeof metaResponse.data?.data !== 'object') {
+      // Fetch credential metadata — apiService.getRequest returns response.json() directly
+      const metaResponse = (await this.apiService.getRequest(
+        `${serverUrl}${bslcRoute}/credentials/${credentialId}`,
+        apiKey,
+      )) as { success: boolean; data: CredentialMetadata }
+      if (!metaResponse?.success || !metaResponse.data) {
         throw new InternalServerError('Failed to fetch the credential details')
       }
 
-      const credentialDetails = metaResponse.data.data as CredentialMetadata
-      if (!credentialDetails) throw new InternalServerError('Credential details not found')
-      if (!credentialDetails.isValid) throw new BadRequestError('The credential is already revoked')
-      if (!credentialDetails.bslcUrl) throw new InternalServerError('bslcUrl not found in credential details')
+      const credentialDetails = metaResponse.data
+      if (!credentialDetails.is_valid) throw new BadRequestError('The credential is already revoked')
+      if (!credentialDetails.bslc_url) throw new InternalServerError('bslc_url not found in credential details')
 
-      // Fetch the existing BSLC credential
-      const bslcResponse = await this.apiService.getRequest(credentialDetails.bslcUrl, apiKey)
-      if (!bslcResponse?.data) throw new InternalServerError('Invalid response while fetching the BSLC credential')
-
-      const bslcCredential = bslcResponse.data
-      if (!bslcCredential?.credentialSubject?.claims?.encodedList) {
+      // Fetch the existing BSLC credential — GET /bslc-server/bslc/:id returns raw JSON (no wrapper)
+      const bslcCredential = await this.apiService.getRequest(credentialDetails.bslc_url)
+      if (!bslcCredential?.credentialSubject?.encodedList) {
         throw new InternalServerError('Invalid BSLC credential: encodedList missing')
       }
 
+      // Capture proof fields before mutation, then strip old proof before re-signing
+      const proofType: string = bslcCredential.proof?.type ?? BSLSignatureType.Ed25519Signature2018
+      const verificationMethod: string = bslcCredential.proof?.verificationMethod
+      delete bslcCredential.proof
+
       // Flip the bit at the revocation index
-      const bitstring = customInflate(bslcCredential.credentialSubject.claims.encodedList)
+      const bitstring = customInflate(bslcCredential.credentialSubject.encodedList)
       const revocationIndex = parseInt(credentialDetails.index.toString(), 10)
 
       if (isNaN(revocationIndex) || revocationIndex < 0 || revocationIndex >= bitstring.length) {
@@ -226,38 +245,38 @@ export class StatusListController extends Controller {
       }
       if (bitstring[revocationIndex] === '1') throw new BadRequestError('The credential is already revoked')
 
-      bslcCredential.credentialSubject.claims.encodedList = customDeflate(
+      bslcCredential.credentialSubject.encodedList = customDeflate(
         bitstring.substring(0, revocationIndex) + '1' + bitstring.substring(revocationIndex + 1),
       )
 
       // Re-sign the updated BSLC credential
-      let signedCredential
+      let signedCredential: W3cJsonLdVerifiableCredential
       try {
         signedCredential = await request.agent.w3cCredentials.signCredential<ClaimFormat.LdpVc>({
           credential: bslcCredential as any,
           format: ClaimFormat.LdpVc,
-          proofType: bslcCredential.proof?.type ?? BSLSignatureType.Ed25519Signature2018,
-          verificationMethod: bslcCredential.proof?.verificationMethod,
+          proofType,
+          verificationMethod,
         })
       } catch (signingError) {
         throw new InternalServerError(`Failed to re-sign the updated BSLC credential: ${signingError}`)
       }
 
-      // Upload updated BSLC back to the server
+      // Upload updated BSLC back to the server — PUT /bslc-server/bslc with { id, bslcObject }
       const uploadResponse = await this.apiService.putRequest(
-        `${serverUrl}${process.env.BSLC_ROUTE}`,
-        signedCredential,
+        `${serverUrl}${bslcRoute}${BSLC_ENDPOINT}`,
+        { id: credentialDetails.bslc_id, bslcObject: signedCredential.toJson() as Record<string, unknown> },
         apiKey,
       )
-      if (!uploadResponse?.data) throw new InternalServerError('Failed to upload the updated BSLC credential')
+      if (!uploadResponse?.success) throw new InternalServerError('Failed to upload the updated BSLC credential')
 
       // Mark the credential as revoked in the BSLC server
       const statusUpdateResponse = await this.apiService.patchRequest(
-        `${serverUrl}/credentials/status/${revocationId}`,
+        `${serverUrl}${bslcRoute}/credentials/status/${revocationId}`,
         { isValid: false },
         apiKey,
       )
-      if (!statusUpdateResponse?.data) {
+      if (!statusUpdateResponse?.success) {
         throw new InternalServerError('Failed to update the credential status in the BSLC server')
       }
 

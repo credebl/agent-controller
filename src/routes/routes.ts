@@ -1530,14 +1530,14 @@ const models: TsoaRoute.Models = {
         "type": {"ref":"Pick_W3cJsonLdSignCredentialOptions.Exclude_keyofW3cJsonLdSignCredentialOptions.format-or-credential__","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Pick_W3cCredential.Exclude_keyofW3cCredential.context-or-credentialSubject__": {
+    "Pick_W3cCredential.Exclude_keyofW3cCredential.context-or-credentialSubject-or-credentialStatus__": {
         "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"issuer":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"W3cIssuer"}],"required":true},"type":{"dataType":"array","array":{"dataType":"string"},"required":true},"id":{"dataType":"string"},"issuanceDate":{"dataType":"string","required":true},"expirationDate":{"dataType":"string"},"credentialSchema":{"ref":"SingleOrArray_W3cCredentialSchema_"},"credentialStatus":{"dataType":"union","subSchemas":[{"ref":"W3cCredentialStatus"},{"ref":"BitStringStatusListEntry"}]}},"validators":{}},
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"issuer":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"W3cIssuer"}],"required":true},"type":{"dataType":"array","array":{"dataType":"string"},"required":true},"id":{"dataType":"string"},"issuanceDate":{"dataType":"string","required":true},"expirationDate":{"dataType":"string"},"credentialSchema":{"ref":"SingleOrArray_W3cCredentialSchema_"}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Omit_W3cCredential.context-or-credentialSubject_": {
+    "Omit_W3cCredential.context-or-credentialSubject-or-credentialStatus_": {
         "dataType": "refAlias",
-        "type": {"ref":"Pick_W3cCredential.Exclude_keyofW3cCredential.context-or-credentialSubject__","validators":{}},
+        "type": {"ref":"Pick_W3cCredential.Exclude_keyofW3cCredential.context-or-credentialSubject-or-credentialStatus__","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "SingleOrArray_JsonObject_": {
@@ -1547,7 +1547,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "CustomW3cJsonLdSignCredentialOptions": {
         "dataType": "refAlias",
-        "type": {"dataType":"intersection","subSchemas":[{"ref":"Omit_W3cJsonLdSignCredentialOptions.format-or-credential_"},{"dataType":"nestedObjectLiteral","nestedProperties":{"credential":{"dataType":"intersection","subSchemas":[{"ref":"Omit_W3cCredential.context-or-credentialSubject_"},{"dataType":"nestedObjectLiteral","nestedProperties":{"credentialSubject":{"ref":"SingleOrArray_JsonObject_","required":true},"@context":{"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"Record_string.unknown_"}]},"required":true}}}],"required":true}},"additionalProperties":{"dataType":"any"}}],"validators":{}},
+        "type": {"dataType":"intersection","subSchemas":[{"ref":"Omit_W3cJsonLdSignCredentialOptions.format-or-credential_"},{"dataType":"nestedObjectLiteral","nestedProperties":{"credential":{"dataType":"intersection","subSchemas":[{"ref":"Omit_W3cCredential.context-or-credentialSubject-or-credentialStatus_"},{"dataType":"nestedObjectLiteral","nestedProperties":{"credentialStatus":{"ref":"Record_string.unknown_"},"credentialSubject":{"ref":"SingleOrArray_JsonObject_","required":true},"@context":{"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"Record_string.unknown_"}]},"required":true}}}],"required":true}},"additionalProperties":{"dataType":"any"}}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "SignDataOptions": {
@@ -2617,7 +2617,7 @@ export function RegisterRoutes(app: Router) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsStatusListController_createBitstringStatusListCredential: Record<string, TsoaRoute.ParameterSchema> = {
                 request: {"in":"request","name":"request","required":true,"dataType":"object"},
-                body: {"in":"body","name":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"verificationMethodId":{"dataType":"string","required":true},"statusPurpose":{"dataType":"string","required":true},"issuerDID":{"dataType":"string","required":true}}},
+                body: {"in":"body","name":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"listLength":{"dataType":"double"},"verificationMethodId":{"dataType":"string","required":true},"statusPurpose":{"dataType":"string","required":true},"issuerDID":{"dataType":"string","required":true}}},
         };
         app.post('/status-list/create-bslc',
             authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
