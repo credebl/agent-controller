@@ -1,0 +1,56 @@
+diff --git a/node_modules/@credo-ts/didcomm/build/DidCommEnvelopeService.mjs b/node_modules/@credo-ts/didcomm/build/DidCommEnvelopeService.mjs
+index 7a3bd28..eff72ce 100644
+--- a/node_modules/@credo-ts/didcomm/build/DidCommEnvelopeService.mjs
++++ b/node_modules/@credo-ts/didcomm/build/DidCommEnvelopeService.mjs
+@@ -151,6 +151,7 @@ let DidCommEnvelopeService = class DidCommEnvelopeService {
+ 				to: TypedArrayEncoder.toBase58(recipientKeys[0].publicKey.publicKey),
+ 				message: encryptedMessage
+ 			});
++			forwardMessage["messageType"] = message['@type'];
+ 			recipientKeys = [routingKey];
+ 			this.logger.debug("Forward message created", forwardMessage);
+ 			const forwardJson = forwardMessage.toJSON({ useDidSovPrefixWhereAllowed: didcommConfig.useDidSovPrefixWhereAllowed });
+diff --git a/node_modules/@credo-ts/didcomm/build/modules/routing/messages/DidCommForwardMessage.d.mts b/node_modules/@credo-ts/didcomm/build/modules/routing/messages/DidCommForwardMessage.d.mts
+index b018ad2..7256cfc 100644
+--- a/node_modules/@credo-ts/didcomm/build/modules/routing/messages/DidCommForwardMessage.d.mts
++++ b/node_modules/@credo-ts/didcomm/build/modules/routing/messages/DidCommForwardMessage.d.mts
+@@ -7,6 +7,7 @@ import "../../../index.mjs";
+ interface DidCommForwardMessageOptions {
+   id?: string;
+   to: string;
++  messageType?: string;
+   message: DidCommEncryptedMessage;
+ }
+ /**
+@@ -23,6 +24,7 @@ declare class DidCommForwardMessage extends DidCommMessage {
+   readonly type: string;
+   static readonly type: ParsedMessageType;
+   to: string;
++  messageType?: string;
+   message: DidCommEncryptedMessage;
+ }
+ //#endregion
+diff --git a/node_modules/@credo-ts/didcomm/build/modules/routing/messages/DidCommForwardMessage.mjs b/node_modules/@credo-ts/didcomm/build/modules/routing/messages/DidCommForwardMessage.mjs
+index a950384..120fc5e 100644
+--- a/node_modules/@credo-ts/didcomm/build/modules/routing/messages/DidCommForwardMessage.mjs
++++ b/node_modules/@credo-ts/didcomm/build/modules/routing/messages/DidCommForwardMessage.mjs
+@@ -22,6 +22,7 @@ var DidCommForwardMessage = class DidCommForwardMessage extends DidCommMessage {
+ 		if (options) {
+ 			this.id = options.id || this.generateId();
+ 			this.to = options.to;
++			this.messageType = options.messageType;
+ 			this.message = options.message;
+ 		}
+ 	}
+diff --git a/node_modules/@credo-ts/didcomm/build/types.d.mts b/node_modules/@credo-ts/didcomm/build/types.d.mts
+index f9c08e2..a3d491f 100644
+--- a/node_modules/@credo-ts/didcomm/build/types.d.mts
++++ b/node_modules/@credo-ts/didcomm/build/types.d.mts
+@@ -7,6 +7,7 @@ interface DidCommPlaintextMessage {
+     thid?: string;
+     pthid?: string;
+   };
++  messageType?: string;
+   [key: string]: unknown;
+ }
+ type DidCommEncryptedMessage = {
