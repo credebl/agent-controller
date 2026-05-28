@@ -468,6 +468,7 @@ export type CustomW3cJsonLdSignCredentialOptions = Omit<W3cJsonLdSignCredentialO
   credential: Omit<W3cCredential, 'context' | 'credentialSubject'> & {
     '@context': Array<string | Record<string, unknown>>
     credentialSubject: SingleOrArray<JsonObject>
+    [key: string]: unknown
   }
   [key: string]: unknown
 }
