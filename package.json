@@ -75,7 +75,7 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
-    "joi": "^17.13.3",
+    "joi": "^18.2.1",
     "jsonwebtoken": "^9.0.2",
     "nats": "^2.29.3",
     "node-cron": "^4.2.1",
