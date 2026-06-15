@@ -1140,9 +1140,99 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"DcqlClaim": {
+				"properties": {
+					"path": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"intent_to_retain": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"path"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DcqlCredential": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"format": {
+						"type": "string"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/Record_string.any_"
+					},
+					"require_cryptographic_holder_binding": {
+						"type": "boolean"
+					},
+					"claims": {
+						"items": {
+							"$ref": "#/components/schemas/DcqlClaim"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"id",
+					"format"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DcqlCredentialSet": {
+				"properties": {
+					"options": {
+						"items": {
+							"items": {
+								"type": "string"
+							},
+							"type": "array"
+						},
+						"type": "array"
+					},
+					"required": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"options"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DcqlQuery": {
+				"properties": {
+					"credentials": {
+						"items": {
+							"$ref": "#/components/schemas/DcqlCredential"
+						},
+						"type": "array"
+					},
+					"credential_sets": {
+						"items": {
+							"$ref": "#/components/schemas/DcqlCredentialSet"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"credentials"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"DcqlDefinition": {
 				"properties": {
-					"query": {}
+					"query": {
+						"$ref": "#/components/schemas/DcqlQuery"
+					}
 				},
 				"required": [
 					"query"
@@ -3481,19 +3571,6 @@
 					"id": {
 						"type": "string"
 					},
-					"@context": {
-						"items": {
-							"anyOf": [
-								{
-									"type": "string"
-								},
-								{
-									"$ref": "#/components/schemas/JsonObject"
-								}
-							]
-						},
-						"type": "array"
-					},
 					"issuanceDate": {
 						"type": "string"
 					},
@@ -3510,7 +3587,6 @@
 				"required": [
 					"issuer",
 					"type",
-					"@context",
 					"issuanceDate"
 				],
 				"type": "object",
@@ -3861,7 +3937,7 @@
 			},
 			"W3cJsonLdVerifiableCredential": {
 				"properties": {
-					"@context": {
+					"context": {
 						"items": {
 							"anyOf": [
 								{
@@ -3913,7 +3989,7 @@
 					}
 				},
 				"required": [
-					"@context",
+					"context",
 					"type",
 					"issuer",
 					"issuanceDate",

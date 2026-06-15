@@ -570,10 +570,49 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DcqlClaim": {
+        "dataType": "refObject",
+        "properties": {
+            "path": {"dataType":"array","array":{"dataType":"string"},"required":true},
+            "intent_to_retain": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DcqlCredential": {
+        "dataType": "refObject",
+        "properties": {
+            "id": {"dataType":"string","required":true},
+            "format": {"dataType":"string","required":true},
+            "meta": {"ref":"Record_string.any_"},
+            "require_cryptographic_holder_binding": {"dataType":"boolean"},
+            "claims": {"dataType":"array","array":{"dataType":"refObject","ref":"DcqlClaim"}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DcqlCredentialSet": {
+        "dataType": "refObject",
+        "properties": {
+            "options": {"dataType":"array","array":{"dataType":"array","array":{"dataType":"string"}},"required":true},
+            "required": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DcqlQuery": {
+        "dataType": "refObject",
+        "properties": {
+            "credentials": {"dataType":"array","array":{"dataType":"refObject","ref":"DcqlCredential"},"required":true},
+            "credential_sets": {"dataType":"array","array":{"dataType":"refObject","ref":"DcqlCredentialSet"}},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "DcqlDefinition": {
         "dataType": "refObject",
         "properties": {
-            "query": {"dataType":"any","required":true},
+            "query": {"ref":"DcqlQuery","required":true},
         },
         "additionalProperties": false,
     },
@@ -1474,7 +1513,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Pick_W3cCredential.Exclude_keyofW3cCredential.context-or-credentialSubject__": {
         "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"issuer":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"W3cIssuer"}],"required":true},"type":{"dataType":"array","array":{"dataType":"string"},"required":true},"id":{"dataType":"string"},"@context":{"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"JsonObject"}]},"required":true},"issuanceDate":{"dataType":"string","required":true},"expirationDate":{"dataType":"string"},"credentialSchema":{"ref":"SingleOrArray_W3cCredentialSchema_"},"credentialStatus":{"ref":"W3cCredentialStatus"}},"validators":{}},
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"issuer":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"W3cIssuer"}],"required":true},"type":{"dataType":"array","array":{"dataType":"string"},"required":true},"id":{"dataType":"string"},"issuanceDate":{"dataType":"string","required":true},"expirationDate":{"dataType":"string"},"credentialSchema":{"ref":"SingleOrArray_W3cCredentialSchema_"},"credentialStatus":{"ref":"W3cCredentialStatus"}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Omit_W3cCredential.context-or-credentialSubject_": {
@@ -1606,7 +1645,7 @@ const models: TsoaRoute.Models = {
     "W3cJsonLdVerifiableCredential": {
         "dataType": "refObject",
         "properties": {
-            "@context": {"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"JsonObject"}]},"required":true},
+            "context": {"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"JsonObject"}]},"required":true},
             "id": {"dataType":"string"},
             "type": {"dataType":"array","array":{"dataType":"string"},"required":true},
             "issuer": {"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"W3cIssuer"}],"required":true},
