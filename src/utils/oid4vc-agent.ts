@@ -205,8 +205,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       const payload = credentialPayload[0]?.payload
       const context = payload?.['@context']
       const contextArray = Array.isArray(context) ? context : context ? [context] : []
-      const isV2 =
-        contextArray.includes(CREDENTIALS_CONTEXT_V2_URL) || !!payload?.validFrom || !!payload?.validUntil
+      const isV2 = contextArray.includes(CREDENTIALS_CONTEXT_V2_URL) || !!payload?.validFrom || !!payload?.validUntil
 
       return {
         format: ClaimFormat.JwtVc,

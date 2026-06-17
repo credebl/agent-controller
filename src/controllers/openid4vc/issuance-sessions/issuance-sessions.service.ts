@@ -1,10 +1,8 @@
 import type { OpenId4VcIssuanceSessionsCreateOffer } from '../types/issuer.types'
 import type { Request as Req } from 'express'
 
-import { type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
-import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc'
-
 import { CREDENTIALS_CONTEXT_V1_URL, CREDENTIALS_CONTEXT_V2_URL } from '@credo-ts/core'
+import { OpenId4VcIssuanceSessionRepository, type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
 
 import { CredentialFormat, SignerMethod } from '../../../enums/enum'
 import { BadRequestError, NotFoundError } from '../../../errors/errors'
