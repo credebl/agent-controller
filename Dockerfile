@@ -1,5 +1,5 @@
 # Stage 1: Builder stage
-FROM node:22.22.2 AS builder
+FROM node:26.3.1 AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN yarn global add patch-package
 RUN yarn build
 
 # Stage 2: Production stage  
-FROM node:22.22.2-slim
+FROM node:26.3.1-slim
 
 # Update system packages and install security updates
 RUN apt-get update && apt-get upgrade -y && \
