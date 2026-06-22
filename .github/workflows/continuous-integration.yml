@@ -17,7 +17,7 @@ jobs:
     name: Validate
     steps:
       - name: Checkout credo-controller
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup node v20
         uses: actions/setup-node@v4
