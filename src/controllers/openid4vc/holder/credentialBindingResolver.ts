@@ -104,6 +104,7 @@ export function getCredentialBindingResolver({
         credentialFormat === OpenId4VciCredentialFormatProfile.SdJwtDc ||
         credentialFormat === OpenId4VciCredentialFormatProfile.JwtVcJsonLd ||
         credentialFormat === OpenId4VciCredentialFormatProfile.JwtVcJson ||
+        credentialFormat === OpenId4VciCredentialFormatProfile.LdpVc ||
         credentialFormat === OpenId4VciCredentialFormatProfile.MsoMdoc)
     ) {
       return {

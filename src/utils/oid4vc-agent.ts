@@ -196,7 +196,8 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
 
     if (
       credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJson ||
-      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJsonLd
+      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJsonLd ||
+      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.LdpVc
     ) {
       if (credential.signerOptions.method === SignerMethod.X5c) {
         throw new Error(`X5c signing method is not supported for W3C VC formats (${credentialConfiguration.format})`)
@@ -208,7 +209,10 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       const isV2 = contextArray.includes(CREDENTIALS_CONTEXT_V2_URL) || !!payload?.validFrom || !!payload?.validUntil
 
       return {
-        format: ClaimFormat.JwtVc,
+        format:
+          credentialConfiguration.format === OpenId4VciCredentialFormatProfile.LdpVc
+            ? ClaimFormat.LdpVc
+            : ClaimFormat.JwtVc,
         credentials: holderBinding.keys.map((binding) => {
           let rawSubject: any
           let subjectId: string | undefined = undefined
@@ -252,13 +256,17 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
 
           if (isV2) {
             credentialJson.validFrom = payload.validFrom || payload.issuanceDate
-            credentialJson.validUntil = payload.validUntil || payload.expirationDate
+            if (payload.validUntil || payload.expirationDate) {
+              credentialJson.validUntil = payload.validUntil || payload.expirationDate
+              credentialJson.expirationDate = credentialJson.validUntil
+            }
             // Add issuanceDate for JWT signer compatibility
             credentialJson.issuanceDate = credentialJson.validFrom
-            credentialJson.expirationDate = credentialJson.validUntil
           } else {
             credentialJson.issuanceDate = payload.issuanceDate
-            credentialJson.expirationDate = payload.expirationDate
+            if (payload.expirationDate) {
+              credentialJson.expirationDate = payload.expirationDate
+            }
           }
 
           const credInstance: any = isV2
@@ -278,7 +286,10 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
           }
 
           return {
-            format: ClaimFormat.JwtVc,
+            format:
+              credentialConfiguration.format === OpenId4VciCredentialFormatProfile.LdpVc
+                ? ClaimFormat.LdpVc
+                : ClaimFormat.JwtVc,
             verificationMethod: issuerDidVerificationMethod,
             credential: credInstance,
           }
