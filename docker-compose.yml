@@ -7,6 +7,8 @@ services:
     environment:
       # possible to set values using env variables
       AFJ_REST_LOG_LEVEL: 1
+    env_file:
+      - .env
     volumes:
       # also possible to set values using json
       - ./samples/cliConfig.json:/config.json
