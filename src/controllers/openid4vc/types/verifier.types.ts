@@ -34,26 +34,31 @@ export interface PresentationDefinition {
 /*                                 DCQL MODELS                                */
 /* -------------------------------------------------------------------------- */
 
-// export interface DcqlClaim {
-//   path: string[]
-//   intent_to_retain?: boolean
-// }
+export interface DcqlClaim {
+  path: string[]
+  intent_to_retain?: boolean
+}
 
-// export interface DcqlCredential {
-//   id: string
-//   format: string
-//   meta?: Record<string, any>
-//   require_cryptographic_holder_binding?: boolean
-//   claims: DcqlClaim[]
-// }
+export interface DcqlCredential {
+  id: string
+  format: string
+  meta?: Record<string, any>
+  require_cryptographic_holder_binding?: boolean
+  claims?: DcqlClaim[]
+}
 
-// export interface DcqlQuery {
-//   combine?: 'all' | 'any'
-//   credentials: DcqlCredential[]
-// }
+export interface DcqlCredentialSet {
+  options: string[][]
+  required?: boolean
+}
+
+export interface DcqlQuery {
+  credentials: DcqlCredential[]
+  credential_sets?: DcqlCredentialSet[]
+}
 
 export interface DcqlDefinition {
-  query: any
+  query: DcqlQuery
 }
 
 /* -------------------------------------------------------------------------- */
@@ -90,6 +95,7 @@ export interface CreateAuthorizationRequest {
 
   requestSigner: OpenId4VcJwtIssuerDid | OpenId4VcIssuerX5cOptions
   expectedOrigins?: string[]
+  version?: 'v1' | 'v1.draft21' | 'v1.draft24'
 }
 
 /* -------------------------------------------------------------------------- */
@@ -99,6 +105,8 @@ export interface CreateAuthorizationRequest {
 export class OpenId4VcSiopVerifierClientMetadata {
   client_name?: string
   logo_uri?: string
+  background_color?: string
+  text_color?: string
 }
 
 export class OpenId4VcSiopCreateVerifierOptions {

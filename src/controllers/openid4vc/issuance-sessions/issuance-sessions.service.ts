@@ -1,8 +1,8 @@
 import type { OpenId4VcIssuanceSessionsCreateOffer } from '../types/issuer.types'
 import type { Request as Req } from 'express'
 
-import { type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
-import { OpenId4VcIssuanceSessionRepository } from '@credo-ts/openid4vc'
+import { CREDENTIALS_CONTEXT_V1_URL, CREDENTIALS_CONTEXT_V2_URL } from '@credo-ts/core'
+import { OpenId4VcIssuanceSessionRepository, type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
 
 import { CredentialFormat, SignerMethod } from '../../../enums/enum'
 import { BadRequestError, NotFoundError } from '../../../errors/errors'
@@ -24,18 +24,27 @@ class IssuanceSessionsService {
       credentials.map(async (cred) => {
         const supported = issuer.credentialConfigurationsSupported[cred.credentialSupportedId]
 
-        this.validateCredentialConfig(cred, supported)
+        const format = cred.format as unknown as CredentialFormat
+        const isJsonLdFormat = format === CredentialFormat.JwtVcJsonLd || format === CredentialFormat.LdpVc
+        const effectiveVersion = options.version === 'v2.0' && isJsonLdFormat ? 'v2.0' : undefined
+
+        this.validateCredentialConfig(cred, supported, effectiveVersion)
 
         const statusBlock = await this.processStatusList(cred, options, agentReq, offerStatusInfo)
 
         const currentVct = cred.payload && 'vct' in cred.payload ? cred.payload.vct : undefined
-        return {
-          ...cred,
-          payload: {
+        const transformedPayload = this.transformPayloadForVersion(
+          {
             ...cred.payload,
             vct: currentVct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
             ...(statusBlock ? { status: statusBlock } : {}),
           },
+          effectiveVersion,
+        )
+
+        return {
+          ...cred,
+          payload: transformedPayload,
         }
       }),
     )
@@ -53,47 +62,19 @@ class IssuanceSessionsService {
     if (!issuerModule) {
       throw new Error('OID4VC issuer module not initialized')
     }
-    const preAuthorizedCodeFlowConfig = this.resolvePreAuthorizedCodeFlowConfig(options.preAuthorizedCodeFlowConfig)
-
     const { credentialOffer, issuanceSession } = await issuerModule.createCredentialOffer({
       issuerId: publicIssuerId,
       issuanceMetadata: options.issuanceMetadata,
       credentialConfigurationIds: credentials.map((c) => c.credentialSupportedId),
-      preAuthorizedCodeFlowConfig,
+      preAuthorizedCodeFlowConfig: options.preAuthorizedCodeFlowConfig,
       authorizationCodeFlowConfig: options.authorizationCodeFlowConfig,
+      version: 'v1',
     })
 
     return { credentialOffer, issuanceSession }
   }
 
-  private resolvePreAuthorizedCodeFlowConfig(
-    config: OpenId4VcIssuanceSessionsCreateOffer['preAuthorizedCodeFlowConfig'],
-  ) {
-    if (!config) return undefined
-
-    const hasTxCode = config.txCode != null
-    const hasAuthServerUrl = config.authorizationServerUrl != null
-
-    if (hasTxCode !== hasAuthServerUrl) {
-      throw new BadRequestError(
-        'Both txCode and authorizationServerUrl must be provided together for normal flow, or both must be omitted for no-auth flow',
-      )
-    }
-
-    if (!hasTxCode) return {}
-
-    if (Object.keys(config.txCode!).length === 0) {
-      throw new BadRequestError('txCode must not be an empty object when provided')
-    }
-
-    if (config.authorizationServerUrl!.trim() === '') {
-      throw new BadRequestError('authorizationServerUrl must not be an empty string when provided')
-    }
-
-    return { txCode: config.txCode, authorizationServerUrl: config.authorizationServerUrl }
-  }
-
-  private validateCredentialConfig(cred: any, supported: any) {
+  private validateCredentialConfig(cred: any, supported: any, version?: string) {
     if (!supported) {
       throw new Error(`CredentialSupportedId '${cred.credentialSupportedId}' is not supported by issuer`)
     }
@@ -103,6 +84,30 @@ class IssuanceSessionsService {
       )
     }
 
+    const isW3cFormat =
+      cred.format === CredentialFormat.JwtVcJson ||
+      cred.format === CredentialFormat.JwtVcJsonLd ||
+      cred.format === CredentialFormat.LdpVc
+
+    if (isW3cFormat && !cred.payload?.credentialSubject) {
+      throw new BadRequestError(
+        `Credential payload for '${cred.credentialSupportedId}' must contain 'credentialSubject'`,
+      )
+    }
+
+    if (
+      version === 'v2.0' &&
+      cred.payload?.issuer &&
+      typeof cred.payload.issuer === 'object' &&
+      !cred.payload.issuer.id
+    ) {
+      throw new BadRequestError(`Issuer object for '${cred.credentialSupportedId}' must contain 'id' property`)
+    }
+
+    this.validateSignerOptions(cred)
+  }
+
+  private validateSignerOptions(cred: any) {
     if (!cred.signerOptions?.method) {
       throw new BadRequestError(
         `signerOptions must be provided and allowed methods are ${Object.values(SignerMethod).join(', ')}`,
@@ -119,6 +124,82 @@ class IssuanceSessionsService {
       throw new BadRequestError(
         `For ${cred.credentialSupportedId} : x5c must be present inside signerOptions if SignerMethod is 'x5c' `,
       )
+    }
+  }
+
+  private transformPayloadForVersion(payload: any, version: 'v1.1' | 'v2.0' | undefined) {
+    if (version !== 'v2.0') {
+      return payload
+    }
+
+    const transformed = { ...payload }
+
+    // Rule: issuanceDate -> validFrom
+    if (transformed.issuanceDate && !transformed.validFrom) {
+      transformed.validFrom = transformed.issuanceDate
+    }
+
+    // Rule: expirationDate -> validUntil
+    if (transformed.expirationDate && !transformed.validUntil) {
+      transformed.validUntil = transformed.expirationDate
+      delete transformed.expirationDate
+    }
+
+    // Normalize dates to ISO format
+    if (transformed.validFrom) transformed.validFrom = this.formatDate(transformed.validFrom)
+    if (transformed.validUntil) transformed.validUntil = this.formatDate(transformed.validUntil)
+
+    // Rule: issuer string -> object (standardizing for v2.0 if it is a DID)
+    if (typeof transformed.issuer === 'string' && transformed.issuer.startsWith('did:')) {
+      transformed.issuer = { id: transformed.issuer }
+    }
+
+    this.updateContextForVersion(transformed, version)
+
+    return transformed
+  }
+
+  private formatDate(date: any): any {
+    if (!date) return undefined
+    if (date instanceof Date) return date.toISOString()
+    if (typeof date === 'string') {
+      try {
+        const d = new Date(date)
+        if (Number.isNaN(d.getTime())) return date
+        return d.toISOString()
+      } catch {
+        return date
+      }
+    }
+    return date
+  }
+
+  private updateContextForVersion(transformed: any, version: 'v1.1' | 'v2.0' | undefined) {
+    const v1Context = CREDENTIALS_CONTEXT_V1_URL
+    const v2Context = CREDENTIALS_CONTEXT_V2_URL
+
+    if (version === 'v2.0') {
+      let currentCtx: any[] = []
+      if (Array.isArray(transformed['@context'])) {
+        currentCtx = transformed['@context']
+      } else if (typeof transformed['@context'] === 'string') {
+        currentCtx = [transformed['@context']]
+      }
+
+      const ctxSet = new Set(currentCtx)
+      ctxSet.delete(v1Context)
+      ctxSet.delete(v2Context)
+      // W3C V2.0 requires the V2 context to be the very first element.
+      transformed['@context'] = [v2Context, v1Context, ...Array.from(ctxSet)]
+    } else if (!transformed['@context']) {
+      // W3C V1.1 / Default behavior
+      transformed['@context'] = [v1Context]
+    } else if (Array.isArray(transformed['@context'])) {
+      const ctxSet = new Set(transformed['@context'])
+      ctxSet.delete(v1Context)
+      transformed['@context'] = [v1Context, ...Array.from(ctxSet)]
+    } else if (typeof transformed['@context'] === 'string') {
+      transformed['@context'] = [v1Context, transformed['@context']]
     }
   }
 

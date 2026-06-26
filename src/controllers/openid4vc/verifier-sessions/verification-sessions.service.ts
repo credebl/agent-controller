@@ -25,12 +25,40 @@ export class VerificationSessionsService {
     const verifier = agentReq.agent.modules.openid4vc.verifier
     if (!verifier) throw new Error('OID4VC verifier module not initialized')
 
-    let requestSigner
-    let parsedCertificate
-    if (dto.requestSigner.method === SignerMethod.Did) {
-      requestSigner = dto.requestSigner as OpenId4VcJwtIssuerDid
+    const { requestSigner, parsedCertificate } = await this.resolveRequestSigner(agentReq, dto.requestSigner)
+    const options: any = {
+      requestSigner,
+      verifierId: dto.verifierId,
+      version: dto.version,
+    }
 
-      const didToResolve = dto.requestSigner?.didUrl
+    if (dto.responseMode === ResponseModeEnum.DC_API || dto.responseMode === ResponseModeEnum.DC_API_JWT) {
+      options.expectedOrigins = dto.expectedOrigins
+    }
+
+    this.validatePresentationDetails(dto)
+
+    if (dto.responseMode) options.responseMode = dto.responseMode
+    if (dto.presentationExchange) {
+      options.presentationExchange = dto.presentationExchange
+    } else {
+      options.dcql = dto.dcql
+    }
+
+    if (parsedCertificate) {
+      parsedCertificate.publicJwk.keyId = requestSigner.keyId
+      options.requestSigner.x5c = [parsedCertificate]
+    }
+    return (await verifier.createAuthorizationRequest(options)) as any
+  }
+
+  private async resolveRequestSigner(
+    agentReq: Req,
+    requestSignerDto: CreateAuthorizationRequest['requestSigner'],
+  ): Promise<{ requestSigner: any; parsedCertificate?: any }> {
+    if (requestSignerDto.method === SignerMethod.Did) {
+      const requestSigner = requestSignerDto
+      const didToResolve = requestSignerDto.didUrl
       if (!didToResolve) {
         throw new Error('No DID provided to resolve (neither requestSigner.didUrl nor verifierDid present)')
       }
@@ -50,37 +78,31 @@ export class VerificationSessionsService {
         requestSigner.didUrl = verifierDidUrl
       }
 
-      requestSigner = { method: 'did', didUrl: verifierDidUrl } as any
-    } else {
-      requestSigner = dto.requestSigner as OpenId4VcIssuerX5cOptions
-
-      parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
-        encodedCertificate: requestSigner.x5c[0],
-      })
-      requestSigner.issuer = parsedCertificate.sanUriNames[0]
-      requestSigner.clientIdPrefix = dto.requestSigner.clientIdPrefix ?? ClientIdPrefix.X509Hash
+      return {
+        requestSigner: { method: 'did', didUrl: verifierDidUrl },
+      }
     }
-    const options: any = {
+
+    const requestSigner = requestSignerDto as OpenId4VcIssuerX5cOptions
+    const parsedCertificate = X509Service.parseCertificate(agentReq.agent.context, {
+      encodedCertificate: requestSigner.x5c[0],
+    })
+    requestSigner.issuer = parsedCertificate.sanUriNames[0]
+    requestSigner.clientIdPrefix = requestSigner.clientIdPrefix ?? ClientIdPrefix.X509Hash
+
+    return {
       requestSigner,
-      verifierId: dto.verifierId,
+      parsedCertificate,
     }
+  }
 
-    if (dto.responseMode === ResponseModeEnum.DC_API || dto.responseMode === ResponseModeEnum.DC_API_JWT) {
-      options.expectedOrigins = dto.expectedOrigins
+  private validatePresentationDetails(dto: CreateAuthorizationRequest) {
+    if (dto.presentationExchange && dto.dcql) {
+      throw new Error('Only one of presentationExchange or dcql can be provided, not both')
     }
-
-    if (dto.responseMode) options.responseMode = dto.responseMode
-    if (dto.presentationExchange) {
-      // options.presentationExchange = dto.presentationExchange
-      throw new Error('Presentation Exchange is not supported for now')
+    if (!dto.presentationExchange && !dto.dcql) {
+      throw new Error('Either presentationExchange or dcql must be provided')
     }
-    if (parsedCertificate) {
-      parsedCertificate.publicJwk.keyId = requestSigner.keyId
-    }
-    options.requestSigner.x5c = [parsedCertificate]
-    options.dcql = dto.dcql
-    // }
-    return (await verifier.createAuthorizationRequest(options)) as any
   }
 
   public async findVerificationSessionsByQuery(

@@ -102,6 +102,9 @@ export function getCredentialBindingResolver({
       supportsJwk &&
       (credentialFormat === OpenId4VciCredentialFormatProfile.SdJwtVc ||
         credentialFormat === OpenId4VciCredentialFormatProfile.SdJwtDc ||
+        credentialFormat === OpenId4VciCredentialFormatProfile.JwtVcJsonLd ||
+        credentialFormat === OpenId4VciCredentialFormatProfile.JwtVcJson ||
+        credentialFormat === OpenId4VciCredentialFormatProfile.LdpVc ||
         credentialFormat === OpenId4VciCredentialFormatProfile.MsoMdoc)
     ) {
       return {
