@@ -95,15 +95,19 @@ class IssuanceSessionsService {
       )
     }
 
-    if (version === 'v2.0') {
-      if (cred.payload.issuer) {
-        const issuer = cred.payload.issuer
-        if (typeof issuer === 'object' && !issuer.id) {
-          throw new BadRequestError(`Issuer object for '${cred.credentialSupportedId}' must contain 'id' property`)
-        }
-      }
+    if (
+      version === 'v2.0' &&
+      cred.payload?.issuer &&
+      typeof cred.payload.issuer === 'object' &&
+      !cred.payload.issuer.id
+    ) {
+      throw new BadRequestError(`Issuer object for '${cred.credentialSupportedId}' must contain 'id' property`)
     }
 
+    this.validateSignerOptions(cred)
+  }
+
+  private validateSignerOptions(cred: any) {
     if (!cred.signerOptions?.method) {
       throw new BadRequestError(
         `signerOptions must be provided and allowed methods are ${Object.values(SignerMethod).join(', ')}`,
@@ -130,21 +134,6 @@ class IssuanceSessionsService {
 
     const transformed = { ...payload }
 
-    const formatDate = (date: any) => {
-      if (!date) return undefined
-      if (date instanceof Date) return date.toISOString()
-      if (typeof date === 'string') {
-        try {
-          const d = new Date(date)
-          if (isNaN(d.getTime())) return date
-          return d.toISOString()
-        } catch {
-          return date
-        }
-      }
-      return date
-    }
-
     // Rule: issuanceDate -> validFrom
     if (transformed.issuanceDate && !transformed.validFrom) {
       transformed.validFrom = transformed.issuanceDate
@@ -157,44 +146,61 @@ class IssuanceSessionsService {
     }
 
     // Normalize dates to ISO format
-    if (transformed.validFrom) transformed.validFrom = formatDate(transformed.validFrom)
-    if (transformed.validUntil) transformed.validUntil = formatDate(transformed.validUntil)
+    if (transformed.validFrom) transformed.validFrom = this.formatDate(transformed.validFrom)
+    if (transformed.validUntil) transformed.validUntil = this.formatDate(transformed.validUntil)
 
     // Rule: issuer string -> object (standardizing for v2.0 if it is a DID)
     if (typeof transformed.issuer === 'string' && transformed.issuer.startsWith('did:')) {
       transformed.issuer = { id: transformed.issuer }
     }
 
-    // Rule: Update @context for v2.0
+    this.updateContextForVersion(transformed, version)
+
+    return transformed
+  }
+
+  private formatDate(date: any): any {
+    if (!date) return undefined
+    if (date instanceof Date) return date.toISOString()
+    if (typeof date === 'string') {
+      try {
+        const d = new Date(date)
+        if (Number.isNaN(d.getTime())) return date
+        return d.toISOString()
+      } catch {
+        return date
+      }
+    }
+    return date
+  }
+
+  private updateContextForVersion(transformed: any, version: 'v1.1' | 'v2.0' | undefined) {
     const v1Context = CREDENTIALS_CONTEXT_V1_URL
     const v2Context = CREDENTIALS_CONTEXT_V2_URL
 
     if (version === 'v2.0') {
-      const currentCtx = Array.isArray(transformed['@context'])
-        ? transformed['@context']
-        : typeof transformed['@context'] === 'string'
-          ? [transformed['@context']]
-          : []
+      let currentCtx: any[] = []
+      if (Array.isArray(transformed['@context'])) {
+        currentCtx = transformed['@context']
+      } else if (typeof transformed['@context'] === 'string') {
+        currentCtx = [transformed['@context']]
+      }
 
       const ctxSet = new Set(currentCtx)
       ctxSet.delete(v1Context)
       ctxSet.delete(v2Context)
       // W3C V2.0 requires the V2 context to be the very first element.
       transformed['@context'] = [v2Context, v1Context, ...Array.from(ctxSet)]
-    } else {
+    } else if (!transformed['@context']) {
       // W3C V1.1 / Default behavior
-      if (!transformed['@context']) {
-        transformed['@context'] = [v1Context]
-      } else if (Array.isArray(transformed['@context'])) {
-        const ctxSet = new Set(transformed['@context'])
-        ctxSet.delete(v1Context)
-        transformed['@context'] = [v1Context, ...Array.from(ctxSet)]
-      } else if (typeof transformed['@context'] === 'string') {
-        transformed['@context'] = [v1Context, transformed['@context']]
-      }
+      transformed['@context'] = [v1Context]
+    } else if (Array.isArray(transformed['@context'])) {
+      const ctxSet = new Set(transformed['@context'])
+      ctxSet.delete(v1Context)
+      transformed['@context'] = [v1Context, ...Array.from(ctxSet)]
+    } else if (typeof transformed['@context'] === 'string') {
+      transformed['@context'] = [v1Context, transformed['@context']]
     }
-
-    return transformed
   }
 
   private async processStatusList(

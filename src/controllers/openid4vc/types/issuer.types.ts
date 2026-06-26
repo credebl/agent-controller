@@ -1,5 +1,5 @@
 import type { SignerMethod } from '../../../enums/enum'
-import type { MdocNameSpaces, W3cCredential } from '@credo-ts/core'
+import type { MdocNameSpaces } from '@credo-ts/core'
 import type { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
 export interface OpenId4VciOfferCredentials {
