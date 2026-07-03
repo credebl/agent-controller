@@ -1,0 +1,55 @@
+diff --git a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
+index 08f7602..41315a4 100644
+--- a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
++++ b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
+@@ -79,7 +79,7 @@ let DcqlService = class DcqlService {
+ 		if (formats.has("ldp_vc")) {
+ 			const w3cRecords = await w3cCredentialRepository.findByQuery(agentContext, {
+ 				claimFormat: ClaimFormat.LdpVc,
+-				$or: dcqlQuery.credentials.flatMap((c) => c.format === "jwt_vc_json" ? c.meta.type_values : []).map((typeValues) => ({ expandedTypes: typeValues }))
++				$or: dcqlQuery.credentials.flatMap((c) => c.format === "ldp_vc" ? c.meta.type_values : []).map((typeValues) => ({ expandedTypes: typeValues }))
+ 			});
+ 			allRecords.push(...w3cRecords);
+ 		}
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
+index 195af1d..30d1638 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
++++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
+@@ -5,4 +5,5 @@ import { AgentContext } from "../../../../agent/context/AgentContext.mjs";
+ type DocumentLoaderWithContext = (agentContext: AgentContext) => DocumentLoader;
+ //#endregion
+ export { DocumentLoaderWithContext };
++export declare function defaultDocumentLoader(agentContext: AgentContext): DocumentLoader;
+ //# sourceMappingURL=documentLoader.d.mts.map
+\ No newline at end of file
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
+index 6b5f0fa..88229b8 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
++++ b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
+@@ -21,11 +21,11 @@ var W3cCredential = class W3cCredential {
+ 	constructor(options) {
+ 		if (options) {
+ 			this.context = options.context ?? [CREDENTIALS_CONTEXT_V1_URL];
+-			this.id = options.id;
++			if (options.id !== undefined) this.id = options.id;
+ 			this.type = options.type || ["VerifiableCredential"];
+ 			this.issuer = typeof options.issuer === "string" || options.issuer instanceof W3cIssuer ? options.issuer : new W3cIssuer(options.issuer);
+ 			this.issuanceDate = options.issuanceDate;
+-			this.expirationDate = options.expirationDate;
++			if (options.expirationDate !== undefined) this.expirationDate = options.expirationDate;
+ 			this.credentialSubject = mapSingleOrArray(options.credentialSubject, (subject) => subject instanceof W3cCredentialSubject ? subject : new W3cCredentialSubject(subject));
+ 			if (options.credentialStatus) this.credentialStatus = options.credentialStatus instanceof W3cCredentialStatus ? options.credentialStatus : new W3cCredentialStatus(options.credentialStatus);
+ 			if (options.credentialSchema) this.credentialSchema = mapSingleOrArray(options.credentialSchema, (schema) => schema instanceof W3cCredentialSchema ? schema : new W3cCredentialSchema(schema));
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
+index 626062a..c88156d 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
++++ b/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
+@@ -19,7 +19,7 @@ var _ref, _ref2;
+ var W3cPresentation = class {
+ 	constructor(options) {
+ 		if (options) {
+-			this.id = options.id;
++			if (options.id !== undefined) this.id = options.id;
+ 			this.context = options.context ?? [CREDENTIALS_CONTEXT_V1_URL];
+ 			this.type = options.type ?? [VERIFIABLE_PRESENTATION_TYPE];
+ 			this.verifiableCredential = options.verifiableCredential;
