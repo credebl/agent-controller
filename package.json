@@ -22,21 +22,21 @@
   },
   "scripts": {
     "check-types": "tsc --noEmit -p tsconfig.build.json",
-    "prettier": "prettier '**/*.+(js|json|ts|md|yml|yaml)'",
-    "format": "yarn prettier --write",
-    "check-format": "yarn prettier --list-different",
+    "prettier": "bunx prettier '**/*.+(js|json|ts|md|yml|yaml)'",
+    "format": "bun prettier --write",
+    "check-format": "bun prettier --list-different",
     "tsoa": "tsoa spec-and-routes",
     "dev": "tsoa spec-and-routes && tsnd --respawn samples/sampleWithApp.ts",
-    "build": "yarn run clean && yarn run compile",
-    "prestart:dev": "yarn run clean && yarn run compile",
-    "start:dev": "yarn build && ./bin/afj-rest.js --config ./samples/cliConfig.json",
+    "build": "bun run clean && bun run compile",
+    "prestart:dev": "bun run clean && bun run compile",
+    "start:dev": "bun run build && ./bin/afj-rest.js --config ./samples/cliConfig.json",
     "clean": "rimraf -rf ./build",
     "compile": "tsoa spec-and-routes && tsc -p tsconfig.build.json",
-    "prepublishOnly": "yarn run build",
+    "prepublishOnly": "bun run build",
     "test": "jest",
     "postinstall": "patch-package",
     "lint": "eslint --config eslint.config.mjs .",
-    "validate": "yarn lint && yarn check-types && yarn check-format"
+    "validate": "bun lint && bun check-types && bun check-format"
   },
   "dependencies": {
     "@ayanworks/credo-polygon-w3c-module": "2.0.2",
@@ -126,5 +126,15 @@
     "@credo-ts/askar": "0.6.2",
     "flatted": "3.4.0",
     "undici": "6.24.0"
-  }
+  },
+  "trustedDependencies": [
+    "patch-package",
+    "@2060.io/ref-napi",
+    "node-gyp-build",
+    "@2060.io/ffi-napi",
+    "@hyperledger/indy-vdr-nodejs",
+    "@credo-ts/askar",
+    "@openwallet-foundation/askar-nodejs",
+    "@hyperledger/anoncreds-nodejs",
+  ]
 }

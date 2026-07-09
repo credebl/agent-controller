@@ -2,9 +2,11 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches:
+      - main
   push:
-    branches: [main, develop]
+    branches:
+      - main
 
 concurrency:
   # Cancel previous runs that are not completed yet
@@ -23,16 +25,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'yarn'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.3
 
       - name: Install dependencies
-        run: yarn install
+        run: bun install
 
       - name: Linting
-        run: yarn lint
+        run: bun lint
 
       - name: Prettier
-        run: yarn check-format
+        run: bun check-format
 
       - name: Compile
-        run: yarn check-types
+        run: bun check-types
