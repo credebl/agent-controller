@@ -1,3 +1,4 @@
+import type { RestMultiTenantAgentModules } from '../cliAgent'
 import type { ServerConfig } from '../utils/ServerConfig'
 import type { Agent } from '@credo-ts/core'
 import type { DidCommProofStateChangedEvent } from '@credo-ts/didcomm'
@@ -12,11 +13,10 @@ export const proofEvents = async (agent: Agent, config: ServerConfig) => {
     const record = event.payload.proofRecord
     const body = { ...record.toJSON(), ...event.metadata } as { proofData?: any }
     if (event.metadata.contextCorrelationId && event.metadata.contextCorrelationId !== 'default') {
-      const tenantAgent = await agent.modules.tenants.getTenantAgent({
-        tenantId: event.metadata.contextCorrelationId.split('tenant-')[1],
-      })
-      const data = await tenantAgent.modules.didcomm.proofs.getFormatData(record.id)
-      body.proofData = data
+      body.proofData = await (agent as Agent<RestMultiTenantAgentModules>).modules.tenants.withTenantAgent(
+        { tenantId: event.metadata.contextCorrelationId.split('tenant-')[1] },
+        (tenantAgent) => tenantAgent.modules.didcomm.proofs.getFormatData(record.id),
+      )
     }
 
     //Emit webhook for dedicated agent
