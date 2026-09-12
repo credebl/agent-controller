@@ -125,6 +125,8 @@ describe('proofEvents tenant session lifecycle', () => {
     expect(sendWebSocketEvent).not.toHaveBeenCalled()
     await expect(fixture.handleEvent(fixture.event)).resolves.toBeUndefined()
     expect(fixture.endSession).toHaveBeenCalledTimes(2)
+    expect(sendWebhookEvent).toHaveBeenCalledTimes(1)
+    expect(sendWebSocketEvent).toHaveBeenCalledTimes(1)
   })
 
   test('keeps dedicated-agent proof processing independent of tenant sessions', async () => {
