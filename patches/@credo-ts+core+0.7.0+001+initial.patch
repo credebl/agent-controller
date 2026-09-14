@@ -1,3 +1,16 @@
+diff --git a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
+index 2082da4..b8aa6b0 100644
+--- a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
++++ b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
+@@ -80,7 +80,7 @@ let DcqlService = class DcqlService {
+ 		if (formats.has("ldp_vc")) {
+ 			const w3cRecords = await w3cCredentialRepository.findByQuery(agentContext, {
+ 				claimFormat: ClaimFormat.LdpVc,
+-				$or: dcqlQuery.credentials.flatMap((c) => c.format === "jwt_vc_json" ? c.meta.type_values : []).map((typeValues) => ({ expandedTypes: typeValues }))
++				$or: dcqlQuery.credentials.flatMap((c) => c.format === "ldp_vc" ? c.meta.type_values : []).map((typeValues) => ({ expandedTypes: typeValues }))
+ 			});
+ 			allRecords.push(...w3cRecords);
+ 		}
 diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
 index 5a311c1..4d640d0 100644
 --- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
@@ -11,34 +24,48 @@ index 5a311c1..4d640d0 100644
    contextUrl?: string | null;
    documentUrl: string;
    document: Record<string, unknown>;
-diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs
-index 49ee03f..aa7e43a 100644
---- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs
-+++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.mjs
-@@ -2,7 +2,7 @@
- 
- //#region src/modules/vc/data-integrity/libraries/nativeDocumentLoader.ts
- async function getNativeDocumentLoader() {
--	const loader = await import("@digitalcredentials/jsonld/lib/documentLoaders/node");
-+	const loader = await import("@digitalcredentials/jsonld/lib/documentLoaders/node.js");
- 	if (!loader) throw new Error("Could not load node document loader. Module did not contain a loader function");
- 	if (typeof loader === "function") return loader;
- 	if (typeof loader === "object" && typeof loader.default === "function") return loader.default;
-diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.mjs b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.mjs
-index 6a8ca37..0287e99 100644
---- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.mjs
-+++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.mjs
-@@ -1,8 +1,9 @@
- 
- 
-+
- //#region src/modules/vc/data-integrity/libraries/nativeDocumentLoader.native.ts
- async function getNativeDocumentLoader() {
--	const loader = await import("@digitalcredentials/jsonld/lib/documentLoaders/xhr");
-+	const loader = await import("@digitalcredentials/jsonld/lib/documentLoaders/xhr.js");
- 	if (!loader) throw new Error("Could not load node document loader. Module did not contain a loader function");
- 	if (typeof loader === "function") return loader;
- 	if (typeof loader === "object" && typeof loader.default === "function") return loader.default;
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
+index 195af1d..30d1638 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
++++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
+@@ -5,4 +5,5 @@ import { AgentContext } from "../../../../agent/context/AgentContext.mjs";
+ type DocumentLoaderWithContext = (agentContext: AgentContext) => DocumentLoader;
+ //#endregion
+ export { DocumentLoaderWithContext };
++export declare function defaultDocumentLoader(agentContext: AgentContext): DocumentLoader;
+ //# sourceMappingURL=documentLoader.d.mts.map
+\ No newline at end of file
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
+index f3ad42c..35c485d 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
++++ b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
+@@ -21,11 +21,11 @@ var W3cCredential = class W3cCredential {
+ 	constructor(options) {
+ 		if (options) {
+ 			this.context = options.context ?? [CREDENTIALS_CONTEXT_V1_URL];
+-			this.id = options.id;
++			if (options.id !== undefined) this.id = options.id;
+ 			this.type = options.type || ["VerifiableCredential"];
+ 			this.issuer = typeof options.issuer === "string" || options.issuer instanceof W3cIssuer ? options.issuer : new W3cIssuer(options.issuer);
+ 			this.issuanceDate = options.issuanceDate;
+-			this.expirationDate = options.expirationDate;
++			if (options.expirationDate !== undefined) this.expirationDate = options.expirationDate;
+ 			this.credentialSubject = mapSingleOrArray(options.credentialSubject, (subject) => subject instanceof W3cCredentialSubject ? subject : new W3cCredentialSubject(subject));
+ 			if (options.credentialStatus) this.credentialStatus = options.credentialStatus instanceof W3cCredentialStatus ? options.credentialStatus : new W3cCredentialStatus(options.credentialStatus);
+ 			if (options.credentialSchema) this.credentialSchema = mapSingleOrArray(options.credentialSchema, (schema) => schema instanceof W3cCredentialSchema ? schema : new W3cCredentialSchema(schema));
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
+index 5462368..2eb0686 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
++++ b/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
+@@ -19,7 +19,7 @@ var _ref, _ref2;
+ var W3cPresentation = class {
+ 	constructor(options) {
+ 		if (options) {
+-			this.id = options.id;
++			if (options.id !== undefined) this.id = options.id;
+ 			this.context = options.context ?? [CREDENTIALS_CONTEXT_V1_URL];
+ 			this.type = options.type ?? [VERIFIABLE_PRESENTATION_TYPE];
+ 			this.verifiableCredential = options.verifiableCredential;
 diff --git a/node_modules/@credo-ts/core/build/utils/version.d.mts b/node_modules/@credo-ts/core/build/utils/version.d.mts
 index a71659d..8ed88e2 100644
 --- a/node_modules/@credo-ts/core/build/utils/version.d.mts
