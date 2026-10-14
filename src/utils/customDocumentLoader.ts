@@ -4,6 +4,8 @@ import type { DocumentLoaderResult } from '@credo-ts/core/build/modules/vc/data-
 import { CredoError } from '@credo-ts/core'
 import { defaultDocumentLoader } from '@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.mjs'
 
+import { getInlineContext } from '../vc-jsonld/contexts'
+
 /**
  * Check if URL belongs to CREDEBL schema domain
  */
@@ -30,6 +32,14 @@ export const CustomDocumentLoader = (agentContext: AgentContext): DocumentLoader
 
   return async function (url: string): Promise<DocumentLoaderResult> {
     try {
+      // Intercept VCDM 2.0 / Bitstring Status List contexts that Credo's default
+      // loader does not bundle, to avoid network fetches during signing/verification.
+      const inlineContext = getInlineContext(url)
+      if (inlineContext) {
+        agentContext.config.logger.debug(`Serving inline context for url(${url})`)
+        return { contextUrl: null, documentUrl: url, document: inlineContext as any }
+      }
+
       // Intercept credebl schemas
       if (isW3CDeprecatedUrl(url, agentContext)) {
         // agentContext.config.logger.debug(

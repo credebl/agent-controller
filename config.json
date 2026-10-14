@@ -1,0 +1,5 @@
+{
+  "webhookUrl": "http://localhost:5000/wh/771835b6-f1d2-4446-bfbf-833f8e6fc8bd",
+  "port": 4001,
+  "schemaFileServerURL": "https://schema.sovio.id/schemas/"
+}

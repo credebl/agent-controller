@@ -34,6 +34,7 @@
     "compile": "tsoa spec-and-routes && tsc -p tsconfig.build.json",
     "prepublishOnly": "yarn run build",
     "test": "jest",
+    "test:vc-jsonld": "node -r ts-node/register/transpile-only tests/v2-jsonld.smoke.ts",
     "postinstall": "patch-package",
     "lint": "eslint --config eslint.config.mjs .",
     "validate": "yarn lint && yarn check-types && yarn check-format"
@@ -51,6 +52,7 @@
     "@credo-ts/push-notifications": "^0.7.1",
     "@credo-ts/question-answer": "0.6.2",
     "@credo-ts/tenants": "0.6.2",
+    "@digitalcredentials/credentials-v2-context": "^0.0.1-beta.0",
     "@hyperledger/anoncreds-nodejs": "^0.3.4",
     "@hyperledger/indy-vdr-nodejs": "^0.2.3",
     "@opentelemetry/api": "^1.9.0",

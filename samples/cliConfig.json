@@ -1,9 +1,9 @@
 {
   "label": "AFJ Rest Agent 1",
-  "walletId": "sample10",
-  "walletKey": "sample10",
+  "walletId": "sample",
+  "walletKey": "sample",
   "walletType": "postgres",
-  "walletUrl": "localhost:5432",
+  "walletUrl": "localhost:5433",
   "walletAccount": "postgres",
   "walletPassword": "postgres",
   "walletAdminAccount": "postgres",
@@ -19,14 +19,14 @@
       "indyNamespace": "indicio:demonet"
     },
     {
-      "genesisTransactions": "https://test.bcovrin.vonx.io/genesis",
+      "genesisTransactions": "https://raw.githubusercontent.com/bcgov/von-network/main/BCovrin/genesis_test",
       "indyNamespace": "bcovrin:testnet"
     }
   ],
   "endpoint": ["http://localhost:4002"],
   "autoAcceptConnections": true,
   "autoAcceptCredentials": "always",
-  "autoAcceptProofs": "contentApproved",
+  "autoAcceptProofs": "never",
   "logLevel": 2,
   "inboundTransport": [
     {
@@ -37,10 +37,13 @@
   "outboundTransport": ["http"],
   "adminPort": 4001,
   "tenancy": true,
-  "schemaFileServerURL": "https://schema.credebl.id/schemas/",
+  "schemaFileServerURL": "https://schema.sovio.id/schemas/",
   "didRegistryContractAddress": "0xcB80F37eDD2bE3570c6C9D5B0888614E04E1e49E",
   "schemaManagerContractAddress": "0x4742d43C2dFCa5a1d4238240Afa8547Daf87Ee7a",
-  "rpcUrl": "https://rpc-amoy.polygon.technology",
-  "fileServerUrl": "https://schema.credebl.id",
-  "fileServerToken": ""
+  "rpcUrl": "https://polygon-amoy.infura.io/v3/117caaca2d74443d840c519d5dc36821",
+  "fileServerUrl": "https://schema.sovio.id",
+  "fileServerToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJBeWFuV29ya3MiLCJpZCI6IjZmY2EwYzgwLTkyMmItNDBlZi1iNDg0LTBlNGZjMTA3NDQ2NyJ9.kgVq531d6Ag8JKzVKx-cs5wyMqMKck8wGwMPMsxIEgw",
+  "apiKey": "supersecret-that-too-16chars",
+  "updateJwtSecret": false,
+  "webhookUrl":"http://localhost:5000/wh/771835b6-f1d2-4446-bfbf-833f8e6fc8bd"
 }
