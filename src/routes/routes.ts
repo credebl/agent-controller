@@ -218,16 +218,11 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "AnyUint8Array": {
-        "dataType": "refAlias",
-        "type": {"ref":"Uint8Array","validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "X509Certificate": {
         "dataType": "refObject",
         "properties": {
             "publicJwk": {"ref":"PublicJwk","required":true},
-            "privateKey": {"ref":"AnyUint8Array"},
+            "privateKey": {"ref":"Uint8Array"},
         },
         "additionalProperties": false,
     },
@@ -1099,6 +1094,7 @@ const models: TsoaRoute.Models = {
             "@type": {"dataType":"string","required":true},
             "@id": {"dataType":"string","required":true},
             "~thread": {"dataType":"nestedObjectLiteral","nestedProperties":{"pthid":{"dataType":"string"},"thid":{"dataType":"string"}}},
+            "messageType": {"dataType":"string"},
         },
         "additionalProperties": {"dataType":"any"},
     },

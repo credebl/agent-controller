@@ -1,8 +1,8 @@
 diff --git a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
-index 08f7602..41315a4 100644
+index 2082da4..b8aa6b0 100644
 --- a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
-@@ -79,7 +79,7 @@ let DcqlService = class DcqlService {
+@@ -80,7 +80,7 @@ let DcqlService = class DcqlService {
  		if (formats.has("ldp_vc")) {
  			const w3cRecords = await w3cCredentialRepository.findByQuery(agentContext, {
  				claimFormat: ClaimFormat.LdpVc,
@@ -11,6 +11,19 @@ index 08f7602..41315a4 100644
  			});
  			allRecords.push(...w3cRecords);
  		}
+diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
+index 5a311c1..4d640d0 100644
+--- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
++++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
+@@ -14,7 +14,7 @@ interface Proof extends JsonObject {
+   verificationMethod: string | VerificationMethod;
+   [key: string]: JsonValue;
+ }
+-interface DocumentLoaderResult {
++export interface DocumentLoaderResult {
+   contextUrl?: string | null;
+   documentUrl: string;
+   document: Record<string, unknown>;
 diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
 index 195af1d..30d1638 100644
 --- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
@@ -23,7 +36,7 @@ index 195af1d..30d1638 100644
  //# sourceMappingURL=documentLoader.d.mts.map
 \ No newline at end of file
 diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
-index 6b5f0fa..88229b8 100644
+index f3ad42c..35c485d 100644
 --- a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
 @@ -21,11 +21,11 @@ var W3cCredential = class W3cCredential {
@@ -41,7 +54,7 @@ index 6b5f0fa..88229b8 100644
  			if (options.credentialStatus) this.credentialStatus = options.credentialStatus instanceof W3cCredentialStatus ? options.credentialStatus : new W3cCredentialStatus(options.credentialStatus);
  			if (options.credentialSchema) this.credentialSchema = mapSingleOrArray(options.credentialSchema, (schema) => schema instanceof W3cCredentialSchema ? schema : new W3cCredentialSchema(schema));
 diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
-index 626062a..c88156d 100644
+index 5462368..2eb0686 100644
 --- a/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
 @@ -19,7 +19,7 @@ var _ref, _ref2;
@@ -53,8 +66,20 @@ index 626062a..c88156d 100644
  			this.context = options.context ?? [CREDENTIALS_CONTEXT_V1_URL];
  			this.type = options.type ?? [VERIFIABLE_PRESENTATION_TYPE];
  			this.verifiableCredential = options.verifiableCredential;
+diff --git a/node_modules/@credo-ts/core/build/utils/version.d.mts b/node_modules/@credo-ts/core/build/utils/version.d.mts
+index a71659d..8ed88e2 100644
+--- a/node_modules/@credo-ts/core/build/utils/version.d.mts
++++ b/node_modules/@credo-ts/core/build/utils/version.d.mts
+@@ -1,5 +1,5 @@
+ //#region src/utils/version.d.ts
+-type VersionString = `${number}.${number}` | `${number}.${number}.${number}`;
++type VersionString = string;
+ //#endregion
+ export { VersionString };
+ //# sourceMappingURL=version.d.mts.map
+\ No newline at end of file
 diff --git a/node_modules/@credo-ts/core/package.json b/node_modules/@credo-ts/core/package.json
-index 8198ea2..5d23e62 100644
+index 544696b..cdd9786 100644
 --- a/node_modules/@credo-ts/core/package.json
 +++ b/node_modules/@credo-ts/core/package.json
 @@ -7,6 +7,11 @@
@@ -68,4 +93,4 @@ index 8198ea2..5d23e62 100644
 +      "types": "./build/modules/vc/data-integrity/libraries/documentLoader.d.mts"
      }
    },
-   "version": "0.6.2",
+   "version": "0.7.0",

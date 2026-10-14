@@ -1,5 +1,6 @@
 import {
   JsonTransformer,
+  Mdoc,
   MdocDeviceResponse,
   TypedArrayEncoder,
   W3cJsonLdVerifiablePresentation,
@@ -164,14 +165,14 @@ export class VerificationSessionsService {
           }
 
           if (presentation instanceof MdocDeviceResponse) {
+            const docs = (presentation.deviceResponse.documents ?? []).map((rawDoc) => new Mdoc(rawDoc.issuerSigned))
             return {
               pretty: JsonTransformer.toJSON({
-                documents: presentation.documents.map((doc) => ({
+                documents: docs.map((doc) => ({
                   doctype: doc.docType,
                   alg: doc.alg,
                   base64Url: doc.base64Url,
                   validityInfo: doc.validityInfo,
-                  deviceSignedNamespaces: doc.deviceSignedNamespaces,
                   issuerSignedNamespaces: Object.entries(doc.issuerSignedNamespaces).map(
                     ([nameSpace, nameSpacEntries]) => [
                       nameSpace,
@@ -185,7 +186,7 @@ export class VerificationSessionsService {
                   ),
                 })),
               }),
-              encoded: presentation.base64Url,
+              encoded: presentation.encoded,
             }
           }
 

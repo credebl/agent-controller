@@ -372,16 +372,13 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"AnyUint8Array": {
-				"$ref": "#/components/schemas/Uint8Array"
-			},
 			"X509Certificate": {
 				"properties": {
 					"publicJwk": {
 						"$ref": "#/components/schemas/PublicJwk"
 					},
 					"privateKey": {
-						"$ref": "#/components/schemas/AnyUint8Array"
+						"$ref": "#/components/schemas/Uint8Array"
 					}
 				},
 				"required": [
@@ -2596,6 +2593,9 @@
 							}
 						},
 						"type": "object"
+					},
+					"messageType": {
+						"type": "string"
 					}
 				},
 				"required": [
