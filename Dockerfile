@@ -9,6 +9,9 @@ COPY package.json yarn.lock ./
 # Copy the rest of the application code
 COPY . .
 
+# Install yarn (not bundled with node:26)
+RUN npm install -g yarn
+
 # Install dependencies
 RUN rm -rf node_modules
 RUN yarn install --frozen-lockfile --network-timeout 600000
