@@ -1,5 +1,5 @@
 import { Request as Req } from 'express'
-import { Body, Controller, Get, Post, Route, Security, Tags, Request, Delete } from 'tsoa'
+import { Body, Controller, Get, Post, Query, Route, Security, Tags, Request, Delete } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums/enum'
@@ -22,24 +22,45 @@ export class HolderController extends Controller {
    * Get SdJwt type of credentials
    */
   @Get('/sd-jwt-vcs')
-  public async getSdJwtCredentials(@Request() request: Req) {
-    return await holderService.getSdJwtCredentials(request)
+  public async getSdJwtCredentials(
+    @Request() request: Req,
+    @Query('q') q?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('credentialType') credentialType?: string,
+    @Query('vct') vct?: string,
+  ) {
+    return await holderService.getSdJwtCredentials(request, { q, page, pageSize, credentialType, vct })
   }
 
   /**
    * Fetch all mso mdoc credentials in wallet
    */
   @Get('/mdoc-vcs')
-  public async getMdocCredentials(@Request() request: Req) {
-    return await holderService.getMdocCredentials(request)
+  public async getMdocCredentials(
+    @Request() request: Req,
+    @Query('q') q?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('credentialType') credentialType?: string,
+    @Query('docType') docType?: string,
+  ) {
+    return await holderService.getMdocCredentials(request, { q, page, pageSize, credentialType, docType })
   }
 
   /**
    * Fetch all W3C credentials in wallet
    */
   @Get('/w3c-vcs')
-  public async getW3cCredentials(@Request() request: Req) {
-    return await holderService.getW3cCredentials(request)
+  public async getW3cCredentials(
+    @Request() request: Req,
+    @Query('q') q?: string,
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('credentialType') credentialType?: string,
+    @Query('types') types?: string,
+  ) {
+    return await holderService.getW3cCredentials(request, { q, page, pageSize, credentialType, types })
   }
 
   /**

@@ -1,11 +1,14 @@
 import type {
   AuthorizeRequestCredentialOffer,
+  CredentialListQuery,
+  CredentialTags,
   DeleteCredentialBody,
+  PaginatedCredentials,
   RequestCredentialBody,
   ResolveCredentialOfferBody,
   ResolveProofRequest,
 } from '../types/holder.types'
-import type { Agent, DcqlCredentialsForRequest, DcqlQueryResult } from '@credo-ts/core'
+import type { Agent, BaseRecordAny, DcqlCredentialsForRequest, DcqlQueryResult } from '@credo-ts/core'
 import type {
   OpenId4VcAuthorizationCodeTokenRequestOptions,
   OpenId4VciPreAuthorizedTokenRequestOptions,
@@ -19,6 +22,7 @@ import {
   SdJwtVcRecord,
   MdocRecord,
   W3cCredentialRecord,
+  W3cCredentialRepository,
   W3cCredentialService,
   // W3cV2CredentialRecord,
   // W3cV2CredentialService,
@@ -36,25 +40,90 @@ export class HolderService {
   private HOLDER_REDIRECT = process.env.HOLDER_REDIRECT ?? 'http://localhost:4001/redirect'
   private HOLDER_CLIENT_ID = process.env.HOLDER_CLIENT_ID ?? 'wallet'
 
-  public async getSdJwtCredentials(agentReq: Req) {
-    return await agentReq.agent.sdJwtVc.getAll()
+  public async getSdJwtCredentials(agentReq: Req, query: CredentialListQuery = {}) {
+    const tagQuery = this.buildTagQuery({
+      credentialType: query.credentialType,
+      vct: query.vct,
+    })
+    const records = await agentReq.agent.sdJwtVc.findAllByQuery(tagQuery)
+    return this.paginateRecords(records, query, ['credentialType', 'vct', 'name', 'reference'])
   }
 
-  public async getMdocCredentials(agentReq: Req) {
-    return await agentReq.agent.mdoc.getAll()
+  public async getMdocCredentials(agentReq: Req, query: CredentialListQuery = {}) {
+    const tagQuery = this.buildTagQuery({
+      credentialType: query.credentialType,
+      docType: query.docType,
+    })
+    const records = await agentReq.agent.mdoc.findAllByQuery(tagQuery)
+    return this.paginateRecords(records, query, ['credentialType', 'docType', 'name', 'reference'])
   }
 
-  public async getW3cCredentials(agentReq: Req) {
-    /* 
-    // W3C V2.0 Support
-    const [v1Records, v2Records] = await Promise.all([
-      agentReq.agent.w3cCredentials.getAll(),
-      agentReq.agent.w3cV2Credentials.getAll(),
-    ])
+  public async getW3cCredentials(agentReq: Req, query: CredentialListQuery = {}) {
+    const w3cCredentialRepository = agentReq.agent.dependencyManager.resolve(W3cCredentialRepository)
+    const tagQuery = this.buildTagQuery({
+      credentialType: query.credentialType,
+      types: query.types,
+    })
+    const records = await w3cCredentialRepository.findByQuery(agentReq.agent.context, tagQuery)
+    return this.paginateRecords(records, query, ['credentialType', 'types', 'name', 'reference'])
+  }
 
-    return [...v1Records, ...v2Records]
-    */
-    return await agentReq.agent.w3cCredentials.getAll()
+  private buildTagQuery(filters: Record<string, string | string[] | undefined>) {
+    const query: Record<string, string | string[]> = {}
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== '') {
+        query[key] = value
+      }
+    }
+    return query
+  }
+
+  private hasListParams(query: CredentialListQuery) {
+    return Object.values(query).some((value) => value !== undefined && value !== null && value !== '')
+  }
+
+  private matchesSearch(record: BaseRecordAny, q: string, searchableTags: string[]) {
+    const needle = q.trim().toLowerCase()
+    if (!needle) return true
+
+    const tags = record.getTags() as Record<string, unknown>
+    return searchableTags.some((tag) => {
+      const value = tags[tag]
+      const values = Array.isArray(value) ? value : [value]
+      return values.some((item) => typeof item === 'string' && item.toLowerCase().includes(needle))
+    })
+  }
+
+  private paginateRecords<T extends BaseRecordAny>(
+    records: T[],
+    query: CredentialListQuery,
+    searchableTags: string[],
+  ): T[] | PaginatedCredentials<Record<string, unknown>> {
+    const filtered = query.q
+      ? records.filter((record) => this.matchesSearch(record, query.q as string, searchableTags))
+      : records
+
+    if (!this.hasListParams(query)) {
+      return filtered
+    }
+
+    const page = query.page && query.page > 0 ? query.page : 1
+    const pageSize = query.pageSize && query.pageSize > 0 ? query.pageSize : 10
+    const total = filtered.length
+    const totalPages = Math.ceil(total / pageSize)
+    const start = (page - 1) * pageSize
+    const data = filtered.slice(start, start + pageSize).map((record) => ({
+      ...(record as unknown as Record<string, unknown>),
+      tags: record.getTags(),
+    }))
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages,
+    } as PaginatedCredentials<Record<string, unknown>>
   }
 
   public async decodeMdocCredential(
@@ -130,12 +199,13 @@ export class HolderService {
       } as OpenId4VcAuthorizationCodeTokenRequestOptions
     }
 
-    return (await this.requestAndStoreCredentials(agentReq, resolvedCredentialOffer, options)) as any
+    return (await this.requestAndStoreCredentials(agentReq, resolvedCredentialOffer, options, body.tags)) as any
   }
   private async requestAndStoreCredentials(
     agentReq: Req,
     resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
     options: OpenId4VciTokenRequestOptions,
+    tags?: CredentialTags,
   ) {
     const tokenResponse = await agentReq.agent.modules.openid4vc.holder.requestToken({ ...options })
     const credentialResponse = await agentReq.agent.modules.openid4vc.holder.requestCredentials({
@@ -150,6 +220,10 @@ export class HolderService {
     const storedCredentials = await Promise.all(
       credentialResponse.credentials.map(async (response) => {
         const credentialRecord = response.record
+
+        if (tags && Object.keys(tags).length > 0) {
+          credentialRecord.setTags(tags)
+        }
 
         if (
           credentialRecord instanceof W3cCredentialRecord ||

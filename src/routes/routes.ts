@@ -948,6 +948,18 @@ const models: TsoaRoute.Models = {
         "type": {"ref":"Record_string.unknown_","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PaginatedCredentials_Record_string.unknown__": {
+        "dataType": "refObject",
+        "properties": {
+            "data": {"dataType":"array","array":{"dataType":"refAlias","ref":"Record_string.unknown_"},"required":true},
+            "total": {"dataType":"double","required":true},
+            "page": {"dataType":"double","required":true},
+            "pageSize": {"dataType":"double","required":true},
+            "totalPages": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "MdocRecord": {
         "dataType": "refAlias",
         "type": {"ref":"Record_string.unknown_","validators":{}},
@@ -975,6 +987,16 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Record_string.string-or-string-Array_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"array","array":{"dataType":"string"}}]},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialTags": {
+        "dataType": "refAlias",
+        "type": {"ref":"Record_string.string-or-string-Array_","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "RequestCredentialBody": {
         "dataType": "refObject",
         "properties": {
@@ -983,6 +1005,7 @@ const models: TsoaRoute.Models = {
             "authorizationCode": {"dataType":"string"},
             "codeVerifier": {"dataType":"string"},
             "txCode": {"dataType":"string"},
+            "tags": {"ref":"CredentialTags"},
         },
         "additionalProperties": false,
     },
@@ -3402,6 +3425,11 @@ export function RegisterRoutes(app: Router) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsHolderController_getSdJwtCredentials: Record<string, TsoaRoute.ParameterSchema> = {
                 request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                q: {"in":"query","name":"q","dataType":"string"},
+                page: {"in":"query","name":"page","dataType":"double"},
+                pageSize: {"in":"query","name":"pageSize","dataType":"double"},
+                credentialType: {"in":"query","name":"credentialType","dataType":"string"},
+                vct: {"in":"query","name":"vct","dataType":"string"},
         };
         app.get('/openid4vc/holder/sd-jwt-vcs',
             authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
@@ -3438,6 +3466,11 @@ export function RegisterRoutes(app: Router) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsHolderController_getMdocCredentials: Record<string, TsoaRoute.ParameterSchema> = {
                 request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                q: {"in":"query","name":"q","dataType":"string"},
+                page: {"in":"query","name":"page","dataType":"double"},
+                pageSize: {"in":"query","name":"pageSize","dataType":"double"},
+                credentialType: {"in":"query","name":"credentialType","dataType":"string"},
+                docType: {"in":"query","name":"docType","dataType":"string"},
         };
         app.get('/openid4vc/holder/mdoc-vcs',
             authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
@@ -3474,6 +3507,11 @@ export function RegisterRoutes(app: Router) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsHolderController_getW3cCredentials: Record<string, TsoaRoute.ParameterSchema> = {
                 request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                q: {"in":"query","name":"q","dataType":"string"},
+                page: {"in":"query","name":"page","dataType":"double"},
+                pageSize: {"in":"query","name":"pageSize","dataType":"double"},
+                credentialType: {"in":"query","name":"credentialType","dataType":"string"},
+                types: {"in":"query","name":"types","dataType":"string"},
         };
         app.get('/openid4vc/holder/w3c-vcs',
             authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
