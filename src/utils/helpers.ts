@@ -32,7 +32,7 @@ function getCachedToken(clientId: string): string | null {
 
 export function objectToJson<T>(result: T) {
   const serialized = JsonTransformer.serialize(result)
-  return JsonEncoder.fromString(serialized)
+  return JsonEncoder.fromUtf8String(serialized)
 }
 
 export async function generateSecretKey(length: number = 32): Promise<string> {
