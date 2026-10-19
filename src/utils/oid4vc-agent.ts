@@ -43,6 +43,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     agentContext,
     authorization,
   }) => {
+    const requestedFormat = credentialConfiguration.format as string
     const issuanceMetadata = issuanceSession.issuanceMetadata
     if (!issuanceMetadata?.['credentials']) throw new Error('credential payload is not provided')
 
@@ -98,7 +99,13 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       )
     }
 
-    if (credentialConfiguration.format === OpenId4VciCredentialFormatProfile.SdJwtDc) {
+    // Both `dc+sd-jwt` and `vc+sd-jwt` are signed with the same sd-jwt API. Credo's
+    // OpenId4VcIssuerService accepts `ClaimFormat.SdJwtDc` sign options for either
+    // configuration format and passes the format through as the credential `typ` header.
+    if (
+      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.SdJwtDc ||
+      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.SdJwtVc
+    ) {
       return handleSdJwtDcFormat(
         agentContext,
         credentialConfiguration,
@@ -125,7 +132,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       ) as any
     }
 
-    throw new Error('Invalid request format ' + credentialConfiguration.format)
+    throw new Error('Invalid request format ' + requestedFormat)
   }
 }
 
