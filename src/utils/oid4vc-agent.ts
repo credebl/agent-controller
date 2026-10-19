@@ -328,20 +328,18 @@ function handleMsoMdocFormat(
     throw new Error(`'doctype' not found in credential configuration,`)
   }
 
-  const parsedCertificates = issuerx509certificate.map((cert) => {
-    return X509Service.parseCertificate(agentContext, {
-      encodedCertificate: cert,
-    })
+  const parsedCertificate = X509Service.parseCertificate(agentContext, {
+    encodedCertificate: issuerx509certificate[0],
   })
 
-  parsedCertificates[0].publicJwk.keyId = credential.signerOptions.keyId
+  parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
   const updatedNamespaces = processIsoImages(credential.payload.namespaces)
   credential.payload.namespaces = updatedNamespaces
   return {
     type: 'credentials',
     format: ClaimFormat.MsoMdoc,
     credentials: holderBinding.keys.map((holderBindingDetails: any) => ({
-      issuerCertificate: parsedCertificates as any,
+      issuerCertificate: parsedCertificate as any,
       holderKey: holderBindingDetails.jwk,
       ...credential.payload,
       validityInfo: {
