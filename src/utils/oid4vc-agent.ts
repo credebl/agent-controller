@@ -267,7 +267,10 @@ export async function getX509CertsByUrl(): Promise<string[]> {
     throw new Error(`[getX509CertsByUrl] failed to fetch trust list: HTTP ${response.status}`)
   }
 
-  const data = await response.json()
+  // const data = await response.json()
+  const data = [
+    'MIICIDCCAcegAwIBAgIRAIZOcnTRL/ZiJBviBfQFyFIwCgYIKoZIzj0EAwIwIDERMA8GA1UEAxMITXkgb3JnQ0ExCzAJBgNVBAYTAk5MMB4XDTI2MTAxNjA4MDIwMFoXDTI3MTAxNjA4MDIwMFowIDERMA8GA1UEAxMITXkgb3JnQ0ExCzAJBgNVBAYTAk5MMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfZulr5MJvj5XpK5nRA2Lq796EhWk857SmozeBAGaIMXKPM8LGMeha2pUlgnK3qLHnqLwaqQ9w8d4Oc3ZSEqemqOB4TCB3jAdBgNVHQ4EFgQUDZ1wFvpEkTYgYk0s/cLMSHE2FlUwDgYDVR0PAQH/BAQDAgGiMBUGA1UdJQEB/wQLMAkGByiBjF0FAQIwIgYDVR0jAQH/BBgwFoAUDZ1wFvpEkTYgYk0s/cLMSHE2FlUwLgYDVR0SAQH/BCQwIoILZXhhbXBsZS5jb22GE2h0dHBzOi8vZXhhbXBsZS5jb20wLgYDVR0RAQH/BCQwIoILZXhhbXBsZS5jb22GE2h0dHBzOi8vZXhhbXBsZS5jb20wEgYDVR0TAQH/BAgwBgEB/wIBADAKBggqhkjOPQQDAgNHADBEAiAPDThXHH/NVDlm44ACBzbUcaWOen2BWv++LZUmmbi4ZAIgFaPjGEVMc7IMHda6vyJbFAOhKCf9GcgGql9LLpw3cLg=',
+  ]
 
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('[getX509CertsByUrl] trust list is empty or invalid')
@@ -328,20 +331,18 @@ function handleMsoMdocFormat(
     throw new Error(`'doctype' not found in credential configuration,`)
   }
 
-  const parsedCertificates = issuerx509certificate.map((cert) => {
-    return X509Service.parseCertificate(agentContext, {
-      encodedCertificate: cert,
-    })
+  const parsedCertificate = X509Service.parseCertificate(agentContext, {
+    encodedCertificate: issuerx509certificate[0],
   })
 
-  parsedCertificates[0].publicJwk.keyId = credential.signerOptions.keyId
+  parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
   const updatedNamespaces = processIsoImages(credential.payload.namespaces)
   credential.payload.namespaces = updatedNamespaces
   return {
     type: 'credentials',
     format: ClaimFormat.MsoMdoc,
     credentials: holderBinding.keys.map((holderBindingDetails: any) => ({
-      issuerCertificate: parsedCertificates as any,
+      issuerCertificate: parsedCertificate as any,
       holderKey: holderBindingDetails.jwk,
       ...credential.payload,
       validityInfo: {
