@@ -15,7 +15,7 @@ import {
   Agent,
   DidKey,
 } from '@credo-ts/core'
-import { Key, KeyAlgorithm, askar } from '@openwallet-foundation/askar-nodejs'
+import { Key, KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import axios from 'axios'
 import { Request as Req } from 'express'
 import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
@@ -74,7 +74,6 @@ export class DidController extends Controller {
   public async writeDid(@Request() request: Req, @Body() createDidOptions: DidCreate) {
     let didRes
 
-    this.agent.config.logger.info(`askar version ${askar.version()}`)
     try {
       if (!createDidOptions.method) {
         throw new BadRequestError('Method is required')
@@ -321,7 +320,7 @@ export class DidController extends Controller {
     }
     // TODO: Remove comments afterwards
     // const key = await agent.kms.createKey({
-    //     privateKey: TypedArrayEncoder.fromString(createDidOptions.seed),
+    //     privateKey: TypedArrayEncoder.fromUtf8String(createDidOptions.seed),
     //     keyType: KeyAlgorithm.Ed25519,
     // })
 
@@ -329,7 +328,7 @@ export class DidController extends Controller {
     // const did = TypedArrayEncoder.toBase58(buffer.slice(0, 16))
 
     const privateJwk = transformSeedToPrivateJwk({
-      seed: TypedArrayEncoder.fromString(createDidOptions.seed),
+      seed: TypedArrayEncoder.fromUtf8String(createDidOptions.seed),
       type: {
         crv: 'Ed25519',
         kty: 'OKP',
@@ -385,11 +384,11 @@ export class DidController extends Controller {
               crv: 'Ed25519',
               kty: 'OKP',
             },
-            privateKey: TypedArrayEncoder.fromString(privateKey),
+            privateKey: TypedArrayEncoder.fromUtf8String(privateKey),
           })
         : seed
           ? transformSeedToPrivateJwk({
-              seed: TypedArrayEncoder.fromString(seed),
+              seed: TypedArrayEncoder.fromUtf8String(seed),
               type: {
                 crv: 'Ed25519',
                 kty: 'OKP',
@@ -444,7 +443,7 @@ export class DidController extends Controller {
       if (didOptions.seed) {
         this.agent.config.logger.info('Creating DID:key with provided seed')
         const privateJwk = transformPrivateKeyToPrivateJwk({
-          privateKey: TypedArrayEncoder.fromString(didOptions.seed),
+          privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed),
           type: getTypeFromCurve(didOptions.keyType ?? KeyAlgorithm.Ed25519),
         }).privateJwk
 
@@ -542,7 +541,7 @@ export class DidController extends Controller {
           crv: 'Ed25519',
           kty: 'OKP',
         },
-        privateKey: TypedArrayEncoder.fromString(didOptions.seed),
+        privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed),
       })
 
       key = await agent.kms.importKey({ privateJwk })
