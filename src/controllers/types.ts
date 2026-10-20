@@ -141,9 +141,7 @@ export interface CreateOfferOptions {
 }
 
 type CredentialFormatType =
-  | LegacyIndyCredentialFormat
-  | DidCommJsonLdCredentialFormat
-  | AnonCredsDidCommCredentialFormat
+  LegacyIndyCredentialFormat | DidCommJsonLdCredentialFormat | AnonCredsDidCommCredentialFormat
 
 export interface CreateOfferOobOptions {
   protocolVersion: ProtocolVersion
