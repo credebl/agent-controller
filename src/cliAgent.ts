@@ -29,6 +29,7 @@ import {
   LogLevel,
   Agent,
   X509Module,
+  X509ModuleConfig,
   JwkDidRegistrar,
   JwkDidResolver,
   SdJwtVcModule,
@@ -309,8 +310,19 @@ const getModules = (
           return await getX509CertsByClientToken(tenantId, certificateChain)
         }
 
-        // NoAuth: return all certs from the static trust list URL
-        return await getX509CertsByUrl()
+        // NoAuth: return all certs from the static trust list URL.
+        // Locally the trust list service is often unreachable (placeholder URL),
+        // so fall back to the certificates explicitly marked as trusted on this
+        // agent (e.g. added through POST /x509/trusted).
+        try {
+          return await getX509CertsByUrl()
+        } catch (error) {
+          const agentTrustedCertificates = agentContext.dependencyManager.resolve(X509ModuleConfig).trustedCertificates
+          if (agentTrustedCertificates && agentTrustedCertificates.length > 0) {
+            return agentTrustedCertificates
+          }
+          throw error
+        }
       },
     }),
   }

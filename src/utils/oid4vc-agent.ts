@@ -262,27 +262,31 @@ export async function getX509CertsByClientToken(
   return certificateChain.map((cert) => cert.toString('pem'))
 }
 
-export async function getX509CertsByUrl(): Promise<string[]> {
+export async function getX509CertsByUrl(signal?: AbortSignal): Promise<string[]> {
   const trustListUrl = process.env.TRUST_LIST_URL
   if (!trustListUrl) throw new Error('[getX509CertsByUrl] TRUST_LIST_URL is not configured')
 
-  logger.info(`[getX509CertsByUrl] fetching trust list from: ${trustListUrl}`)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
+  try {
+    logger.info(`[getX509CertsByUrl] fetching trust list from: ${trustListUrl}`)
+    const response = await fetch(trustListUrl, { signal: signal ?? controller.signal })
 
-  const response = await fetch(trustListUrl)
+    if (!response.ok) {
+      throw new Error(`[getX509CertsByUrl] failed to fetch trust list: HTTP ${response.status}`)
+    }
 
-  if (!response.ok) {
-    throw new Error(`[getX509CertsByUrl] failed to fetch trust list: HTTP ${response.status}`)
+    const data = await response.json()
+
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('[getX509CertsByUrl] trust list is empty or invalid')
+    }
+
+    logger.info(`[getX509CertsByUrl] fetched certificates count: ${data.length}`)
+    return data as string[]
+  } finally {
+    clearTimeout(timeout)
   }
-
-  const data = await response.json()
-
-  if (!Array.isArray(data) || data.length === 0) {
-    throw new Error('[getX509CertsByUrl] trust list is empty or invalid')
-  }
-
-  logger.info(`[getX509CertsByUrl] fetched certificates count: ${data.length}`)
-
-  return data as string[]
 }
 
 function handlePresentationAuthorization(
