@@ -225,6 +225,43 @@ The agent can be configured in three ways:
 2. **JSON config file**: When providing a lot of configuration options, pass a JSON file with `--config`. All properties should use camelCase for the key names. See [samples/cliConfig.json](samples/cliConfig.json) for a complete example.
 3. **Environment variables**: All properties are prefixed with `AFJ_REST` and use UPPER_SNAKE_CASE (e.g. `AFJ_REST_WALLET_KEY=my-secret-key ./bin/afj-rest.js start ...`).
 
+### Optional OpenBao KMS backend
+
+OpenBao Transit can be registered as an additional KMS backend while Askar remains the wallet storage and default KMS backend. Add `openBaoKms` to the JSON config:
+
+```json
+{
+  "openBaoKms": {
+    "url": "https://openbao.example.com",
+    "transitMount": "transit",
+    "keyPrefix": "credebl",
+    "appRole": {
+      "roleId": "agent-controller",
+      "secretId": "provide-through-your-secret-manager",
+      "mountPath": "approle"
+    }
+  }
+}
+```
+
+The backend identifier is `openbao`. Existing operations continue to use Askar unless a purpose is explicitly routed to OpenBao. To protect keys created for Holder OpenID4VC credential binding proofs, add this alongside `openBaoKms`:
+
+```json
+{
+  "keyManagement": {
+    "holderCredentialBinding": "openbao"
+  }
+}
+```
+
+If `keyManagement` or `holderCredentialBinding` is omitted, Holder credential binding continues to use Askar. Selecting `openbao` without configuring `openBaoKms` fails agent startup instead of silently falling back. Issuer signing, DIDComm keys, and all other key purposes remain unchanged.
+
+Ed25519 and P-256 key creation, public-key lookup, signing, and verification are supported. Private keys are generated inside Transit and are configured as non-exportable. Import, encryption, decryption, and deletion are intentionally not advertised by this backend.
+
+Each Transit key name is scoped to the Credo agent context (the tenant record id in multi-tenant mode). A key id from one tenant is rejected in another tenant context. OpenBao failures are returned to the caller and never fall back to Askar.
+
+AppRole is recommended for deployments. A static `token` can be configured instead for development, but `token` and `appRole` are mutually exclusive. Do not commit either the AppRole secret id or a static token to source control.
+
 ## Development
 
 ### Starting Your Own Server

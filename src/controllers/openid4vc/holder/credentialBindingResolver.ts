@@ -1,6 +1,8 @@
 import { DidJwk, DidKey, DidsApi, type JwkDidCreateOptions, type KeyDidCreateOptions, Kms } from '@credo-ts/core'
 import { type OpenId4VciCredentialBindingResolver, OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
+import { getHolderCredentialBindingBackend } from '../../../kms/policy'
+
 export function getCredentialBindingResolver({
   requestBatch,
 }: {
@@ -17,6 +19,7 @@ export function getCredentialBindingResolver({
     agentContext,
   }) => {
     const kms = agentContext.resolve(Kms.KeyManagementApi)
+    const backend = getHolderCredentialBindingBackend(agentContext)
 
     // First, we try to pick a did method
     // Prefer did:jwk, otherwise use did:key, otherwise use undefined
@@ -56,7 +59,7 @@ export function getCredentialBindingResolver({
         kms
           .createKeyForSignatureAlgorithm({
             algorithm: signatureAlgorithm!,
-            backend: 'askar',
+            backend,
           })
           .then((key) => Kms.PublicJwk.fromUnknown(key.publicJwk)),
       ),

@@ -65,6 +65,8 @@ import express from 'express'
 import { readFile } from 'fs/promises'
 
 import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network, NetworkName } from './enums'
+import { OpenBaoKmsModule, type OpenBaoKmsConfig } from './kms/openbao'
+import { KeyManagementPolicyModule, type KeyManagementPolicyOptions } from './kms/policy'
 import { validatePurgeConfig } from './purge/PurgeConfigValidator'
 import {
   initPurgeSchedulers,
@@ -131,6 +133,8 @@ export interface AriesRestConfig {
   schemaFileServerURL?: string
   apiKey: string
   updateJwtSecret?: boolean
+  openBaoKms?: OpenBaoKmsConfig
+  keyManagement?: KeyManagementPolicyOptions
 }
 
 export async function readRestConfig(path: string) {
@@ -500,6 +504,10 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     config: agentConfig,
     modules: {
       ...modules,
+      ...(afjConfig.openBaoKms ? { openBaoKms: new OpenBaoKmsModule(afjConfig.openBaoKms) } : {}),
+      ...(afjConfig.keyManagement
+        ? { keyManagementPolicy: new KeyManagementPolicyModule(afjConfig.keyManagement) }
+        : {}),
     },
     dependencies: agentDependencies,
   })
