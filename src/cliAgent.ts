@@ -29,6 +29,7 @@ import {
   LogLevel,
   Agent,
   X509Module,
+  X509ModuleConfig,
   JwkDidRegistrar,
   JwkDidResolver,
   SdJwtVcModule,
@@ -309,8 +310,33 @@ const getModules = (
           return await getX509CertsByClientToken(tenantId, certificateChain)
         }
 
-        // NoAuth: return all certs from the static trust list URL
-        return await getX509CertsByUrl()
+        // NoAuth: return all certs from the static trust list URL.
+        // Locally the trust list service is often unreachable (placeholder URL),
+        // so fall back to the certificates explicitly marked as trusted on this
+        // agent (e.g. added through POST /x509/trusted).
+        try {
+          return await getX509CertsByUrl()
+        } catch (error) {
+          const nodeEnv = process.env.NODE_ENV?.toUpperCase()
+          const isProd = nodeEnv === 'PROD' || nodeEnv === 'PRODUCTION'
+          const allowFallback = process.env.ALLOW_TRUST_LIST_FALLBACK === 'true'
+
+          if (isProd && !allowFallback) {
+            agentContext.config.logger?.warn(
+              '[getTrustedCertificatesForVerification] Trust list lookup failed in production environment. Falling back to agent trusted certificates is disabled. Set ALLOW_TRUST_LIST_FALLBACK=true to override.',
+            )
+            throw error
+          }
+
+          const agentTrustedCertificates = agentContext.dependencyManager.resolve(X509ModuleConfig).trustedCertificates
+          if (agentTrustedCertificates && agentTrustedCertificates.length > 0) {
+            agentContext.config.logger?.warn(
+              `[getTrustedCertificatesForVerification] Trust list lookup failed, falling back to agent trusted certificates${isProd ? ' (explicitly allowed via ALLOW_TRUST_LIST_FALLBACK)' : ' (non-production environment)'}`,
+            )
+            return agentTrustedCertificates
+          }
+          throw error
+        }
       },
     }),
   }
@@ -396,7 +422,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     ...afjConfig
   } = restConfig
 
-  const logger = new TsLogger(logLevel ?? LogLevel.error)
+  const logger = new TsLogger(logLevel ?? LogLevel.Error)
 
   const agentConfig: InitConfig = {
     ...afjConfig,
