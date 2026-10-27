@@ -1676,7 +1676,19 @@
   dependencies:
     "@opentelemetry/api" "^1.3.0"
 
+<<<<<<< HEAD
+"@opentelemetry/api@^1.3.0":
+  version "1.9.0"
+  resolved "https://registry.yarnpkg.com/@opentelemetry/api/-/api-1.9.0.tgz#d03eba68273dc0f7509e2a3d5cba21eae10379fe"
+  integrity sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==
+=======
 "@opentelemetry/api@^1.3.0", "@opentelemetry/api@^1.9.0":
+  version "1.9.1"
+  resolved "https://registry.yarnpkg.com/@opentelemetry/api/-/api-1.9.1.tgz#c1b0346de336ba55af2d5a7970882037baedec05"
+  integrity sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==
+>>>>>>> origin/main
+
+"@opentelemetry/api@^1.9.1":
   version "1.9.1"
   resolved "https://registry.yarnpkg.com/@opentelemetry/api/-/api-1.9.1.tgz#c1b0346de336ba55af2d5a7970882037baedec05"
   integrity sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q==
@@ -2630,7 +2642,24 @@
   resolved "https://registry.yarnpkg.com/@types/estree/-/estree-1.0.9.tgz#cf3f0e876d7bee15a93ab925b82bf570a3904a24"
   integrity sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==
 
+<<<<<<< HEAD
+"@types/express-serve-static-core@^5.0.0":
+  version "5.1.0"
+  resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-5.1.0.tgz#74f47555b3d804b54cb7030e6f9aa0c7485cfc5b"
+  integrity sha512-jnHMsrd0Mwa9Cf4IdOzbz543y4XJepXrbia2T4b6+spXC2We3t1y6K44D3mR8XMFSXMCf3/l7rCgddfx7UNVBA==
+=======
 "@types/express-serve-static-core@^5.0.0", "@types/express-serve-static-core@^5.0.6":
+  version "5.1.3"
+  resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-5.1.3.tgz#9d34c88c0c9ee62b9a6e4d9f8ab8d7e29688e6b4"
+  integrity sha512-dPfW8NFiOF4wOHc7+N/QSxlY9cfSsenewGbAz8C8U/MULPd/YZ27LvJUIlzaXie7e6Ove9YunJGgC9tbHD2cKw==
+>>>>>>> origin/main
+  dependencies:
+    "@types/node" "*"
+    "@types/qs" "*"
+    "@types/range-parser" "*"
+    "@types/send" "*"
+
+"@types/express-serve-static-core@^5.1.3":
   version "5.1.3"
   resolved "https://registry.yarnpkg.com/@types/express-serve-static-core/-/express-serve-static-core-5.1.3.tgz#9d34c88c0c9ee62b9a6e4d9f8ab8d7e29688e6b4"
   integrity sha512-dPfW8NFiOF4wOHc7+N/QSxlY9cfSsenewGbAz8C8U/MULPd/YZ27LvJUIlzaXie7e6Ove9YunJGgC9tbHD2cKw==
@@ -3912,7 +3941,11 @@ cookiejar@^2.1.4:
   resolved "https://registry.yarnpkg.com/cookiejar/-/cookiejar-2.1.4.tgz#ee669c1fea2cf42dc31585469d193fef0d65771b"
   integrity sha512-LDx6oHrK+PhzLKJU9j5S7/Y3jM/mUHvD/DeI1WQmJn652iPC5Y4TBzC9l+5OMOXlyTTA+SmVUPm0HQUwpD5Jqw==
 
+<<<<<<< HEAD
+cors@^2.8.6:
+=======
 cors@^2.8.5:
+>>>>>>> origin/main
   version "2.8.6"
   resolved "https://registry.yarnpkg.com/cors/-/cors-2.8.6.tgz#ff5dd69bd95e547503820d29aba4f8faf8dfec96"
   integrity sha512-tJtZBBHA6vjIAaF6EnIaq6laBBP9aq/Y3ouVJjEfoHbRBcHBAHYcMh/w8LDrk2PvIMMq8gmopa5D4V8RmbrxGw==
@@ -4394,7 +4427,11 @@ eslint-import-resolver-node@^0.3.9:
     is-core-module "^2.16.1"
     resolve "^2.0.0-next.6"
 
+<<<<<<< HEAD
+eslint-import-resolver-typescript@^4.4.5:
+=======
 eslint-import-resolver-typescript@^4.4.1:
+>>>>>>> origin/main
   version "4.4.5"
   resolved "https://registry.yarnpkg.com/eslint-import-resolver-typescript/-/eslint-import-resolver-typescript-4.4.5.tgz#3058afec12595b3c036c34f8a1066fb9e18fff0c"
   integrity sha512-nbE5XLph6TLtGYcu/U6e6ZVXyKBhbDWK5cLGk76eJ7NdZpwf1P9EFkpt1Z01mNZNrrilsAYWKH6zUkL4reoXbw==
@@ -4439,6 +4476,15 @@ eslint-plugin-import@^2.31.0:
     string.prototype.trimend "^1.0.9"
     tsconfig-paths "^3.15.0"
 
+<<<<<<< HEAD
+eslint-plugin-prettier@^5.5.6:
+  version "5.5.6"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-prettier/-/eslint-plugin-prettier-5.5.6.tgz#363ebe4d769bce157ccdd8129ce3efd91dc62564"
+  integrity sha512-ifetmTcxWfz+4qRW3pH/ujdTq2jQIj59AxJMIN26K5avYgU8dxycUETQonWiW+wPrYXA0j3Try0l1CnwVQtDqQ==
+  dependencies:
+    prettier-linter-helpers "^1.0.1"
+    synckit "^0.11.13"
+=======
 eslint-plugin-prettier@^5.4.0:
   version "5.5.7"
   resolved "https://registry.yarnpkg.com/eslint-plugin-prettier/-/eslint-plugin-prettier-5.5.7.tgz#ebef3acc2d664333b1356b717780198abc635398"
@@ -4446,6 +4492,7 @@ eslint-plugin-prettier@^5.4.0:
   dependencies:
     prettier-linter-helpers "^1.0.1"
     synckit "^0.12.3"
+>>>>>>> origin/main
 
 eslint-scope@^8.4.0:
   version "8.4.0"
@@ -5102,6 +5149,18 @@ handlebars@^4.7.8, handlebars@^4.7.9:
   integrity sha512-P5VJMVM7qgBn6vjXMw8WG9uVI+ncf2pi72j4de4yz5ZULLj2RGqLYaKOYGsgyrViQ0tePOVlN1tDCCXXtFqXKg==
   dependencies:
     minimist "^1.2.8"
+    neo-async "^2.6.2"
+    source-map "^0.6.1"
+    wordwrap "^1.0.0"
+  optionalDependencies:
+    uglify-js "^3.1.4"
+
+handlebars@^4.7.9:
+  version "4.7.9"
+  resolved "https://registry.yarnpkg.com/handlebars/-/handlebars-4.7.9.tgz#6f139082ab58dc4e5a0e51efe7db5ae890d56a0f"
+  integrity sha512-4E71E0rpOaQuJR2A3xDZ+GM1HyWYv1clR58tC8emQNeQe3RH7MAzSbat+V0wG78LQBo6m6bzSG/L4pBuCsgnUQ==
+  dependencies:
+    minimist "^1.2.5"
     neo-async "^2.6.2"
     source-map "^0.6.1"
     wordwrap "^1.0.0"
@@ -7292,10 +7351,41 @@ semver@^6.3.0, semver@^6.3.1:
   resolved "https://registry.yarnpkg.com/semver/-/semver-6.3.1.tgz#556d2ef8689146e46dcea4bfdd095f3434dffcb4"
   integrity sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==
 
+<<<<<<< HEAD
+semver@^7.5.3, semver@^7.5.4, semver@^7.7.1, semver@^7.7.3:
+  version "7.7.3"
+  resolved "https://registry.yarnpkg.com/semver/-/semver-7.7.3.tgz#4b5f4143d007633a8dc671cd0a6ef9147b8bb946"
+  integrity sha512-SdsKMrI9TdgjdweUSR9MweHA4EJ8YxHn8DFaDisvhVlUOe4BF1tLD7GAj0lIqWVl+dPb/rExr0Btby5loQm20Q==
+
+semver@^7.8.5:
+  version "7.8.5"
+  resolved "https://registry.yarnpkg.com/semver/-/semver-7.8.5.tgz#39b646037dd50c14fb451e7e4cac58ed8b863f69"
+  integrity sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==
+
+send@0.19.0:
+  version "0.19.0"
+  resolved "https://registry.yarnpkg.com/send/-/send-0.19.0.tgz#bbc5a388c8ea6c048967049dbeac0e4a3f09d7f8"
+  integrity sha512-dW41u5VfLXu8SJh5bwRmyYUbAoSB3c9uQh6L8h/KtsFREPWpbX1lrljJo186Jc4nmci/sGUZ9a0a0J2zgfq2hw==
+  dependencies:
+    debug "2.6.9"
+    depd "2.0.0"
+    destroy "1.2.0"
+    encodeurl "~1.0.2"
+    escape-html "~1.0.3"
+    etag "~1.8.1"
+    fresh "0.5.2"
+    http-errors "2.0.0"
+    mime "1.6.0"
+    ms "2.1.3"
+    on-finished "2.4.1"
+    range-parser "~1.2.1"
+    statuses "2.0.1"
+=======
 semver@^7.5.3, semver@^7.5.4, semver@^7.7.1, semver@^7.7.3, semver@^7.8.5:
   version "7.8.5"
   resolved "https://registry.yarnpkg.com/semver/-/semver-7.8.5.tgz#39b646037dd50c14fb451e7e4cac58ed8b863f69"
   integrity sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==
+>>>>>>> origin/main
 
 send@^1.1.0, send@^1.2.0:
   version "1.2.1"
@@ -7719,12 +7809,20 @@ swagger-ui-express@^4.4.0:
   dependencies:
     swagger-ui-dist ">=4.11.0"
 
+<<<<<<< HEAD
+synckit@^0.11.13:
+  version "0.11.13"
+  resolved "https://registry.yarnpkg.com/synckit/-/synckit-0.11.13.tgz#062a5ea57d81befc35892f8254de5c567e97c80a"
+  integrity sha512-eNRKgb3z66Yp3D2CixVujOUvXLFUTij/zVnV8KRyvFdQwpz7I5DS8UfRkTeLzb64u+dkzDSdelE24izu+zSSUg==
+  dependencies:
+=======
 synckit@^0.12.3:
   version "0.12.3"
   resolved "https://registry.yarnpkg.com/synckit/-/synckit-0.12.3.tgz#6e30a3441d095ed04c311077350ce205465512d6"
   integrity sha512-U+/AXT6LWsxnj2vz9HeUuPWBNgdWxjyIEjEPdbJARC9txmgPzo2VEdqnFo4hHaNyMPtycyVJrSaQYeQv/PoyyA==
   dependencies:
     "@dual-bundle/import-meta-resolve" "^4.2.1"
+>>>>>>> origin/main
     "@pkgr/core" "^0.3.6"
 
 tar@^7.4.3:
@@ -7797,10 +7895,17 @@ ts-deepmerge@^7.0.2:
   resolved "https://registry.yarnpkg.com/ts-deepmerge/-/ts-deepmerge-7.0.3.tgz#e7053ddb45be093b71d7f9a5a05935ae119f1d31"
   integrity sha512-Du/ZW2RfwV/D4cmA5rXafYjBQVuvu4qGiEEla4EmEHVHgRdx68Gftx7i66jn2bzHPwSVZY36Ae6OuDn9el4ZKA==
 
+<<<<<<< HEAD
+ts-jest@^29.4.12:
+  version "29.4.12"
+  resolved "https://registry.yarnpkg.com/ts-jest/-/ts-jest-29.4.12.tgz#c34cd91f02d364e9286d2c016843315fd0efff76"
+  integrity sha512-Ov6ClY53Fflh6BGAnY2DlTq1hYDrTycz2PVTXBWFW2CU+9zrEqAp9fWdGXl42EXO5RLSFAcAZ2JFKbP+zBTFfw==
+=======
 ts-jest@^29.3.4:
   version "29.4.14"
   resolved "https://registry.yarnpkg.com/ts-jest/-/ts-jest-29.4.14.tgz#cb36c043df0fada861c8b604a5d514f953126180"
   integrity sha512-+943G6wCX5E3VpzTQhBGBFntCmdT+QAkTvUlp03edTONFBvqskuXPhpyX16xdUotO4P5HQKyppldSWjocoltLQ==
+>>>>>>> origin/main
   dependencies:
     bs-logger "^0.2.6"
     fast-json-stable-stringify "^2.1.0"
@@ -8309,15 +8414,31 @@ write-file-atomic@^4.0.2:
     imurmurhash "^0.1.4"
     signal-exit "^3.0.7"
 
+<<<<<<< HEAD
+ws@8.17.1:
+  version "8.17.1"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-8.17.1.tgz#9293da530bb548febc95371d90f9c878727d919b"
+  integrity sha512-6XQFvXTkbfUOZOKKILFG1PDK2NDQs4azKQl26T0YS5CxqWLgXajbPZ+h4gZekJyRqFU8pvnbAbbs/3TgRPy+GQ==
+
+ws@^8.19.0:
+=======
 ws@8.21.0:
+>>>>>>> origin/main
   version "8.21.0"
   resolved "https://registry.yarnpkg.com/ws/-/ws-8.21.0.tgz#012e413fc07429945121b0c153158c4343086951"
   integrity sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==
 
+<<<<<<< HEAD
+ws@^8.21.3:
+  version "8.21.3"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-8.21.3.tgz#660b4faddb6a3e575c86e078126919961f4de4fc"
+  integrity sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==
+=======
 ws@^8.19.0, ws@^8.21.0:
   version "8.22.0"
   resolved "https://registry.yarnpkg.com/ws/-/ws-8.22.0.tgz#40f16e1d7588ac0575041be5c49b8eb261c28e73"
   integrity sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==
+>>>>>>> origin/main
 
 xtend@^4.0.0:
   version "4.0.2"
