@@ -38,3 +38,98 @@ index 27b6afa..1988432 100644
 \ No newline at end of file
 +export { OpenId4VcApi, OpenId4VcHolderApi, OpenId4VcHolderModule, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionState, OpenId4VcIssuerApi, OpenId4VcIssuerEvents, OpenId4VcIssuerModule, OpenId4VcIssuerModuleConfig, OpenId4VcIssuerRecord, OpenId4VcIssuerRepository, OpenId4VcIssuerService, OpenId4VcModule, OpenId4VcModuleConfig, OpenId4VcVerificationSessionRecord, OpenId4VcVerificationSessionRepository, OpenId4VcVerificationSessionState, OpenId4VcVerifierApi, OpenId4VcVerifierEvents, OpenId4VcVerifierModule, OpenId4VcVerifierModuleConfig, OpenId4VcVerifierRecord, OpenId4VcVerifierRepository, OpenId4VciAuthorizationFlow, OpenId4VciCredentialFormatProfile, OpenId4VciHolderService, OpenId4VpHolderService, OpenId4VpVerifierService, authorizationCodeGrantIdentifier, dynamicOid4vciClientAuthentication, getAllowedAndRequestedScopeValues, getCredentialConfigurationsSupportedForScopes, getOfferedCredentials, getOid4vcCallbacks, getOid4vcDecryptJweCallback, getOid4vcEncryptJweCallback, getOid4vcJwtSignCallback, getOid4vcJwtVerifyCallback, getScopesFromCredentialConfigurationsSupported, openId4VciSupportedCredentialFormats, preAuthorizedCodeGrantIdentifier };
 \ No newline at end of file
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-holder/OpenId4VciHolderService.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-holder/OpenId4VciHolderService.mjs
+index 0c89f6c..e510414 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-holder/OpenId4VciHolderService.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-holder/OpenId4VciHolderService.mjs
+@@ -7,7 +7,7 @@ import { openId4VciSupportedCredentialFormats } from "./OpenId4VciHolderServiceO
+ import { __decorateMetadata } from "../_virtual/_@oxc-project_runtime@0.112.0/helpers/decorateMetadata.mjs";
+ import { __decorateParam } from "../_virtual/_@oxc-project_runtime@0.112.0/helpers/decorateParam.mjs";
+ import { __decorate } from "../_virtual/_@oxc-project_runtime@0.112.0/helpers/decorate.mjs";
+-import { AgentContext, CredoError, DidsApi, InjectionSymbols, Kms, Mdoc, MdocApi, MdocRecord, SdJwtVcApi, SdJwtVcRecord, SignatureSuiteRegistry, TypedArrayEncoder, W3cCredentialRecord, W3cCredentialService, W3cJsonLdCredentialService, W3cJsonLdVerifiableCredential, W3cJwtVerifiableCredential, W3cV2CredentialRecord, W3cV2CredentialService, W3cV2SdJwtVerifiableCredential, inject, injectable, parseDid, replaceError } from "@credo-ts/core";
++import { AgentContext, CredoError, DidsApi, InjectionSymbols, Kms, Mdoc, MdocApi, MdocRecord, SdJwtVcApi, SdJwtVcRecord, SignatureSuiteRegistry, TypedArrayEncoder, W3cCredentialRecord, W3cCredentialService, W3cJsonLdCredentialService, W3cJsonLdVerifiableCredential, W3cJwtVerifiableCredential, W3cV2CredentialRecord, W3cV2CredentialService, W3cV2JwtVerifiableCredential, W3cV2SdJwtVerifiableCredential, inject, injectable, parseDid, replaceError } from "@credo-ts/core";
+ import { Oauth2Client, Oauth2ServerErrorResponseError, authorizationCodeGrantIdentifier, clientAuthenticationAnonymous, clientAuthenticationClientAttestationJwt, clientAuthenticationNone, getAuthorizationServerMetadataFromList, preAuthorizedCodeGrantIdentifier, refreshTokenGrantIdentifier } from "@openid4vc/oauth2";
+ import { AuthorizationFlow, Openid4vciClient, Openid4vciRetrieveCredentialsError, Openid4vciVersion, determineAuthorizationServerForCredentialOffer, parseKeyAttestationJwt } from "@openid4vc/openid4vci";
+ 
+@@ -649,6 +649,32 @@ let OpenId4VciHolderService = class OpenId4VciHolderService {
+ 		}
+ 		if (options.format === OpenId4VciCredentialFormatProfile.JwtVcJson || options.format === OpenId4VciCredentialFormatProfile.JwtVcJsonLd) {
+ 			if (!credentials.every((c) => typeof c === "string")) throw new CredoError(`Received credential(s) of format ${format}, but not all credential(s) are a string. ${JSON.stringify(credentials)}`);
++			const isVcJoseCose = (c) => {
++				try {
++					return JSON.parse(TypedArrayEncoder.toUtf8String(TypedArrayEncoder.fromBase64Url(c.split(".")[0]))).typ === "vc+jwt";
++				} catch {
++					return false;
++				}
++			};
++			if (credentials.every(isVcJoseCose)) {
++				const result = await Promise.all(credentials.map(async (c) => {
++					const credential = W3cV2JwtVerifiableCredential.fromCompact(c);
++					return {
++						credential,
++						result: await this.w3cV2CredentialService.verifyCredential(agentContext, { credential })
++					};
++				}));
++				if (!result.every((c) => c.result.isValid)) {
++					agentContext.config.logger.error("Failed to validate credentials", { result });
++					throw new CredoError(`Failed to validate credential, error = ${result.map((e) => e.result.error?.message).filter(Boolean).join(", ")}`);
++				}
++				return {
++					record: new W3cV2CredentialRecord({ credentialInstances: result.map((r) => ({ credential: r.credential.encoded })) }),
++					notificationId,
++					credentialConfigurationId,
++					credentialConfiguration
++				};
++			}
+ 			const result = await Promise.all(credentials.map(async (c) => {
+ 				const credential = W3cJwtVerifiableCredential.fromSerializedJwt(c);
+ 				return {
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
+index bb5af5c..8194dc6 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
+@@ -868,6 +868,17 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 				credentials: await Promise.all(signOptions.credentials.map((credential) => mdocApi.sign(credential).then((signed) => signed.base64Url)))
+ 			};
+ 		}
++		if (signOptions.format === ClaimFormat.JwtW3cVc) {
++			if (credentialConfiguration.format !== OpenId4VciCredentialFormatProfile.JwtVcJson && credentialConfiguration.format !== OpenId4VciCredentialFormatProfile.JwtVcJsonLd) throw new CredoError(`Invalid credential format returned by sign options. '${ClaimFormat.JwtW3cVc}' can only be issued for '${OpenId4VciCredentialFormatProfile.JwtVcJson}' or '${OpenId4VciCredentialFormatProfile.JwtVcJsonLd}', received '${credentialConfiguration.format}'.`);
++			return {
++				format: credentialConfiguration.format,
++				credentials: await Promise.all(signOptions.credentials.map(async (credential) => this.w3cV2CredentialService.signCredential(agentContext, {
++					...credential,
++					format: ClaimFormat.JwtW3cVc,
++					alg: credential.alg ?? (await getPublicJwkFromDid(agentContext, credential.verificationMethod)).signatureAlgorithm
++				}).then((signed) => signed.encoded)))
++			};
++		}
+ 		if (signOptions.format === ClaimFormat.SdJwtW3cVc) return {
+ 			format: credentialConfiguration.format,
+ 			credentials: await Promise.all(signOptions.credentials.map((credential) => this.w3cV2CredentialService.signCredential(agentContext, {
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerServiceOptions.d.mts b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerServiceOptions.d.mts
+index 0939dc9..65435dd 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerServiceOptions.d.mts
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerServiceOptions.d.mts
+@@ -330,11 +330,20 @@ interface OpenId4VciSignW3cCredentials {
+     credential: W3cCredential;
+   }>;
+ }
+-interface OpenId4VciSignW3cV2Credentials {
++type OpenId4VciSignW3cV2Credentials = {
+   type: 'credentials';
+   format: ClaimFormat.SdJwtW3cVc | `${ClaimFormat.SdJwtW3cVc}`;
+   credentials: Omit<W3cV2SignCredentialOptions<ClaimFormat.SdJwtW3cVc>, 'format'>[];
+-}
++} | {
++  type: 'credentials';
++  format: ClaimFormat.JwtW3cVc | `${ClaimFormat.JwtW3cVc}`;
++  /**
++   * `alg` is derived from the verification method when omitted.
++   */
++  credentials: Array<Omit<W3cV2SignCredentialOptions<ClaimFormat.JwtW3cVc>, 'format' | 'alg'> & {
++    alg?: W3cV2SignCredentialOptions<ClaimFormat.JwtW3cVc>['alg'];
++  }>;
++};
+ type OpenId4VciDeferredCredentials = {
+   type: 'deferral';
+   transactionId: string;

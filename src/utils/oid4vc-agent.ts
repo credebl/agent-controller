@@ -431,23 +431,23 @@ function handleW3cCredentialFormat(
   const isV2 = contextArray.includes(CREDENTIALS_CONTEXT_V2_URL) || !!payload?.validFrom || !!payload?.validUntil
 
   return {
-    format:
-      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.LdpVc
-        ? ClaimFormat.LdpVc
-        : ClaimFormat.JwtVc,
+    format: getW3cClaimFormat(credentialConfiguration.format, isV2),
     credentials: holderBinding.keys.map((binding: any) =>
-      mapW3cCredentialBinding(
-        binding,
-        payload,
-        credential,
-        contextArray,
-        isV2,
-        issuerDidVerificationMethod,
-        credentialConfiguration,
-      ),
+      mapW3cCredentialBinding(binding, payload, credential, contextArray, isV2, issuerDidVerificationMethod),
     ),
     type: 'credentials',
   }
+}
+
+/**
+ * VC 2.0 JWTs are secured with VC-JOSE-COSE (`vc+jwt`: the credential is the JWT payload),
+ * VC 1.1 JWTs keep the VC-JWT encoding (`jwt_vc`: the credential sits in the `vc` claim).
+ */
+function getW3cClaimFormat(credentialConfigurationFormat: string, isV2: boolean) {
+  if (credentialConfigurationFormat === OpenId4VciCredentialFormatProfile.LdpVc) {
+    return ClaimFormat.LdpVc
+  }
+  return isV2 ? ClaimFormat.JwtW3cVc : ClaimFormat.JwtVc
 }
 
 function mapW3cCredentialBinding(
@@ -457,7 +457,6 @@ function mapW3cCredentialBinding(
   contextArray: any[],
   isV2: boolean,
   issuerDidVerificationMethod: string | undefined,
-  credentialConfiguration: any,
 ) {
   let rawSubject: any
   let subjectId: string | undefined = undefined
@@ -487,10 +486,10 @@ function mapW3cCredentialBinding(
   const finalIssuer = isV2 && typeof issuer === 'string' ? { id: issuer } : issuer
 
   const mainContext = isV2 ? CREDENTIALS_CONTEXT_V2_URL : CREDENTIALS_CONTEXT_V1_URL
+  const otherBaseContext = isV2 ? CREDENTIALS_CONTEXT_V1_URL : CREDENTIALS_CONTEXT_V2_URL
 
-  const finalContext = contextArray.includes(mainContext)
-    ? [mainContext, ...contextArray.filter((c) => c !== mainContext)]
-    : [mainContext, ...contextArray]
+  // Both base contexts are @protected, so a credential must never carry the 1.1 and 2.0 contexts together
+  const finalContext = [mainContext, ...contextArray.filter((c) => c !== mainContext && c !== otherBaseContext)]
 
   const credentialJson: any = {
     '@context': finalContext,
@@ -500,13 +499,15 @@ function mapW3cCredentialBinding(
   }
 
   if (isV2) {
-    credentialJson.validFrom = payload.validFrom || payload.issuanceDate
-    if (payload.validUntil || payload.expirationDate) {
-      credentialJson.validUntil = payload.validUntil || payload.expirationDate
-      credentialJson.expirationDate = credentialJson.validUntil
+    // VC 2.0 does not define issuanceDate/expirationDate, so only validFrom/validUntil are emitted
+    const validFrom = payload.validFrom || payload.issuanceDate
+    if (validFrom) {
+      credentialJson.validFrom = validFrom
     }
-    // Add issuanceDate for JWT signer compatibility
-    credentialJson.issuanceDate = credentialJson.validFrom
+    const validUntil = payload.validUntil || payload.expirationDate
+    if (validUntil) {
+      credentialJson.validUntil = validUntil
+    }
   } else {
     credentialJson.issuanceDate = payload.issuanceDate
     if (payload.expirationDate) {
@@ -531,10 +532,6 @@ function mapW3cCredentialBinding(
   }
 
   return {
-    format:
-      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.LdpVc
-        ? ClaimFormat.LdpVc
-        : ClaimFormat.JwtVc,
     verificationMethod: issuerDidVerificationMethod,
     credential: credInstance,
   }
