@@ -82,7 +82,7 @@ class x509Service {
     if (options.authorityKey && options?.authorityKey?.seed) {
       const { privateJwk } = transformSeedToPrivateJwk({
         type: getTypeFromCurve(options.authorityKey.keyType ?? 'P-256'),
-        seed: TypedArrayEncoder.fromString(options.authorityKey!.seed!),
+        seed: TypedArrayEncoder.fromUtf8String(options.authorityKey!.seed!),
       })
 
       const { publicJwk } = await agent.kms.importKey({ privateJwk })
@@ -99,7 +99,7 @@ class x509Service {
       if (options?.subjectPublicKey?.seed) {
         const importedKey = await agentReq.agent.kms.importKey({
           privateJwk: transformSeedToPrivateJwk({
-            seed: TypedArrayEncoder.fromString(options.subjectPublicKey.seed),
+            seed: TypedArrayEncoder.fromUtf8String(options.subjectPublicKey.seed),
             type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256'),
           }).privateJwk,
         })
@@ -223,7 +223,7 @@ export async function createKey(agent: Agent, keyType: KeyAlgorithm) {
     if (!normalizedCurve) throw new Error('Unspported key type for method importKey')
     const importedKey = await agent.kms.importKey({
       privateJwk: transformSeedToPrivateJwk({
-        seed: TypedArrayEncoder.fromString(seed),
+        seed: TypedArrayEncoder.fromUtf8String(seed),
         type: getTypeFromCurve(normalizedCurve),
       }).privateJwk,
     })

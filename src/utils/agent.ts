@@ -43,7 +43,7 @@ export const setupAgent = async ({
   id: string
   key: string
 }) => {
-  const logger = new TsLogger(LogLevel.debug)
+  const logger = new TsLogger(LogLevel.Debug)
 
   const config: InitConfig = {
     logger: logger,
