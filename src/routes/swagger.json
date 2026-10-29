@@ -372,16 +372,13 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"AnyUint8Array": {
-				"$ref": "#/components/schemas/Uint8Array"
-			},
 			"X509Certificate": {
 				"properties": {
 					"publicJwk": {
 						"$ref": "#/components/schemas/PublicJwk"
 					},
 					"privateKey": {
-						"$ref": "#/components/schemas/AnyUint8Array"
+						"$ref": "#/components/schemas/Uint8Array"
 					}
 				},
 				"required": [
@@ -2345,17 +2342,46 @@
 			"SdJwtVcRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
-			"PaginatedCredentials_Record_string.unknown__": {
+			"PaginationMeta": {
 				"properties": {
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/Record_string.unknown_"
-						},
-						"type": "array"
+					"page": {
+						"type": "number",
+						"format": "double"
+					},
+					"pageSize": {
+						"type": "number",
+						"format": "double"
 					},
 					"total": {
 						"type": "number",
 						"format": "double"
+					},
+					"totalPages": {
+						"type": "number",
+						"format": "double"
+					},
+					"hasNextPage": {
+						"type": "boolean"
+					},
+					"hasPreviousPage": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"page",
+					"pageSize",
+					"total",
+					"totalPages",
+					"hasNextPage",
+					"hasPreviousPage"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CredentialListQuery": {
+				"properties": {
+					"q": {
+						"type": "string"
 					},
 					"page": {
 						"type": "number",
@@ -2365,20 +2391,55 @@
 						"type": "number",
 						"format": "double"
 					},
-					"totalPages": {
-						"type": "number",
-						"format": "double"
+					"credentialType": {
+						"type": "string"
+					},
+					"vct": {
+						"type": "string"
+					},
+					"docType": {
+						"type": "string"
+					},
+					"types": {
+						"type": "string"
+					},
+					"issuer": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"reference": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PaginatedResponse_Record_string.unknown__": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/Record_string.unknown_"
+						},
+						"type": "array"
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/PaginationMeta"
+					},
+					"filters": {
+						"$ref": "#/components/schemas/CredentialListQuery"
 					}
 				},
 				"required": [
 					"data",
-					"total",
-					"page",
-					"pageSize",
-					"totalPages"
+					"pagination"
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"PaginatedCredentials_Record_string.unknown__": {
+				"$ref": "#/components/schemas/PaginatedResponse_Record_string.unknown__"
 			},
 			"MdocRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
@@ -2417,7 +2478,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"Record_string.string-or-string-Array_": {
+			"Record_string.string-or-string-Array-or-undefined_": {
 				"properties": {},
 				"additionalProperties": {
 					"anyOf": [
@@ -2436,7 +2497,7 @@
 				"description": "Construct a type with a set of properties K of type T"
 			},
 			"CredentialTags": {
-				"$ref": "#/components/schemas/Record_string.string-or-string-Array_"
+				"$ref": "#/components/schemas/Record_string.string-or-string-Array-or-undefined_"
 			},
 			"RequestCredentialBody": {
 				"properties": {
@@ -2655,6 +2716,9 @@
 							}
 						},
 						"type": "object"
+					},
+					"messageType": {
+						"type": "string"
 					}
 				},
 				"required": [

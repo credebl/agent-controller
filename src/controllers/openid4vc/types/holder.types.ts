@@ -13,7 +13,7 @@ export interface RequestCredentialBody {
   tags?: CredentialTags
 }
 
-export type CredentialTags = Record<string, string | string[]>
+export type CredentialTags = Record<string, string | string[] | undefined>
 
 export interface CredentialListQuery {
   q?: string
@@ -23,15 +23,27 @@ export interface CredentialListQuery {
   vct?: string
   docType?: string
   types?: string
+  issuer?: string
+  name?: string
+  reference?: string
 }
 
-export interface PaginatedCredentials<T> {
-  data: T[]
-  total: number
+export interface PaginationMeta {
   page: number
   pageSize: number
+  total: number
   totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
 }
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  pagination: PaginationMeta
+  filters?: CredentialListQuery
+}
+
+export type PaginatedCredentials<T> = PaginatedResponse<T>
 
 export interface AuthorizeRequestCredentialOffer {
   credentialOfferUri: string

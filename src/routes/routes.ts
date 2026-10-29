@@ -218,16 +218,11 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "AnyUint8Array": {
-        "dataType": "refAlias",
-        "type": {"ref":"Uint8Array","validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "X509Certificate": {
         "dataType": "refObject",
         "properties": {
             "publicJwk": {"ref":"PublicJwk","required":true},
-            "privateKey": {"ref":"AnyUint8Array"},
+            "privateKey": {"ref":"Uint8Array"},
         },
         "additionalProperties": false,
     },
@@ -948,16 +943,49 @@ const models: TsoaRoute.Models = {
         "type": {"ref":"Record_string.unknown_","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "PaginatedCredentials_Record_string.unknown__": {
+    "PaginationMeta": {
+        "dataType": "refObject",
+        "properties": {
+            "page": {"dataType":"double","required":true},
+            "pageSize": {"dataType":"double","required":true},
+            "total": {"dataType":"double","required":true},
+            "totalPages": {"dataType":"double","required":true},
+            "hasNextPage": {"dataType":"boolean","required":true},
+            "hasPreviousPage": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialListQuery": {
+        "dataType": "refObject",
+        "properties": {
+            "q": {"dataType":"string"},
+            "page": {"dataType":"double"},
+            "pageSize": {"dataType":"double"},
+            "credentialType": {"dataType":"string"},
+            "vct": {"dataType":"string"},
+            "docType": {"dataType":"string"},
+            "types": {"dataType":"string"},
+            "issuer": {"dataType":"string"},
+            "name": {"dataType":"string"},
+            "reference": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PaginatedResponse_Record_string.unknown__": {
         "dataType": "refObject",
         "properties": {
             "data": {"dataType":"array","array":{"dataType":"refAlias","ref":"Record_string.unknown_"},"required":true},
-            "total": {"dataType":"double","required":true},
-            "page": {"dataType":"double","required":true},
-            "pageSize": {"dataType":"double","required":true},
-            "totalPages": {"dataType":"double","required":true},
+            "pagination": {"ref":"PaginationMeta","required":true},
+            "filters": {"ref":"CredentialListQuery"},
         },
         "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "PaginatedCredentials_Record_string.unknown__": {
+        "dataType": "refAlias",
+        "type": {"ref":"PaginatedResponse_Record_string.unknown__","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "MdocRecord": {
@@ -987,14 +1015,14 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Record_string.string-or-string-Array_": {
+    "Record_string.string-or-string-Array-or-undefined_": {
         "dataType": "refAlias",
         "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"array","array":{"dataType":"string"}}]},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "CredentialTags": {
         "dataType": "refAlias",
-        "type": {"ref":"Record_string.string-or-string-Array_","validators":{}},
+        "type": {"ref":"Record_string.string-or-string-Array-or-undefined_","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "RequestCredentialBody": {
@@ -1122,6 +1150,7 @@ const models: TsoaRoute.Models = {
             "@type": {"dataType":"string","required":true},
             "@id": {"dataType":"string","required":true},
             "~thread": {"dataType":"nestedObjectLiteral","nestedProperties":{"pthid":{"dataType":"string"},"thid":{"dataType":"string"}}},
+            "messageType": {"dataType":"string"},
         },
         "additionalProperties": {"dataType":"any"},
     },
