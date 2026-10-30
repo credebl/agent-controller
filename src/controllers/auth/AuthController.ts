@@ -1,6 +1,6 @@
+import { Body, Controller, Path, Post, Request, Route, Tags } from '@tsoa/runtime'
 import axios from 'axios'
 import { Request as Req } from 'express'
-import { Body, Controller, Path, Post, Request, Route, Tags } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { BadRequestError } from '../../errors'

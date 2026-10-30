@@ -1,8 +1,8 @@
 import type { DidCommConnectionRecordProps } from '@credo-ts/didcomm'
 
 import { DidCommDidExchangeState } from '@credo-ts/didcomm'
+import { Controller, Delete, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Controller, Delete, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'

@@ -17,9 +17,9 @@ import {
   verkeyToPublicJwk,
   getKmsKeyIdForVerifiacationMethod,
 } from '@credo-ts/core'
+import { Controller, Get, Route, Tags, Security, Request, Post, Body, Query } from '@tsoa/runtime'
 import { Request as Req } from 'express'
 import jwt from 'jsonwebtoken'
-import { Controller, Get, Route, Tags, Security, Request, Post, Body, Query } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { AgentRole, SCOPES } from '../../enums'
