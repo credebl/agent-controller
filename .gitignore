@@ -66,3 +66,7 @@ dist
 .pnp.*
 build
 logs.txt
+
+# bun install may write this; yarn.lock is the source of truth
+bun.lock
+bun.lockb

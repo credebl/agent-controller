@@ -7,7 +7,7 @@
 //   parseIndySchemaId,
 // } from '@credo-ts/anoncreds'
 // import { Request as Req } from 'express'
-// import { Body, Controller, Post, Route, Tags, Security, Request } from 'tsoa'
+// import { Body, Controller, Post, Route, Tags, Security, Request } from '@tsoa/runtime'
 // import { injectable } from 'tsyringe'
 
 // import { CredentialEnum, EndorserMode, SCOPES } from '../../../enums'

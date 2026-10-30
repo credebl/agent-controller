@@ -9,8 +9,21 @@ import {
   DidCommOutOfBandInvitation,
   DidCommMessage,
 } from '@credo-ts/didcomm'
+import {
+  Body,
+  Controller,
+  Delete,
+  Example,
+  Get,
+  Path,
+  Post,
+  Query,
+  Route,
+  Tags,
+  Security,
+  Request,
+} from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Body, Controller, Delete, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'

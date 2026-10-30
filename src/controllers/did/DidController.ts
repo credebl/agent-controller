@@ -16,9 +16,9 @@ import {
   DidKey,
 } from '@credo-ts/core'
 import { Key, KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
+import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from '@tsoa/runtime'
 import axios from 'axios'
 import { Request as Req } from 'express'
-import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 import { container } from 'tsyringe'
 

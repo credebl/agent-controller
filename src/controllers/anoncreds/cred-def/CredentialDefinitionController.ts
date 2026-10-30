@@ -3,8 +3,8 @@ import type { SchemaId } from '../../examples'
 
 import { getUnqualifiedCredentialDefinitionId, parseIndyCredentialDefinitionId } from '@credo-ts/anoncreds'
 import { Agent } from '@credo-ts/core'
+import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Response, Request } from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Response, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { CredentialEnum, EndorserMode, SchemaError, SCOPES } from '../../../enums'

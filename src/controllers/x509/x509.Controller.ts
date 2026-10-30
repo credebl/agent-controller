@@ -1,6 +1,6 @@
 import { injectable } from '@credo-ts/core'
+import { Body, Controller, Post, Route, Tags, Security, Request, Get } from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Body, Controller, Post, Route, Tags, Security, Request, Get } from 'tsoa'
 
 import { SCOPES } from '../../enums'
 import ErrorHandlingService from '../../errorHandlingService'

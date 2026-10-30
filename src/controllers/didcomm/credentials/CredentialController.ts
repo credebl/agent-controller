@@ -8,8 +8,8 @@ import {
   DidCommCredentialRole,
   DidCommRouting,
 } from '@credo-ts/didcomm'
+import { Body, Controller, Get, Path, Post, Route, Tags, Example, Query, Security, Request } from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Body, Controller, Get, Path, Post, Route, Tags, Example, Query, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
