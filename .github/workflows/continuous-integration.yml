@@ -28,22 +28,27 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 20
-          cache: 'yarn'
 
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      # bun install reads yarn.lock (kept as the source of truth) and honours `resolutions`
       - name: Install dependencies
-        run: yarn install --frozen-lockfile --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Apply patches
-        run: yarn patch-package
+        run: bun run patch-package
 
       - name: Linting
-        run: yarn lint
+        run: bun run lint
 
       - name: Prettier
-        run: yarn check-format
+        run: bun run check-format
 
       - name: Compile
-        run: yarn check-types
+        run: bun run check-types
 
       - name: Test
-        run: yarn test
+        run: bun run test
