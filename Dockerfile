@@ -4,12 +4,14 @@ FROM node:26.8.1 AS builder
 WORKDIR /app
 
 # Install yarn (not bundled with node:26)
-RUN npm install -g yarn@1.22.22
+RUN npm install -g --ignore-scripts yarn@1.22.22
 
-# Install dependencies first so this layer is cached until the manifests change
+# Install dependencies first so this layer is cached until the manifests change.
+# Lifecycle scripts are skipped; the patches are applied explicitly (the build needs them).
 COPY package.json yarn.lock ./
 COPY patches ./patches
-RUN yarn install --frozen-lockfile --network-timeout 600000
+RUN yarn install --frozen-lockfile --ignore-scripts --network-timeout 600000 && \
+    yarn patch-package
 
 # Build the application
 COPY . .
@@ -22,11 +24,18 @@ ARG TARGETARCH
 
 WORKDIR /app
 
-RUN npm install -g yarn@1.22.22
+RUN npm install -g --ignore-scripts yarn@1.22.22
 
 COPY package.json yarn.lock ./
 COPY patches ./patches
-RUN yarn install --production --frozen-lockfile --network-timeout 600000 && \
+# Lifecycle scripts are skipped for every package. The only ones the runtime needs are the
+# install scripts that download the native askar, indy-vdr and anoncreds libraries, so those
+# three are run explicitly.
+RUN yarn install --production --frozen-lockfile --ignore-scripts --network-timeout 600000 && \
+    yarn patch-package && \
+    for pkg in @openwallet-foundation/askar-nodejs @hyperledger/indy-vdr-nodejs @hyperledger/anoncreds-nodejs; do \
+      (cd "node_modules/${pkg}" && node scripts/install.js) || exit 1; \
+    done && \
     yarn cache clean
 
 # koffi ships prebuilt binaries for every platform; keep only the one for this image.
@@ -42,20 +51,17 @@ RUN case "${TARGETARCH}" in \
 # Stage 3: Production stage
 FROM node:26.8.1-slim
 
-# Update system packages and install security updates
+# Update system packages and install security updates, then create the non-root user.
+# /app is created owned by appuser (non-recursive, so it adds no file copies).
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     ca-certificates && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    groupadd -r appuser && useradd -r -g appuser appuser && \
+    mkdir -p /app && chown appuser:appuser /app
 
 WORKDIR /app
-
-# /app itself stays owned by appuser (non-recursive, so it adds no file copies)
-RUN chown appuser:appuser /app
 
 # Copy with the right owner up front; a recursive chown/chmod afterwards would
 # duplicate every file into a new layer and roughly double the image size.
