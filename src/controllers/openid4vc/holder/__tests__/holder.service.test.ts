@@ -1,5 +1,17 @@
 import { HolderService } from '../holder.service'
 
+// Avoid loading Credo's ESM/native dependencies in Jest; only the symbols the service touches are stubbed.
+jest.mock('@credo-ts/core', () => ({
+  Mdoc: {},
+  SdJwtVcRecord: class {},
+  MdocRecord: class {},
+  W3cCredentialRecord: class {},
+  W3cCredentialRepository: class {},
+  W3cCredentialService: class {},
+}))
+jest.mock('@credo-ts/openid4vc', () => ({}))
+jest.mock('../credentialBindingResolver', () => ({ getCredentialBindingResolver: jest.fn() }))
+
 describe('HolderService pagination and search', () => {
   let holderService: HolderService
 
@@ -107,15 +119,17 @@ describe('HolderService pagination and search', () => {
         createMockRecord({ types: ['BachelorDegree', 'Education'] }),
         createMockRecord({ types: ['ID'] }),
       ]
+      const findByQuery = jest.fn().mockResolvedValue(records)
       const agentReq: any = {
         agent: {
-          sdJwtVc: {
-            findAllByQuery: jest.fn().mockResolvedValue(records),
+          dependencyManager: {
+            resolve: jest.fn().mockReturnValue({ findByQuery }),
           },
         },
       }
 
-      const result: any = await holderService.getSdJwtCredentials(agentReq, { q: 'bachelor' })
+      // `types` is a searchable tag for W3C credentials only
+      const result: any = await holderService.getW3cCredentials(agentReq, { q: 'bachelor' })
       expect(result.data).toHaveLength(1)
     })
 

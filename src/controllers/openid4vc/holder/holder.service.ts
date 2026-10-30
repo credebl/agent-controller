@@ -33,15 +33,13 @@ import {
   preAuthorizedCodeGrantIdentifier,
 } from '@credo-ts/openid4vc'
 
+import { BadRequestError } from '../../../errors/errors'
 import { CredentialType } from '../types/holder.types'
 
 import { getCredentialBindingResolver } from './credentialBindingResolver'
 export class HolderService {
   private HOLDER_REDIRECT = process.env.HOLDER_REDIRECT ?? 'http://localhost:4001/redirect'
   private HOLDER_CLIENT_ID = process.env.HOLDER_CLIENT_ID ?? 'wallet'
-
-  // Tags are dynamic - allow all string/string[] values
-  private readonly ALLOWED_TAG_KEYS: string[] | null = null
 
   private readonly DEFAULT_PAGE = 1
   private readonly DEFAULT_PAGE_SIZE = 20
@@ -192,7 +190,7 @@ export class HolderService {
     if (query.page !== undefined && query.page !== null) {
       const pageNum = Number(query.page)
       if (!Number.isInteger(pageNum) || pageNum < 1) {
-        throw new Error('Invalid page. page must be an integer >= 1')
+        throw new BadRequestError('Invalid page. page must be an integer >= 1')
       }
       page = pageNum
     }
@@ -200,7 +198,7 @@ export class HolderService {
     if (query.pageSize !== undefined && query.pageSize !== null) {
       const pageSizeNum = Number(query.pageSize)
       if (!Number.isInteger(pageSizeNum) || pageSizeNum < 1 || pageSizeNum > this.MAX_PAGE_SIZE) {
-        throw new Error(`Invalid pageSize. pageSize must be an integer between 1 and ${this.MAX_PAGE_SIZE}`)
+        throw new BadRequestError(`Invalid pageSize. pageSize must be an integer between 1 and ${this.MAX_PAGE_SIZE}`)
       }
       pageSize = pageSizeNum
     }
