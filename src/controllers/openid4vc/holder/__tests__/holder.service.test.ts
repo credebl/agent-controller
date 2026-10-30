@@ -103,7 +103,10 @@ describe('HolderService pagination and search', () => {
     })
 
     it('should handle array tags in search', async () => {
-      const records = [createMockRecord({ types: ['BachelorDegree', 'Education'] }), createMockRecord({ types: ['ID'] })]
+      const records = [
+        createMockRecord({ types: ['BachelorDegree', 'Education'] }),
+        createMockRecord({ types: ['ID'] }),
+      ]
       const agentReq: any = {
         agent: {
           sdJwtVc: {
@@ -156,7 +159,11 @@ describe('HolderService pagination and search', () => {
         },
       }
 
-      const result: any = await holderService.getSdJwtCredentials(agentReq, { page: 1, credentialType: 'sd-jwt-vc', q: 'test' })
+      const result: any = await holderService.getSdJwtCredentials(agentReq, {
+        page: 1,
+        credentialType: 'sd-jwt-vc',
+        q: 'test',
+      })
       expect(result.filters).toBeDefined()
       expect(result.filters.credentialType).toBe('sd-jwt-vc')
       expect(result.filters.q).toBe('test')

@@ -72,7 +72,15 @@ export class HolderService {
       types: query.types,
     })
     const records = await w3cCredentialRepository.findByQuery(agentReq.agent.context, tagQuery)
-    return this.paginateRecords(records, query, ['credentialType', 'types', 'name', 'reference', 'issuer', 'vct', 'docType'])
+    return this.paginateRecords(records, query, [
+      'credentialType',
+      'types',
+      'name',
+      'reference',
+      'issuer',
+      'vct',
+      'docType',
+    ])
   }
 
   private normalizeFilterValue(value: string | string[] | undefined): string | string[] | undefined {
@@ -256,9 +264,7 @@ export class HolderService {
     for (const key of Object.keys(tags)) {
       const value = (tags as any)[key]
       if (Array.isArray(value)) {
-        const cleaned = value
-          .filter((v) => typeof v === 'string' && v.trim() !== '')
-          .map((v) => v.trim())
+        const cleaned = value.filter((v) => typeof v === 'string' && v.trim() !== '').map((v) => v.trim())
         if (cleaned.length > 0) {
           sanitized[key] = cleaned
         }
