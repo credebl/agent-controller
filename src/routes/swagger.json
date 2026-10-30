@@ -2342,6 +2342,105 @@
 			"SdJwtVcRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
+			"PaginationMeta": {
+				"properties": {
+					"page": {
+						"type": "number",
+						"format": "double"
+					},
+					"pageSize": {
+						"type": "number",
+						"format": "double"
+					},
+					"total": {
+						"type": "number",
+						"format": "double"
+					},
+					"totalPages": {
+						"type": "number",
+						"format": "double"
+					},
+					"hasNextPage": {
+						"type": "boolean"
+					},
+					"hasPreviousPage": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"page",
+					"pageSize",
+					"total",
+					"totalPages",
+					"hasNextPage",
+					"hasPreviousPage"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CredentialListQuery": {
+				"properties": {
+					"q": {
+						"type": "string"
+					},
+					"page": {
+						"type": "number",
+						"format": "double"
+					},
+					"pageSize": {
+						"type": "number",
+						"format": "double"
+					},
+					"credentialType": {
+						"type": "string"
+					},
+					"vct": {
+						"type": "string"
+					},
+					"docType": {
+						"type": "string"
+					},
+					"types": {
+						"type": "string"
+					},
+					"issuer": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"reference": {
+						"type": "string"
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PaginatedResponse_Record_string.unknown__": {
+				"properties": {
+					"data": {
+						"items": {
+							"$ref": "#/components/schemas/Record_string.unknown_"
+						},
+						"type": "array"
+					},
+					"pagination": {
+						"$ref": "#/components/schemas/PaginationMeta"
+					},
+					"filters": {
+						"$ref": "#/components/schemas/CredentialListQuery"
+					}
+				},
+				"required": [
+					"data",
+					"pagination"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PaginatedCredentials_Record_string.unknown__": {
+				"$ref": "#/components/schemas/PaginatedResponse_Record_string.unknown__"
+			},
 			"MdocRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
@@ -2379,6 +2478,27 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"Record_string.string-or-string-Array-or-undefined_": {
+				"properties": {},
+				"additionalProperties": {
+					"anyOf": [
+						{
+							"type": "string"
+						},
+						{
+							"items": {
+								"type": "string"
+							},
+							"type": "array"
+						}
+					]
+				},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"CredentialTags": {
+				"$ref": "#/components/schemas/Record_string.string-or-string-Array-or-undefined_"
+			},
 			"RequestCredentialBody": {
 				"properties": {
 					"credentialOfferUri": {
@@ -2398,6 +2518,9 @@
 					},
 					"txCode": {
 						"type": "string"
+					},
+					"tags": {
+						"$ref": "#/components/schemas/CredentialTags"
 					}
 				},
 				"required": [
@@ -7211,10 +7334,17 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/SdJwtVcRecord"
-									},
-									"type": "array"
+									"anyOf": [
+										{
+											"items": {
+												"$ref": "#/components/schemas/SdJwtVcRecord"
+											},
+											"type": "array"
+										},
+										{
+											"$ref": "#/components/schemas/PaginatedCredentials_Record_string.unknown__"
+										}
+									]
 								}
 							}
 						}
@@ -7232,7 +7362,50 @@
 						]
 					}
 				],
-				"parameters": []
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "pageSize",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "credentialType",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "vct",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/openid4vc/holder/mdoc-vcs": {
@@ -7244,10 +7417,17 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/MdocRecord"
-									},
-									"type": "array"
+									"anyOf": [
+										{
+											"$ref": "#/components/schemas/PaginatedCredentials_Record_string.unknown__"
+										},
+										{
+											"items": {
+												"$ref": "#/components/schemas/MdocRecord"
+											},
+											"type": "array"
+										}
+									]
 								}
 							}
 						}
@@ -7265,7 +7445,50 @@
 						]
 					}
 				],
-				"parameters": []
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "pageSize",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "credentialType",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "docType",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/openid4vc/holder/w3c-vcs": {
@@ -7277,10 +7500,17 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/W3cCredentialRecord"
-									},
-									"type": "array"
+									"anyOf": [
+										{
+											"$ref": "#/components/schemas/PaginatedCredentials_Record_string.unknown__"
+										},
+										{
+											"items": {
+												"$ref": "#/components/schemas/W3cCredentialRecord"
+											},
+											"type": "array"
+										}
+									]
 								}
 							}
 						}
@@ -7298,7 +7528,50 @@
 						]
 					}
 				],
-				"parameters": []
+				"parameters": [
+					{
+						"in": "query",
+						"name": "q",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "page",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "pageSize",
+						"required": false,
+						"schema": {
+							"format": "double",
+							"type": "number"
+						}
+					},
+					{
+						"in": "query",
+						"name": "credentialType",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "types",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
 			}
 		},
 		"/openid4vc/holder/mdoc-vcs/decode": {

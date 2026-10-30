@@ -10,7 +10,40 @@ export interface RequestCredentialBody {
   authorizationCode?: string
   codeVerifier?: string
   txCode?: string
+  tags?: CredentialTags
 }
+
+export type CredentialTags = Record<string, string | string[] | undefined>
+
+export interface CredentialListQuery {
+  q?: string
+  page?: number
+  pageSize?: number
+  credentialType?: string
+  vct?: string
+  docType?: string
+  types?: string
+  issuer?: string
+  name?: string
+  reference?: string
+}
+
+export interface PaginationMeta {
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  pagination: PaginationMeta
+  filters?: CredentialListQuery
+}
+
+export type PaginatedCredentials<T> = PaginatedResponse<T>
 
 export interface AuthorizeRequestCredentialOffer {
   credentialOfferUri: string

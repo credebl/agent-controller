@@ -1,11 +1,14 @@
 import type {
   AuthorizeRequestCredentialOffer,
+  CredentialListQuery,
+  CredentialTags,
   DeleteCredentialBody,
+  PaginatedCredentials,
   RequestCredentialBody,
   ResolveCredentialOfferBody,
   ResolveProofRequest,
 } from '../types/holder.types'
-import type { Agent, DcqlCredentialsForRequest, DcqlQueryResult } from '@credo-ts/core'
+import type { BaseRecordAny, DcqlCredentialsForRequest } from '@credo-ts/core'
 import type {
   OpenId4VcAuthorizationCodeTokenRequestOptions,
   OpenId4VciPreAuthorizedTokenRequestOptions,
@@ -19,7 +22,9 @@ import {
   SdJwtVcRecord,
   MdocRecord,
   W3cCredentialRecord,
+  W3cCredentialRepository,
   W3cCredentialService,
+  JsonTransformer,
   // W3cV2CredentialRecord,
   // W3cV2CredentialService,
 } from '@credo-ts/core'
@@ -29,32 +34,253 @@ import {
   preAuthorizedCodeGrantIdentifier,
 } from '@credo-ts/openid4vc'
 
+import { StatusException } from '../../../errors/StatusException'
 import { CredentialType } from '../types/holder.types'
 
 import { getCredentialBindingResolver } from './credentialBindingResolver'
+type FilterValue = string | string[] | undefined
+
 export class HolderService {
   private HOLDER_REDIRECT = process.env.HOLDER_REDIRECT ?? 'http://localhost:4001/redirect'
   private HOLDER_CLIENT_ID = process.env.HOLDER_CLIENT_ID ?? 'wallet'
 
-  public async getSdJwtCredentials(agentReq: Req) {
-    return await agentReq.agent.sdJwtVc.getAll()
+  // Tags are dynamic - allow all string/string[] values
+  private readonly DEFAULT_PAGE = 1
+  private readonly DEFAULT_PAGE_SIZE = 20
+  private readonly MAX_PAGE_SIZE = 100
+
+  public async getSdJwtCredentials(agentReq: Req, query: CredentialListQuery = {}) {
+    const tagQuery = this.buildTagQuery({
+      credentialType: query.credentialType,
+      vct: query.vct,
+    })
+    const records = await agentReq.agent.sdJwtVc.findAllByQuery(tagQuery)
+    return this.paginateRecords(records, query, ['credentialType', 'vct', 'name', 'reference', 'issuer'])
   }
 
-  public async getMdocCredentials(agentReq: Req) {
-    return await agentReq.agent.mdoc.getAll()
+  public async getMdocCredentials(agentReq: Req, query: CredentialListQuery = {}) {
+    const tagQuery = this.buildTagQuery({
+      credentialType: query.credentialType,
+      docType: query.docType,
+    })
+    const records = await agentReq.agent.mdoc.findAllByQuery(tagQuery)
+    return this.paginateRecords(records, query, ['credentialType', 'docType', 'name', 'reference', 'issuer'])
   }
 
-  public async getW3cCredentials(agentReq: Req) {
-    /* 
-    // W3C V2.0 Support
-    const [v1Records, v2Records] = await Promise.all([
-      agentReq.agent.w3cCredentials.getAll(),
-      agentReq.agent.w3cV2Credentials.getAll(),
+  public async getW3cCredentials(agentReq: Req, query: CredentialListQuery = {}) {
+    const w3cCredentialRepository = agentReq.agent.dependencyManager.resolve(W3cCredentialRepository)
+    const tagQuery = this.buildTagQuery({
+      credentialType: query.credentialType,
+      types: query.types,
+    })
+    const records = await w3cCredentialRepository.findByQuery(agentReq.agent.context, tagQuery)
+    return this.paginateRecords(records, query, [
+      'credentialType',
+      'types',
+      'name',
+      'reference',
+      'issuer',
+      'vct',
+      'docType',
     ])
+  }
 
-    return [...v1Records, ...v2Records]
-    */
-    return await agentReq.agent.w3cCredentials.getAll()
+  private normalizeFilterValue(value: FilterValue): FilterValue {
+    if (value === undefined || value === null || value === '') {
+      return undefined
+    }
+    if (Array.isArray(value)) {
+      const filtered = value
+        .map((v) => (typeof v === 'string' ? v.trim() : v))
+        .filter((v) => v !== undefined && v !== null && v !== '')
+      return filtered.length > 0 ? filtered : undefined
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed.includes(',')) {
+        const parts = trimmed
+          .split(',')
+          .map((p) => p.trim())
+          .filter((p) => p !== '')
+        return parts.length > 0 ? parts : undefined
+      }
+      return trimmed === '' ? undefined : trimmed
+    }
+    return value
+  }
+
+  private buildTagQuery(filters: Record<string, string | string[] | undefined>) {
+    const query: Record<string, string | string[]> = {}
+    for (const [key, value] of Object.entries(filters)) {
+      const normalized = this.normalizeFilterValue(value)
+      if (normalized !== undefined && normalized !== null) {
+        if (Array.isArray(normalized)) {
+          if (normalized.length === 0) continue
+          query[key] = normalized
+        } else if (normalized !== '') {
+          query[key] = normalized
+        }
+      }
+    }
+    return query
+  }
+
+  private hasListParams(query: CredentialListQuery) {
+    return Object.values(query).some((value) => value !== undefined && value !== null && value !== '')
+  }
+
+  private getTagValue(tags: Record<string, unknown>, key: string): unknown {
+    if (!tags || typeof tags !== 'object') return undefined
+    if (key in tags) {
+      return tags[key]
+    }
+    // Try case-insensitive lookup for backward compatibility
+    const lowerKey = key.toLowerCase()
+    for (const [k, v] of Object.entries(tags)) {
+      if (k.toLowerCase() === lowerKey) {
+        return v
+      }
+    }
+    return undefined
+  }
+
+  private matchesSearchInTags(tags: Record<string, unknown>, needle: string, searchableTags: string[]): boolean {
+    return searchableTags.some((tag) => {
+      const value = this.getTagValue(tags, tag)
+      if (value === undefined || value === null) return false
+      const values = Array.isArray(value) ? value : [value]
+      return values.some((item) => typeof item === 'string' && item.toLowerCase().includes(needle))
+    })
+  }
+
+  private matchesSearchInRecord(recordAny: any, needle: string): boolean {
+    const fallbackFields = ['id', 'name', 'reference', 'issuerId', 'issuer']
+    for (const field of fallbackFields) {
+      const value = recordAny[field]
+      if (typeof value === 'string' && value.toLowerCase().includes(needle)) {
+        return true
+      }
+    }
+
+    if (recordAny.credential && typeof recordAny.credential === 'object') {
+      try {
+        const credStr = JSON.stringify(recordAny.credential).toLowerCase()
+        if (credStr.includes(needle)) return true
+      } catch {
+        // ignore
+      }
+    }
+    return false
+  }
+
+  private matchesSearch(record: BaseRecordAny, q: string, searchableTags: string[]) {
+    const needle = q.trim().toLowerCase()
+    if (!needle) return true
+
+    const tags = (record.getTags ? record.getTags() : (record as any).tags) as Record<string, unknown> | undefined
+
+    if (tags && typeof tags === 'object') {
+      if (this.matchesSearchInTags(tags, needle, searchableTags)) {
+        return true
+      }
+    }
+
+    return this.matchesSearchInRecord(record as any, needle)
+  }
+
+  private validateAndNormalizePagination(query: CredentialListQuery) {
+    let page = this.DEFAULT_PAGE
+    let pageSize = this.DEFAULT_PAGE_SIZE
+
+    if (query.page !== undefined && query.page !== null) {
+      const pageNum = Number(query.page)
+      if (!Number.isInteger(pageNum) || pageNum < 1) {
+        throw new StatusException('Invalid page. page must be an integer >= 1', 400)
+      }
+      page = pageNum
+    }
+
+    if (query.pageSize !== undefined && query.pageSize !== null) {
+      const pageSizeNum = Number(query.pageSize)
+      if (!Number.isInteger(pageSizeNum) || pageSizeNum < 1 || pageSizeNum > this.MAX_PAGE_SIZE) {
+        throw new StatusException(
+          `Invalid pageSize. pageSize must be an integer between 1 and ${this.MAX_PAGE_SIZE}`,
+          400,
+        )
+      }
+      pageSize = pageSizeNum
+    }
+
+    return { page, pageSize }
+  }
+
+  private paginateRecords<T extends BaseRecordAny>(
+    records: T[],
+    query: CredentialListQuery,
+    searchableTags: string[],
+  ): T[] | PaginatedCredentials<Record<string, unknown>> {
+    const filtered = query.q
+      ? records.filter((record) => this.matchesSearch(record, query.q as string, searchableTags))
+      : records
+
+    if (!this.hasListParams(query)) {
+      return filtered
+    }
+
+    const { page, pageSize } = this.validateAndNormalizePagination(query)
+    const total = filtered.length
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize)
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+    const data = filtered.slice(start, end).map((record) => {
+      const recordJson = JsonTransformer.toJSON(record) as Record<string, unknown>
+      const recordTags = record.getTags ? record.getTags() : (recordJson.tags as any)
+      return {
+        ...recordJson,
+        tags: recordTags,
+      }
+    })
+
+    const filters: CredentialListQuery = {}
+    if (query.q) filters.q = query.q.trim()
+    if (query.credentialType) filters.credentialType = query.credentialType
+    if (query.vct) filters.vct = query.vct
+    if (query.docType) filters.docType = query.docType
+    if (query.types) filters.types = query.types
+    if (query.issuer) filters.issuer = query.issuer
+    if (query.name) filters.name = query.name
+    if (query.reference) filters.reference = query.reference
+
+    return {
+      data,
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+      filters: Object.keys(filters).length > 0 ? filters : undefined,
+    } as PaginatedCredentials<Record<string, unknown>>
+  }
+
+  private sanitizeTags(tags?: CredentialTags): CredentialTags | undefined {
+    if (!tags || typeof tags !== 'object') return undefined
+    const sanitized: CredentialTags = {}
+    for (const key of Object.keys(tags)) {
+      const value = (tags as any)[key]
+      if (Array.isArray(value)) {
+        const cleaned = value.filter((v) => typeof v === 'string' && v.trim() !== '').map((v) => v.trim())
+        if (cleaned.length > 0) {
+          sanitized[key] = cleaned
+        }
+      } else if (typeof value === 'string' && value.trim() !== '') {
+        sanitized[key] = value.trim()
+      }
+      // allow dynamic keys as-is if valid
+    }
+    return Object.keys(sanitized).length > 0 ? sanitized : undefined
   }
 
   public async decodeMdocCredential(
@@ -130,12 +356,13 @@ export class HolderService {
       } as OpenId4VcAuthorizationCodeTokenRequestOptions
     }
 
-    return (await this.requestAndStoreCredentials(agentReq, resolvedCredentialOffer, options)) as any
+    return (await this.requestAndStoreCredentials(agentReq, resolvedCredentialOffer, options, body.tags)) as any
   }
   private async requestAndStoreCredentials(
     agentReq: Req,
     resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
     options: OpenId4VciTokenRequestOptions,
+    tags?: CredentialTags,
   ) {
     const tokenResponse = await agentReq.agent.modules.openid4vc.holder.requestToken({ ...options })
     const credentialResponse = await agentReq.agent.modules.openid4vc.holder.requestCredentials({
@@ -147,9 +374,19 @@ export class HolderService {
       ...tokenResponse,
     })
 
+    const sanitizedTags = this.sanitizeTags(tags)
+
     const storedCredentials = await Promise.all(
       credentialResponse.credentials.map(async (response) => {
         const credentialRecord = response.record
+
+        if (sanitizedTags && Object.keys(sanitizedTags).length > 0) {
+          try {
+            credentialRecord.setTags(sanitizedTags as any)
+          } catch (error) {
+            // Ignore tag setting errors to avoid blocking issuance
+          }
+        }
 
         if (
           credentialRecord instanceof W3cCredentialRecord ||
