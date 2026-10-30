@@ -8,6 +8,7 @@ jest.mock('@credo-ts/core', () => ({
   W3cCredentialRecord: class {},
   W3cCredentialRepository: class {},
   W3cCredentialService: class {},
+  JsonTransformer: { toJSON: (record: object) => ({ ...record }) },
 }))
 jest.mock('@credo-ts/openid4vc', () => ({}))
 jest.mock('../credentialBindingResolver', () => ({ getCredentialBindingResolver: jest.fn() }))

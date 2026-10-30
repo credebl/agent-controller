@@ -1,4 +1,4 @@
-name: credo-controller
+name: agent-controller
 id: ari:cloud:compass:6095931c-8137-4ae1-822a-2d7411835fc7:component/9029b47a-062e-4e25-a761-a2c0fc9ebd98/b6016bde-79c2-4d3f-84cf-b25f27bc50c7
 description: Controller App for Aries Framework JavaScript REST Extension
 configVersion: 1
@@ -9,7 +9,7 @@ fields:
 links:
   - name: null
     type: REPOSITORY
-    url: https://github.com/credebl/credo-controller
+    url: https://github.com/credebl/agent-controller
 relationships:
   DEPENDS_ON: []
 labels:

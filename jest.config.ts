@@ -4,8 +4,7 @@ import base from './jest.config.base'
 
 const config: Config.InitialOptions = {
   ...base,
-  name: 'credo-controller',
-  displayName: 'credo-controller',
+  displayName: 'agent-controller',
   testTimeout: 120000,
 }
 

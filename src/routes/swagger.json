@@ -5833,8 +5833,8 @@
 		}
 	},
 	"info": {
-		"title": "credo-controller",
-		"version": "2.1.3",
+		"title": "agent-controller",
+		"version": "2.3.0",
 		"description": "Rest endpoint wrapper for using your agent over HTTP",
 		"license": {
 			"name": "Apache-2.0"
