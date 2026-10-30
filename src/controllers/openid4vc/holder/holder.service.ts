@@ -8,7 +8,7 @@ import type {
   ResolveCredentialOfferBody,
   ResolveProofRequest,
 } from '../types/holder.types'
-import type { Agent, BaseRecordAny, DcqlCredentialsForRequest, DcqlQueryResult } from '@credo-ts/core'
+import type { BaseRecordAny, DcqlCredentialsForRequest } from '@credo-ts/core'
 import type {
   OpenId4VcAuthorizationCodeTokenRequestOptions,
   OpenId4VciPreAuthorizedTokenRequestOptions,
@@ -24,6 +24,7 @@ import {
   W3cCredentialRecord,
   W3cCredentialRepository,
   W3cCredentialService,
+  JsonTransformer,
   // W3cV2CredentialRecord,
   // W3cV2CredentialService,
 } from '@credo-ts/core'
@@ -33,14 +34,17 @@ import {
   preAuthorizedCodeGrantIdentifier,
 } from '@credo-ts/openid4vc'
 
-import { BadRequestError } from '../../../errors/errors'
+import { StatusException } from '../../../errors/StatusException'
 import { CredentialType } from '../types/holder.types'
 
 import { getCredentialBindingResolver } from './credentialBindingResolver'
+type FilterValue = string | string[] | undefined
+
 export class HolderService {
   private HOLDER_REDIRECT = process.env.HOLDER_REDIRECT ?? 'http://localhost:4001/redirect'
   private HOLDER_CLIENT_ID = process.env.HOLDER_CLIENT_ID ?? 'wallet'
 
+  // Tags are dynamic - allow all string/string[] values
   private readonly DEFAULT_PAGE = 1
   private readonly DEFAULT_PAGE_SIZE = 20
   private readonly MAX_PAGE_SIZE = 100
@@ -81,7 +85,7 @@ export class HolderService {
     ])
   }
 
-  private normalizeFilterValue(value: string | string[] | undefined): string | string[] | undefined {
+  private normalizeFilterValue(value: FilterValue): FilterValue {
     if (value === undefined || value === null || value === '') {
       return undefined
     }
@@ -140,25 +144,16 @@ export class HolderService {
     return undefined
   }
 
-  private matchesSearch(record: BaseRecordAny, q: string, searchableTags: string[]) {
-    const needle = q.trim().toLowerCase()
-    if (!needle) return true
+  private matchesSearchInTags(tags: Record<string, unknown>, needle: string, searchableTags: string[]): boolean {
+    return searchableTags.some((tag) => {
+      const value = this.getTagValue(tags, tag)
+      if (value === undefined || value === null) return false
+      const values = Array.isArray(value) ? value : [value]
+      return values.some((item) => typeof item === 'string' && item.toLowerCase().includes(needle))
+    })
+  }
 
-    const tags = (record.getTags ? record.getTags() : (record as any).tags) as Record<string, unknown> | undefined
-
-    // Try to search in tags first (allowlisted fields)
-    if (tags && typeof tags === 'object') {
-      const tagMatch = searchableTags.some((tag) => {
-        const value = this.getTagValue(tags, tag)
-        if (value === undefined || value === null) return false
-        const values = Array.isArray(value) ? value : [value]
-        return values.some((item) => typeof item === 'string' && item.toLowerCase().includes(needle))
-      })
-      if (tagMatch) return true
-    }
-
-    // Fallback: search in common record properties for backward compatibility
-    const recordAny = record as any
+  private matchesSearchInRecord(recordAny: any, needle: string): boolean {
     const fallbackFields = ['id', 'name', 'reference', 'issuerId', 'issuer']
     for (const field of fallbackFields) {
       const value = recordAny[field]
@@ -167,20 +162,30 @@ export class HolderService {
       }
     }
 
-    // Try credential object if present
-    if (recordAny.credential) {
-      const cred = recordAny.credential
-      if (typeof cred === 'object') {
-        try {
-          const credStr = JSON.stringify(cred).toLowerCase()
-          if (credStr.includes(needle)) return true
-        } catch {
-          // ignore
-        }
+    if (recordAny.credential && typeof recordAny.credential === 'object') {
+      try {
+        const credStr = JSON.stringify(recordAny.credential).toLowerCase()
+        if (credStr.includes(needle)) return true
+      } catch {
+        // ignore
+      }
+    }
+    return false
+  }
+
+  private matchesSearch(record: BaseRecordAny, q: string, searchableTags: string[]) {
+    const needle = q.trim().toLowerCase()
+    if (!needle) return true
+
+    const tags = (record.getTags ? record.getTags() : (record as any).tags) as Record<string, unknown> | undefined
+
+    if (tags && typeof tags === 'object') {
+      if (this.matchesSearchInTags(tags, needle, searchableTags)) {
+        return true
       }
     }
 
-    return false
+    return this.matchesSearchInRecord(record as any, needle)
   }
 
   private validateAndNormalizePagination(query: CredentialListQuery) {
@@ -190,7 +195,7 @@ export class HolderService {
     if (query.page !== undefined && query.page !== null) {
       const pageNum = Number(query.page)
       if (!Number.isInteger(pageNum) || pageNum < 1) {
-        throw new BadRequestError('Invalid page. page must be an integer >= 1')
+        throw new StatusException('Invalid page. page must be an integer >= 1', 400)
       }
       page = pageNum
     }
@@ -198,7 +203,10 @@ export class HolderService {
     if (query.pageSize !== undefined && query.pageSize !== null) {
       const pageSizeNum = Number(query.pageSize)
       if (!Number.isInteger(pageSizeNum) || pageSizeNum < 1 || pageSizeNum > this.MAX_PAGE_SIZE) {
-        throw new BadRequestError(`Invalid pageSize. pageSize must be an integer between 1 and ${this.MAX_PAGE_SIZE}`)
+        throw new StatusException(
+          `Invalid pageSize. pageSize must be an integer between 1 and ${this.MAX_PAGE_SIZE}`,
+          400,
+        )
       }
       pageSize = pageSizeNum
     }
@@ -225,10 +233,11 @@ export class HolderService {
     const start = (page - 1) * pageSize
     const end = start + pageSize
     const data = filtered.slice(start, end).map((record) => {
-      const recordObj = record as unknown as Record<string, unknown>
+      const recordJson = JsonTransformer.toJSON(record) as Record<string, unknown>
+      const recordTags = record.getTags ? record.getTags() : (recordJson.tags as any)
       return {
-        ...recordObj,
-        tags: record.getTags ? record.getTags() : (recordObj.tags as any),
+        ...recordJson,
+        tags: recordTags,
       }
     })
 
