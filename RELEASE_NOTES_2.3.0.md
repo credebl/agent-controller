@@ -5,6 +5,7 @@ Release date: 2026-10-30 · Previous stable release: v2.2.0
 ## Highlights
 
 - **W3C JSON-LD credentials end to end**: issuance, presentation, signing and verification, including `ldp_vc` over OpenID4VC and DCQL-based verification of JSON-LD credentials.
+- **Holder credential lists**: search, filtering and pagination on the SD-JWT, mdoc and W3C list endpoints, and optional tags when requesting a credential.
 - **X.509 improvements**: certificate chain support, and mdoc date encoding fixed.
 - **Security hardening**: the `undici` runtime dependency is moved from 6.24.0 to 6.29.1, clearing all open undici advisories, plus CI and Docker hardening.
 
@@ -58,6 +59,8 @@ The project is now named `agent-controller` in `package.json`, the OpenAPI spec 
 These will be migrated in a later release, with a deprecation period for the image name.
 
 ## Upgrade notes
+
+- **Holder list response shape:** the three holder list endpoints still return a plain array when called with no query parameters. If any parameter is sent (including only `q`), the response becomes an envelope: `{ data, pagination: { page, pageSize, total, totalPages, hasNextPage, hasPreviousPage }, filters? }`. Invalid `page`/`pageSize` return 400.
 
 - Run `yarn install` to pick up new `resolutions`; `ts-deepmerge` jumps a major version (a transitive dependency of the tsoa CLI, build-time only).
 - Docker users: the image now builds on Node 26. Rebuild images rather than reusing cached layers.

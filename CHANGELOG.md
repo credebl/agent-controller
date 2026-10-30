@@ -7,6 +7,7 @@
 - W3C JSON-LD credential issuance, presentation, sign and verify
 - **oid4vc:** `ldp_vc` support for W3C JSON-LD credentials
 - **dcql:** DCQL JSON-LD credential verification
+- **holder:** pagination, search and filters on the credential list endpoints `GET /openid4vc/holder/sd-jwt-vcs`, `/mdoc-vcs` and `/w3c-vcs` (`q`, `page`, `pageSize`, `credentialType`, `vct`, `docType`, `types`), and optional `tags` on credential requests ([#458](https://github.com/credebl/agent-controller/pull/458))
 - support X.509 certificate chains and fix mdoc date encoding
 
 ### Bug Fixes
