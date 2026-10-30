@@ -22,7 +22,7 @@
 
 - bump `undici` pin 6.24.0 → 6.29.1 (fixes multiple DoS, header/CRLF injection and cookie handling advisories)
 - bump `flatted` pin 3.4.0 → 3.4.2, pin `ts-deepmerge` to 8.0.0 and `ngrok`'s `uuid` to 11.1.1
-- CI workflow now runs `yarn test`, declares `permissions: contents: read` and installs with `--frozen-lockfile`
+- CI workflow now runs `yarn test`, declares `permissions: contents: read` and installs with `--frozen-lockfile --ignore-scripts` (patches applied explicitly)
 - Dockerfile pins `yarn` (1.22.22) and `patch-package` (8.0.1)
 - dependency bumps across `axios`, `protobufjs`, `tar`, `ws`, `form-data`, `nanoid`, `fast-uri` and others
 

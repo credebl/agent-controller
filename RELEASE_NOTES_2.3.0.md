@@ -34,7 +34,7 @@ Resolved from GitHub Dependabot alerts:
 
 Resolved from code scanning:
 
-- CI workflow now has least-privilege `permissions: contents: read` and uses `--frozen-lockfile`.
+- CI workflow now has least-privilege `permissions: contents: read` and installs with `--frozen-lockfile --ignore-scripts` and applies patches explicitly.
 - Dockerfile pins `yarn` and `patch-package` versions.
 
 Not changed (see "Known issues").
@@ -69,4 +69,4 @@ These will be migrated in a later release, with a deprecation period for the ima
 ## Known issues / follow-ups
 
 - Remaining Dependabot alerts have no upstream patch: `braces` (advisory withdrawn), `elliptic` (low), and dev-only `extract-zip` and `ngrok`.
-- Package install scripts still run in Docker and CI (Sonar S6505); `postinstall` runs `patch-package`, which the build relies on, so this was not changed.
+- Package install scripts still run in the Docker build (Sonar S6505); `postinstall` runs `patch-package`, which the build relies on, so this was not changed.
