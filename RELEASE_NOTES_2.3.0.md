@@ -30,6 +30,7 @@ Release date: 2026-10-30 · Previous stable release: v2.2.0
 Resolved from GitHub Dependabot alerts:
 
 - `undici` 6.24.0 → 6.29.1 (runtime; 9 advisories: WebSocket DoS, CRLF/header injection, cookie handling, retry interceptor desync)
+- Note: these pins are Yarn `resolutions`, which only apply when this repository is the install root (Docker image, source builds). Projects that install the controller as a dependency should add their own override, e.g. `"resolutions": { "undici": "^6.29.1" }`, because `@digitalcredentials/http-client` still accepts `undici@^6.6.2`.
 - `flatted` → 3.4.2, `ts-deepmerge` → 8.0.0, `ngrok`'s `uuid` → 11.1.1 (via `resolutions`)
 
 Resolved from code scanning:

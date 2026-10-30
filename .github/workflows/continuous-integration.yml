@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout agent-controller
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup node v20
         uses: actions/setup-node@v7
