@@ -1,5 +1,42 @@
 # Changelog
 
+## [2.3.0](https://github.com/credebl/agent-controller/compare/v2.2.0...v2.3.0) (2026-10-30)
+
+### Features
+
+- W3C JSON-LD credential issuance, presentation, sign and verify
+- **oid4vc:** `ldp_vc` support for W3C JSON-LD credentials
+- **dcql:** DCQL JSON-LD credential verification
+- support X.509 certificate chains and fix mdoc date encoding
+
+### Bug Fixes
+
+- allow `vc+sd-jwt` issuance by routing `SdJwtVc` to the sd-jwt signing path ([#454](https://github.com/credebl/agent-controller/pull/454))
+- **dcql:** resolve `ldp_vc` query filtering and JSON-LD serialization errors
+- release tenant sessions after proof events
+- repair Jest configuration so `yarn test` runs again
+- resolve data type issues in `handleMsoMdocFormat`
+- enhance W3C VC 2.0 detection and prevent crashes on empty `x5c`
+
+### Security
+
+- bump `undici` pin 6.24.0 → 6.29.1 (fixes multiple DoS, header/CRLF injection and cookie handling advisories)
+- bump `flatted` pin 3.4.0 → 3.4.2, pin `ts-deepmerge` to 8.0.0 and `ngrok`'s `uuid` to 11.1.1
+- CI workflow now runs `yarn test`, declares `permissions: contents: read` and installs with `--frozen-lockfile`
+- Dockerfile pins `yarn` (1.22.22) and `patch-package` (8.0.1)
+- dependency bumps across `axios`, `protobufjs`, `tar`, `ws`, `form-data`, `nanoid`, `fast-uri` and others
+
+### Refactors, Build and Docs
+
+- rename patch files for Windows compatibility ([#422](https://github.com/credebl/agent-controller/pull/422))
+- message type added for mediator message forwarding
+- Docker base image bumped to Node 26.8.1
+- Dependabot configuration added; README rewritten (Agent Controller naming, setup, wallet connection-pool docs)
+- project renamed to `agent-controller` in `package.json`, the OpenAPI title, `compass.yml`, issue templates, CI and Jest display name; the Docker image, ECS task definitions and telemetry names keep the legacy `credo-controller` name for now
+- `package.json` / `swagger.json` version aligned to 2.3.0 (was 2.1.3)
+
+> Releases before 2.3.0 were not recorded here. The entries below are inherited from the upstream `aries-framework-javascript-ext` REST package.
+
 ### [0.9.4](https://www.github.com/hyperledger/aries-framework-javascript-ext/compare/rest-v0.9.3...rest-v0.9.4) (2022-10-07)
 
 ### Features
