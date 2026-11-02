@@ -447,7 +447,8 @@ export interface credentialPayloadToSign {
   method: string
   credential: jsonLdCredentialOptions // TODO: add support for other credential format
 }
-export interface SafeW3cJsonLdVerifyCredentialOptions extends W3cJsonLdVerifyCredentialOptions {
+// trustedIssuers (Credo 0.7.4) may be a callback, which tsoa cannot model
+export interface SafeW3cJsonLdVerifyCredentialOptions extends Omit<W3cJsonLdVerifyCredentialOptions, 'trustedIssuers'> {
   // Ommited due to issues with TSOA
   // FIXME: Check type
   proof: SingleOrArray<any | DataIntegrityProofOptions>

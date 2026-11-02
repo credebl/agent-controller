@@ -2499,6 +2499,13 @@
 			"CredentialTags": {
 				"$ref": "#/components/schemas/Record_string.string-or-string-Array-or-undefined_"
 			},
+			"CredentialBindingPolicy": {
+				"type": "string",
+				"enum": [
+					"require",
+					"prefer"
+				]
+			},
 			"RequestCredentialBody": {
 				"properties": {
 					"credentialOfferUri": {
@@ -2508,7 +2515,8 @@
 						"items": {
 							"type": "string"
 						},
-						"type": "array"
+						"type": "array",
+						"description": "Credential configuration ids to request. Each must be in the offer. Defaults to all offered ids."
 					},
 					"authorizationCode": {
 						"type": "string"
@@ -2521,11 +2529,19 @@
 					},
 					"tags": {
 						"$ref": "#/components/schemas/CredentialTags"
+					},
+					"holderDidUrl": {
+						"type": "string",
+						"description": "Bind the credentials to this DID instead of a new key: a verification method id\n(e.g. `did:web:example.com#key-1`), or a bare DID to use its first authentication key.\nThe DID must have been created or imported in this wallet.",
+						"example": "did:web:ayanworks.github.io:iec:0522012345#key-1"
+					},
+					"bindingPolicy": {
+						"$ref": "#/components/schemas/CredentialBindingPolicy",
+						"description": "What to do when the issuer does not support `holderDidUrl` (DID method or key algorithm):\n`require` fails the request, `prefer` binds to a new key instead. Ignored without `holderDidUrl`."
 					}
 				},
 				"required": [
-					"credentialOfferUri",
-					"credentialsToRequest"
+					"credentialOfferUri"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -3852,7 +3868,7 @@
 			"W3cVerifyCredentialResult": {
 				"$ref": "#/components/schemas/W3cVerifyResult_W3cCredentialValidations_"
 			},
-			"DataIntegrityProofOptions": {
+			"AnonCredsW3cCredentialProofOptions": {
 				"properties": {
 					"type": {
 						"type": "string"
@@ -3896,6 +3912,9 @@
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"DataIntegrityProofOptions": {
+				"$ref": "#/components/schemas/AnonCredsW3cCredentialProofOptions"
 			},
 			"SingleOrArray_any-or-DataIntegrityProofOptions_": {
 				"anyOf": [
@@ -3960,8 +3979,8 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"DataIntegrityProof": {
-				"description": "Linked Data Proof",
+			"AnonCredsW3cCredentialProof": {
+				"description": "AnonCreds W3C compatibility proof model.\n\nRepresents a `DataIntegrityProof`-shaped wire payload used by the anoncreds W3C credential support,\nwhile keeping the credential-specific model separate from true linked-data proof types.",
 				"properties": {
 					"type": {
 						"type": "string"
@@ -4006,7 +4025,7 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"SingleOrArray_LinkedDataProof-or-DataIntegrityProof_": {
+			"SingleOrArray_LinkedDataProof-or-AnonCredsW3cCredentialProof_": {
 				"anyOf": [
 					{
 						"anyOf": [
@@ -4014,7 +4033,7 @@
 								"$ref": "#/components/schemas/LinkedDataProof"
 							},
 							{
-								"$ref": "#/components/schemas/DataIntegrityProof"
+								"$ref": "#/components/schemas/AnonCredsW3cCredentialProof"
 							}
 						]
 					},
@@ -4025,7 +4044,7 @@
 									"$ref": "#/components/schemas/LinkedDataProof"
 								},
 								{
-									"$ref": "#/components/schemas/DataIntegrityProof"
+									"$ref": "#/components/schemas/AnonCredsW3cCredentialProof"
 								}
 							]
 						},
@@ -4108,7 +4127,7 @@
 						"$ref": "#/components/schemas/W3cCredentialStatus"
 					},
 					"proof": {
-						"$ref": "#/components/schemas/SingleOrArray_LinkedDataProof-or-DataIntegrityProof_"
+						"$ref": "#/components/schemas/SingleOrArray_LinkedDataProof-or-AnonCredsW3cCredentialProof_"
 					}
 				},
 				"required": [
@@ -4122,18 +4141,32 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"ProofPurpose": {},
+			"Pick_W3cJsonLdVerifyCredentialOptions.Exclude_keyofW3cJsonLdVerifyCredentialOptions.trustedIssuers__": {
+				"properties": {
+					"credential": {
+						"$ref": "#/components/schemas/W3cJsonLdVerifiableCredential"
+					},
+					"proofPurpose": {},
+					"verifyCredentialStatus": {
+						"type": "boolean",
+						"description": "whether to verify the credentialStatus, if present."
+					}
+				},
+				"required": [
+					"credential"
+				],
+				"type": "object",
+				"description": "From T, pick a set of properties whose keys are in the union K"
+			},
 			"SafeW3cJsonLdVerifyCredentialOptions": {
 				"properties": {
 					"credential": {
 						"$ref": "#/components/schemas/W3cJsonLdVerifiableCredential"
 					},
+					"proofPurpose": {},
 					"verifyCredentialStatus": {
 						"type": "boolean",
-						"description": "Whether to verify the credentialStatus, if present."
-					},
-					"proofPurpose": {
-						"$ref": "#/components/schemas/ProofPurpose"
+						"description": "whether to verify the credentialStatus, if present."
 					},
 					"proof": {
 						"$ref": "#/components/schemas/SingleOrArray_any-or-DataIntegrityProofOptions_"

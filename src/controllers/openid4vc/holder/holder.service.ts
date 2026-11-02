@@ -35,9 +35,10 @@ import {
 } from '@credo-ts/openid4vc'
 
 import { StatusException } from '../../../errors/StatusException'
+import { BadRequestError } from '../../../errors/errors'
 import { CredentialType } from '../types/holder.types'
 
-import { getCredentialBindingResolver } from './credentialBindingResolver'
+import { assertOfferAcceptsHolderDid, getCredentialBindingResolver } from './credentialBindingResolver'
 type FilterValue = string | string[] | undefined
 
 export class HolderService {
@@ -356,20 +357,36 @@ export class HolderService {
       } as OpenId4VcAuthorizationCodeTokenRequestOptions
     }
 
-    return (await this.requestAndStoreCredentials(agentReq, resolvedCredentialOffer, options, body.tags)) as any
+    return (await this.requestAndStoreCredentials(agentReq, resolvedCredentialOffer, options, body)) as any
   }
   private async requestAndStoreCredentials(
     agentReq: Req,
     resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
     options: OpenId4VciTokenRequestOptions,
-    tags?: CredentialTags,
+    { credentialsToRequest, tags, holderDidUrl, bindingPolicy }: RequestCredentialBody,
   ) {
+    const offeredIds = resolvedCredentialOffer.credentialOfferPayload.credential_configuration_ids
+    const notOffered = credentialsToRequest?.filter((id) => !offeredIds.includes(id)) ?? []
+    if (notOffered.length > 0) {
+      throw new BadRequestError(`Credentials not in the offer: ${notOffered.join(', ')}`)
+    }
+
+    const credentialConfigurationIds = credentialsToRequest?.length ? credentialsToRequest : offeredIds
+    if (holderDidUrl) {
+      await assertOfferAcceptsHolderDid(agentReq.agent.context, resolvedCredentialOffer, credentialConfigurationIds, {
+        holderDidUrl,
+        bindingPolicy,
+      })
+    }
+
     const tokenResponse = await agentReq.agent.modules.openid4vc.holder.requestToken({ ...options })
     const credentialResponse = await agentReq.agent.modules.openid4vc.holder.requestCredentials({
       ...options,
-      credentialConfigurationIds: resolvedCredentialOffer.credentialOfferPayload.credential_configuration_ids,
+      credentialConfigurationIds,
       credentialBindingResolver: getCredentialBindingResolver({
         requestBatch: false,
+        holderDidUrl,
+        bindingPolicy,
       }),
       ...tokenResponse,
     })

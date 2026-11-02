@@ -1,3 +1,4 @@
+import { assertOfferAcceptsHolderDid, getCredentialBindingResolver } from '../credentialBindingResolver'
 import { HolderService } from '../holder.service'
 
 // Avoid loading Credo's ESM/native dependencies in Jest; only the symbols the service touches are stubbed.
@@ -10,8 +11,13 @@ jest.mock('@credo-ts/core', () => ({
   W3cCredentialService: class {},
   JsonTransformer: { toJSON: (record: object) => ({ ...record }) },
 }))
-jest.mock('@credo-ts/openid4vc', () => ({}))
-jest.mock('../credentialBindingResolver', () => ({ getCredentialBindingResolver: jest.fn() }))
+jest.mock('@credo-ts/openid4vc', () => ({
+  preAuthorizedCodeGrantIdentifier: 'urn:ietf:params:oauth:grant-type:pre-authorized_code',
+}))
+jest.mock('../credentialBindingResolver', () => ({
+  getCredentialBindingResolver: jest.fn(),
+  assertOfferAcceptsHolderDid: jest.fn(),
+}))
 
 describe('HolderService pagination and search', () => {
   let holderService: HolderService
@@ -264,5 +270,104 @@ describe('HolderService pagination and search', () => {
       expect(result.data).toHaveLength(3)
       expect(result.pagination.pageSize).toBe(10)
     })
+  })
+})
+
+describe('HolderService requestCredential', () => {
+  const offeredIds = ['IecSdJwt', 'IecLdp']
+
+  const createAgentReq = () => {
+    const holder = {
+      resolveCredentialOffer: jest.fn().mockResolvedValue({
+        credentialOfferPayload: {
+          credential_configuration_ids: offeredIds,
+          grants: { 'urn:ietf:params:oauth:grant-type:pre-authorized_code': {} },
+        },
+      }),
+      requestToken: jest.fn().mockResolvedValue({ accessToken: 'token' }),
+      requestCredentials: jest.fn().mockResolvedValue({ credentials: [] }),
+    }
+    return { agentReq: { agent: { context: 'agentContext', modules: { openid4vc: { holder } } } } as any, holder }
+  }
+
+  beforeEach(() => {
+    jest.mocked(getCredentialBindingResolver).mockReset()
+    jest.mocked(assertOfferAcceptsHolderDid).mockReset()
+  })
+
+  it('requests all offered credentials when credentialsToRequest is not given', async () => {
+    const { agentReq, holder } = createAgentReq()
+
+    await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'openid-credential-offer://x' })
+
+    expect(holder.requestCredentials).toHaveBeenCalledWith(
+      expect.objectContaining({ credentialConfigurationIds: offeredIds }),
+    )
+  })
+
+  it('requests only credentialsToRequest when given', async () => {
+    const { agentReq, holder } = createAgentReq()
+
+    await new HolderService().requestCredential(agentReq, {
+      credentialOfferUri: 'openid-credential-offer://x',
+      credentialsToRequest: ['IecSdJwt'],
+    })
+
+    expect(holder.requestCredentials).toHaveBeenCalledWith(
+      expect.objectContaining({ credentialConfigurationIds: ['IecSdJwt'] }),
+    )
+  })
+
+  it('rejects credentialsToRequest that are not in the offer before requesting a token', async () => {
+    const { agentReq, holder } = createAgentReq()
+
+    await expect(
+      new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'openid-credential-offer://x',
+        credentialsToRequest: ['Other'],
+      }),
+    ).rejects.toThrow('Credentials not in the offer: Other')
+    expect(holder.requestToken).not.toHaveBeenCalled()
+  })
+
+  it('passes holderDidUrl and bindingPolicy to the binding resolver', async () => {
+    const { agentReq } = createAgentReq()
+
+    await new HolderService().requestCredential(agentReq, {
+      credentialOfferUri: 'openid-credential-offer://x',
+      holderDidUrl: 'did:web:example.com#key-1',
+      bindingPolicy: 'prefer',
+    })
+
+    expect(getCredentialBindingResolver).toHaveBeenCalledWith({
+      requestBatch: false,
+      holderDidUrl: 'did:web:example.com#key-1',
+      bindingPolicy: 'prefer',
+    })
+  })
+
+  it('checks the holder DID against the offer before requesting a token', async () => {
+    const { agentReq, holder } = createAgentReq()
+    jest.mocked(assertOfferAcceptsHolderDid).mockRejectedValue(new Error('IecLdp: did:web not supported'))
+
+    await expect(
+      new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'openid-credential-offer://x',
+        holderDidUrl: 'did:web:example.com#key-1',
+      }),
+    ).rejects.toThrow('IecLdp: did:web not supported')
+    expect(assertOfferAcceptsHolderDid).toHaveBeenCalledWith('agentContext', expect.anything(), offeredIds, {
+      holderDidUrl: 'did:web:example.com#key-1',
+      bindingPolicy: undefined,
+    })
+    expect(holder.requestToken).not.toHaveBeenCalled()
+  })
+
+  it('does not check the offer without holderDidUrl', async () => {
+    const { agentReq } = createAgentReq()
+
+    await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'openid-credential-offer://x' })
+
+    expect(assertOfferAcceptsHolderDid).not.toHaveBeenCalled()
   })
 })
