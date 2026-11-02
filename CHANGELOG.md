@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.3.1](https://github.com/credebl/agent-controller/compare/v2.3.0...v2.3.1) (2026-11-04)
+
+### Features
+
+- **oid4vc holder:** `POST /openid4vc/holder/request-credential` accepts optional `holderDidUrl` (a verification method, or a DID to use its first authentication key) and `bindingPolicy` (`require` by default, or `prefer`), so credentials can be bound to an existing DID of the tenant instead of a new key. Without `holderDidUrl` nothing changes.
+
+### Bug Fixes
+
+- **oid4vc holder:** `credentialsToRequest` is now honoured (all offered configurations were requested before); ids that are not in the offer return 400.
+- **oid4vc holder:** a requested holder DID that the issuer cannot bind to is rejected before the token request, so the pre-authorized code and transaction code are not used up.
+
+### Dependencies
+
+- Credo `0.7.0` → `0.7.4` (all `@credo-ts/*` packages and `resolutions`). Storage version is unchanged (0.5), so existing wallets open without migration.
+- patch-package patches regenerated for 0.7.4; the core patch drops the `defaultDocumentLoader` exports that Credo now provides.
+
+### Security
+
+- `body-parser` 1.20.8 → 1.20.9 and 2.3.0 → 2.4.0, `decode-uri-component` 0.5.0 → 0.5.1, `qs` 6.16.0 → 6.16.2 / 6.17.1, `fast-uri` 3.1.8 → 3.1.9 (lockfile only, within existing ranges)
+
+### API
+
+- OpenAPI: `RequestCredentialBody` gains `holderDidUrl` and `bindingPolicy`, and `credentialsToRequest` is optional. Credo 0.7.4 renames proof schemas used by `/agent/credential/verify` (`DataIntegrityProof` → `AnonCredsW3cCredentialProof`); request and response shapes are unchanged.
+
 ## [2.3.0](https://github.com/credebl/agent-controller/compare/v2.2.0...v2.3.0) (2026-10-30)
 
 ### Features
