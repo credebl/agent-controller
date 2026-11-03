@@ -3421,6 +3421,9 @@
 					},
 					"endpoint": {
 						"type": "string"
+					},
+					"isPrimaryDid": {
+						"type": "boolean"
 					}
 				},
 				"required": [
@@ -11809,6 +11812,28 @@
 						}
 					}
 				]
+			}
+		},
+		"/.well-known/did.json": {
+			"get": {
+				"operationId": "GetDidWebDocument",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Record_string.unknown_"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"WellKnown"
+				],
+				"security": [],
+				"parameters": []
 			}
 		}
 	},

@@ -39,6 +39,8 @@ import { CredentialController } from './../controllers/didcomm/credentials/Crede
 import { ProofController } from './../controllers/didcomm/proofs/ProofController';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { VerifierController } from './../controllers/openid4vc/verifiers/verifier.Controller';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { WellKnownController } from './../controllers/wellKnown/WellKnownController';
 import { expressAuthentication } from './../authentication';
 // @ts-ignore - no great way to install types from subpackage
 import { iocContainer } from './../utils/tsyringeTsoaIocContainer';
@@ -1444,6 +1446,7 @@ const models: TsoaRoute.Models = {
             "didDocument": {"ref":"DidDocument"},
             "privatekey": {"dataType":"string"},
             "endpoint": {"dataType":"string"},
+            "isPrimaryDid": {"dataType":"boolean"},
         },
         "additionalProperties": false,
     },
@@ -6159,6 +6162,40 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'deleteVerifier',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsWellKnownController_getDidWebDocument: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        app.get('/.well-known/did.json',
+            ...(fetchMiddlewares<RequestHandler>(WellKnownController)),
+            ...(fetchMiddlewares<RequestHandler>(WellKnownController.prototype.getDidWebDocument)),
+
+            async function WellKnownController_getDidWebDocument(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsWellKnownController_getDidWebDocument, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<WellKnownController>(WellKnownController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getDidWebDocument',
                 controller,
                 response,
                 next,

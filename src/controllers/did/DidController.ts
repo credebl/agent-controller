@@ -28,7 +28,9 @@ import ErrorHandlingService from '../../errorHandlingService'
 import { BadRequestError, InternalServerError } from '../../errors'
 import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
+import { assertPublicWebDomain } from '../../utils/domainValidation'
 import { getTypeFromCurve } from '../../utils/helpers'
+import { setPrimaryDidWeb } from '../../utils/primaryDidWeb'
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
 import { DidCreate, supportedKeyTypesDID } from '../types'
 
@@ -516,6 +518,11 @@ export class DidController extends Controller {
       throw new BadRequestError('For create did:web, domain is required')
     }
 
+    // did:web only resolves against a real, publicly reachable domain - reject
+    // localhost/loopback/private IPs here rather than silently minting a DID
+    // that can never be resolved by anyone outside this host.
+    assertPublicWebDomain(didOptions.domain)
+
     if (!didOptions.seed) {
       throw new BadRequestError('Seed is required')
     }
@@ -571,6 +578,11 @@ export class DidController extends Controller {
         },
       ],
     })
+
+    if (didOptions.isPrimaryDid) {
+      await setPrimaryDidWeb(agent, did)
+    }
+
     return { did, didDocument }
   }
 

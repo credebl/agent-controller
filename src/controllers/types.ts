@@ -328,6 +328,10 @@ export interface DidCreate {
   didDocument?: DidDocument
   privatekey?: string
   endpoint?: string
+  // Only meaningful (and only forwarded by the platform) for method 'web' -
+  // see WellKnownController, which needs this agent to know which did:web
+  // it should serve at /.well-known/did.json when more than one exists.
+  isPrimaryDid?: boolean
 }
 
 export interface CreateTenantOptions {
