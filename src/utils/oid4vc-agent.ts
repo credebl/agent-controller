@@ -31,6 +31,7 @@ import { SignerMethod } from '../enums/enum'
 import { validateAuthConfig } from './auth'
 import { checkX509Certificates, processIsoImages } from './helpers'
 import { TsLogger } from './logger'
+import { bindW3cCredentialSubject } from './w3cCredentialSubject'
 
 const logger = new TsLogger(LogLevel.Info)
 
@@ -459,29 +460,11 @@ function mapW3cCredentialBinding(
   issuerDidVerificationMethod: string | undefined,
   credentialConfiguration: any,
 ) {
-  let rawSubject: any
-  let subjectId: string | undefined = undefined
-  const bindingDid = binding.method === 'did' ? (binding as any).didUrl : undefined
-
-  if (Array.isArray(payload.credentialSubject)) {
-    rawSubject = payload.credentialSubject.map((subj: any) => {
-      if (subj && typeof subj === 'object') {
-        const itemId = subj.id || bindingDid
-        return itemId ? { ...subj, id: itemId } : { ...subj }
-      }
-      return subj
-    })
-    const firstWithId = rawSubject.find((s: any) => s?.id)
-    subjectId = firstWithId?.id || bindingDid
-  } else {
-    const origSubject = payload.credentialSubject || {}
-    subjectId = origSubject.id || bindingDid
-
-    rawSubject = { ...origSubject }
-    if (subjectId) {
-      rawSubject.id = subjectId
-    }
-  }
+  const bindingDidUrl = binding.method === 'did' ? (binding as any).didUrl : undefined
+  const { credentialSubject: rawSubject, subjectId } = bindW3cCredentialSubject(
+    payload.credentialSubject,
+    bindingDidUrl,
+  )
 
   const issuer = payload.issuer || credential.signerOptions.did
   const finalIssuer = isV2 && typeof issuer === 'string' ? { id: issuer } : issuer

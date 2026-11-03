@@ -72,7 +72,7 @@ Lockfile updates, all within existing version ranges:
 
 - `yarn check-types`, `yarn lint` (0 errors), `yarn check-format`, `yarn compile` and `yarn test` (3 suites, 47 tests, 43 of them new: credential binding resolver and `requestCredential`) pass.
 - End to end on 2026-11-03, against local multi-tenant Postgres wallets:
-  - **Binding to a `did:web`.** An Entity wallet tenant bound an SD-JWT to its `did:web#key-1`, and the issuer resolved the `did:web` to verify the proof.
+  - **Binding to a `did:web`.** A tenant bound an SD-JWT to its `did:web#key-1`, and the issuer resolved the `did:web` to verify the proof.
   - **`require` and the code.** With `require`, a mixed offer was rejected before the token request, and the same offer then succeeded for the SD-JWT alone.
   - **`prefer` fallback.** With `prefer`, the SD-JWT bound to the `did:web` and the `ldp_vc` fell back to a new `did:key`.
   - **Default unchanged.** Without `holderDidUrl`, a new `did:jwk` was created, as in 2.3.0.

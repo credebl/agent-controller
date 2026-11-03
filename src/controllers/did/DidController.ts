@@ -7,6 +7,11 @@ import {
   TypedArrayEncoder,
   DidDocumentBuilder,
   getEd25519VerificationKey2018,
+  getEd25519VerificationKey2020,
+  SECURITY_ED25519_2018_CONTEXT_URL,
+  SECURITY_ED25519_2020_CONTEXT_URL,
+  VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2018,
+  VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020,
   createPeerDidDocumentFromServices,
   PeerDidNumAlgo,
   Kms,
@@ -528,6 +533,17 @@ export class DidController extends Controller {
       throw new BadRequestError('Only ed25519 key type supported')
     }
 
+    const verificationMethodType =
+      didOptions.verificationMethodType ?? VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2018
+    if (
+      verificationMethodType !== VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2018 &&
+      verificationMethodType !== VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
+    ) {
+      throw new BadRequestError(
+        `verificationMethodType must be ${VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2018} or ${VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020}`,
+      )
+    }
+
     const domain = didOptions.domain
     const did = `did:${didOptions.method}:${domain}`
     const keyId = `${did}#key-1`
@@ -548,8 +564,16 @@ export class DidController extends Controller {
 
       publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
       didDocument = new DidDocumentBuilder(did)
-        .addContext('https://w3id.org/security/suites/ed25519-2018/v1')
-        .addVerificationMethod(getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }))
+        .addContext(
+          verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
+            ? SECURITY_ED25519_2020_CONTEXT_URL
+            : SECURITY_ED25519_2018_CONTEXT_URL,
+        )
+        .addVerificationMethod(
+          verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
+            ? getEd25519VerificationKey2020({ id: keyId, publicJwk, controller: did })
+            : getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }),
+        )
         .addAuthentication(keyId)
         .addAssertionMethod(keyId)
         .build()

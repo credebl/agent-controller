@@ -1,6 +1,8 @@
 import {
+  HolderBindingMismatchError,
   HolderBindingNotSupportedError,
   assertOfferAcceptsHolderDid,
+  assertW3cCredentialsBoundToHolderDid,
   getCredentialBindingResolver,
 } from '../credentialBindingResolver'
 
@@ -11,7 +13,12 @@ jest.mock('@credo-ts/core', () => {
     const [did, fragment] = didUrl.split('#')
     return { did, method: did.split(':')[1], fragment, didUrl }
   }
+  class W3cCredentialRecord {
+    public constructor(public firstCredential: { credentialSubjectIds: string[] }) {}
+  }
   return {
+    W3cCredentialRecord,
+    tryParseDid: (didUrl: string) => (didUrl.startsWith('did:') ? parseDid(didUrl) : undefined),
     DidsApi: 'DidsApi',
     Kms: {
       KeyManagementApi: 'KeyManagementApi',
@@ -36,7 +43,7 @@ jest.mock('@credo-ts/openid4vc', () => ({
   },
 }))
 
-const WALLET_DID = 'did:web:ayanworks.github.io:iec:0522012345'
+const WALLET_DID = 'did:web:wallet.example.com'
 const WALLET_KEY = `${WALLET_DID}#key-1`
 
 const walletDidDocument = {
@@ -357,5 +364,35 @@ describe('getCredentialBindingResolver', () => {
         }),
       ).rejects.toThrow(/was not created in this wallet/)
     })
+  })
+})
+
+describe('assertW3cCredentialsBoundToHolderDid', () => {
+  const HOLDER_DID = 'did:web:holder.example.com'
+  const HOLDER_KEY = `${HOLDER_DID}#key-1`
+  const { W3cCredentialRecord } = jest.requireMock('@credo-ts/core')
+  const w3cRecord = (...credentialSubjectIds: string[]) => new W3cCredentialRecord({ credentialSubjectIds })
+
+  it('accepts a subject that is the holder DID, bare or as a verification method url', () => {
+    expect(() =>
+      assertW3cCredentialsBoundToHolderDid([w3cRecord(HOLDER_DID), w3cRecord(HOLDER_KEY)], HOLDER_KEY),
+    ).not.toThrow()
+    expect(() => assertW3cCredentialsBoundToHolderDid([w3cRecord(HOLDER_DID)], HOLDER_DID)).not.toThrow()
+  })
+
+  it('rejects a credential bound to another DID', () => {
+    expect(() => assertW3cCredentialsBoundToHolderDid([w3cRecord('did:key:z6MkOther#z6MkOther')], HOLDER_KEY)).toThrow(
+      HolderBindingMismatchError,
+    )
+  })
+
+  it('rejects a credential without a subject id', () => {
+    expect(() => assertW3cCredentialsBoundToHolderDid([w3cRecord()], HOLDER_KEY)).toThrow(
+      /subject \(none\) is not the holder DID/,
+    )
+  })
+
+  it('ignores records that are not W3C credentials', () => {
+    expect(() => assertW3cCredentialsBoundToHolderDid([{ type: 'SdJwtVcRecord' }], HOLDER_KEY)).not.toThrow()
   })
 })

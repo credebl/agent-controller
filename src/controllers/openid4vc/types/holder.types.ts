@@ -18,7 +18,7 @@ export interface RequestCredentialBody {
    * Bind the credentials to this DID instead of a new key: a verification method id
    * (e.g. `did:web:example.com#key-1`), or a bare DID to use its first authentication key.
    * The DID must have been created or imported in this wallet.
-   * @example "did:web:ayanworks.github.io:iec:0522012345#key-1"
+   * @example "did:web:example.com#key-1"
    */
   holderDidUrl?: string
   /**
