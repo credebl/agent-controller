@@ -1025,15 +1025,22 @@ const models: TsoaRoute.Models = {
         "type": {"ref":"Record_string.string-or-string-Array-or-undefined_","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialBindingPolicy": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["require"]},{"dataType":"enum","enums":["prefer"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "RequestCredentialBody": {
         "dataType": "refObject",
         "properties": {
             "credentialOfferUri": {"dataType":"string","required":true},
-            "credentialsToRequest": {"dataType":"array","array":{"dataType":"string"},"required":true},
+            "credentialsToRequest": {"dataType":"array","array":{"dataType":"string"}},
             "authorizationCode": {"dataType":"string"},
             "codeVerifier": {"dataType":"string"},
             "txCode": {"dataType":"string"},
             "tags": {"ref":"CredentialTags"},
+            "holderDidUrl": {"dataType":"string"},
+            "bindingPolicy": {"ref":"CredentialBindingPolicy","default":"require"},
         },
         "additionalProperties": false,
     },
@@ -1618,7 +1625,7 @@ const models: TsoaRoute.Models = {
         "type": {"ref":"W3cVerifyResult_W3cCredentialValidations_","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DataIntegrityProofOptions": {
+    "AnonCredsW3cCredentialProofOptions": {
         "dataType": "refObject",
         "properties": {
             "type": {"dataType":"string","required":true},
@@ -1636,9 +1643,23 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DataIntegrityProofOptions": {
+        "dataType": "refAlias",
+        "type": {"ref":"AnonCredsW3cCredentialProofOptions","validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "SingleOrArray_any-or-DataIntegrityProofOptions_": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"union","subSchemas":[{"dataType":"any"},{"ref":"DataIntegrityProofOptions"}]},{"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"any"},{"ref":"DataIntegrityProofOptions"}]}}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TrustedIssuerDidOption": {
+        "dataType": "refObject",
+        "properties": {
+            "method": {"dataType":"enum","enums":["did"],"required":true},
+            "issuance": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "LinkedDataProof": {
@@ -1657,7 +1678,7 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DataIntegrityProof": {
+    "AnonCredsW3cCredentialProof": {
         "dataType": "refObject",
         "properties": {
             "type": {"dataType":"string","required":true},
@@ -1675,9 +1696,9 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "SingleOrArray_LinkedDataProof-or-DataIntegrityProof_": {
+    "SingleOrArray_LinkedDataProof-or-AnonCredsW3cCredentialProof_": {
         "dataType": "refAlias",
-        "type": {"dataType":"union","subSchemas":[{"dataType":"union","subSchemas":[{"ref":"LinkedDataProof"},{"ref":"DataIntegrityProof"}]},{"dataType":"array","array":{"dataType":"union","subSchemas":[{"ref":"LinkedDataProof"},{"ref":"DataIntegrityProof"}]}}],"validators":{}},
+        "type": {"dataType":"union","subSchemas":[{"dataType":"union","subSchemas":[{"ref":"LinkedDataProof"},{"ref":"AnonCredsW3cCredentialProof"}]},{"dataType":"array","array":{"dataType":"union","subSchemas":[{"ref":"LinkedDataProof"},{"ref":"AnonCredsW3cCredentialProof"}]}}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "W3cCredentialSubject": {
@@ -1706,23 +1727,24 @@ const models: TsoaRoute.Models = {
             "credentialSubject": {"ref":"SingleOrArray_W3cCredentialSubject_","required":true},
             "credentialSchema": {"ref":"SingleOrArray_W3cCredentialSchema_"},
             "credentialStatus": {"ref":"W3cCredentialStatus"},
-            "proof": {"ref":"SingleOrArray_LinkedDataProof-or-DataIntegrityProof_","required":true},
+            "proof": {"ref":"SingleOrArray_LinkedDataProof-or-AnonCredsW3cCredentialProof_","required":true},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ProofPurpose": {
+    "Pick_W3cJsonLdVerifyCredentialOptions.Exclude_keyofW3cJsonLdVerifyCredentialOptions.trustedIssuers__": {
         "dataType": "refAlias",
-        "type": {"dataType":"any","validators":{}},
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"credential":{"ref":"W3cJsonLdVerifiableCredential","required":true},"proofPurpose":{"dataType":"any"},"verifyCredentialStatus":{"dataType":"boolean"}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "SafeW3cJsonLdVerifyCredentialOptions": {
         "dataType": "refObject",
         "properties": {
             "credential": {"ref":"W3cJsonLdVerifiableCredential","required":true},
+            "proofPurpose": {"dataType":"any"},
             "verifyCredentialStatus": {"dataType":"boolean"},
-            "proofPurpose": {"ref":"ProofPurpose"},
             "proof": {"ref":"SingleOrArray_any-or-DataIntegrityProofOptions_","required":true},
+            "trustedIssuers": {"dataType":"array","array":{"dataType":"refObject","ref":"TrustedIssuerDidOption"}},
         },
         "additionalProperties": false,
     },

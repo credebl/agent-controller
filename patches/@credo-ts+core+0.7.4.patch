@@ -1,48 +1,24 @@
 diff --git a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
-index 2082da4..b8aa6b0 100644
+index 15b71d3..4bc669a 100644
 --- a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
 @@ -80,7 +80,7 @@ let DcqlService = class DcqlService {
  		if (formats.has("ldp_vc")) {
  			const w3cRecords = await w3cCredentialRepository.findByQuery(agentContext, {
- 				claimFormat: ClaimFormat.LdpVc,
+ 				claimFormat: "ldp_vc",
 -				$or: dcqlQuery.credentials.flatMap((c) => c.format === "jwt_vc_json" ? c.meta.type_values : []).map((typeValues) => ({ expandedTypes: typeValues }))
 +				$or: dcqlQuery.credentials.flatMap((c) => c.format === "ldp_vc" ? c.meta.type_values : []).map((typeValues) => ({ expandedTypes: typeValues }))
  			});
  			allRecords.push(...w3cRecords);
  		}
-diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
-index 5a311c1..4d640d0 100644
---- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
-+++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.d.mts
-@@ -14,7 +14,7 @@ interface Proof extends JsonObject {
-   verificationMethod: string | VerificationMethod;
-   [key: string]: JsonValue;
- }
--interface DocumentLoaderResult {
-+export interface DocumentLoaderResult {
-   contextUrl?: string | null;
-   documentUrl: string;
-   document: Record<string, unknown>;
-diff --git a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
-index 195af1d..30d1638 100644
---- a/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
-+++ b/node_modules/@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.d.mts
-@@ -5,4 +5,5 @@ import { AgentContext } from "../../../../agent/context/AgentContext.mjs";
- type DocumentLoaderWithContext = (agentContext: AgentContext) => DocumentLoader;
- //#endregion
- export { DocumentLoaderWithContext };
-+export declare function defaultDocumentLoader(agentContext: AgentContext): DocumentLoader;
- //# sourceMappingURL=documentLoader.d.mts.map
-\ No newline at end of file
 diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
-index f3ad42c..35c485d 100644
+index 5d00447..1ac877e 100644
 --- a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
-@@ -21,11 +21,11 @@ var W3cCredential = class W3cCredential {
+@@ -17,11 +17,11 @@ var W3cCredential = class W3cCredential {
  	constructor(options) {
  		if (options) {
- 			this.context = options.context ?? [CREDENTIALS_CONTEXT_V1_URL];
+ 			this.context = options.context ?? ["https://www.w3.org/2018/credentials/v1"];
 -			this.id = options.id;
 +			if (options.id !== undefined) this.id = options.id;
  			this.type = options.type || ["VerifiableCredential"];
@@ -54,43 +30,26 @@ index f3ad42c..35c485d 100644
  			if (options.credentialStatus) this.credentialStatus = options.credentialStatus instanceof W3cCredentialStatus ? options.credentialStatus : new W3cCredentialStatus(options.credentialStatus);
  			if (options.credentialSchema) this.credentialSchema = mapSingleOrArray(options.credentialSchema, (schema) => schema instanceof W3cCredentialSchema ? schema : new W3cCredentialSchema(schema));
 diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
-index 5462368..2eb0686 100644
+index e408f10..737f7c6 100644
 --- a/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/vc/models/presentation/W3cPresentation.mjs
-@@ -19,7 +19,7 @@ var _ref, _ref2;
+@@ -15,7 +15,7 @@ import { IsOptional, ValidateNested } from "class-validator";
  var W3cPresentation = class {
  	constructor(options) {
  		if (options) {
 -			this.id = options.id;
 +			if (options.id !== undefined) this.id = options.id;
- 			this.context = options.context ?? [CREDENTIALS_CONTEXT_V1_URL];
- 			this.type = options.type ?? [VERIFIABLE_PRESENTATION_TYPE];
+ 			this.context = options.context ?? ["https://www.w3.org/2018/credentials/v1"];
+ 			this.type = options.type ?? ["VerifiablePresentation"];
  			this.verifiableCredential = options.verifiableCredential;
 diff --git a/node_modules/@credo-ts/core/build/utils/version.d.mts b/node_modules/@credo-ts/core/build/utils/version.d.mts
-index a71659d..8ed88e2 100644
+index 2f72ef1..c1c682e 100644
 --- a/node_modules/@credo-ts/core/build/utils/version.d.mts
 +++ b/node_modules/@credo-ts/core/build/utils/version.d.mts
-@@ -1,5 +1,5 @@
+@@ -1,4 +1,4 @@
  //#region src/utils/version.d.ts
--type VersionString = `${number}.${number}` | `${number}.${number}.${number}`;
-+type VersionString = string;
+-export type VersionString = `${number}.${number}` | `${number}.${number}.${number}`;
++export type VersionString = string;
  //#endregion
- export { VersionString };
  //# sourceMappingURL=version.d.mts.map
 \ No newline at end of file
-diff --git a/node_modules/@credo-ts/core/package.json b/node_modules/@credo-ts/core/package.json
-index 544696b..cdd9786 100644
---- a/node_modules/@credo-ts/core/package.json
-+++ b/node_modules/@credo-ts/core/package.json
-@@ -7,6 +7,11 @@
-       "import": "./build/modules/kms/index.mjs",
-       "require": "./build/modules/kms/index.mjs",
-       "types": "./build/modules/kms/index.d.mts"
-+    },
-+    "./build/modules/vc/data-integrity/libraries/documentLoader.mjs": {
-+      "import": "./build/modules/vc/data-integrity/libraries/documentLoader.mjs",
-+      "require": "./build/modules/vc/data-integrity/libraries/documentLoader.mjs",
-+      "types": "./build/modules/vc/data-integrity/libraries/documentLoader.d.mts"
-     }
-   },
-   "version": "0.7.0",
