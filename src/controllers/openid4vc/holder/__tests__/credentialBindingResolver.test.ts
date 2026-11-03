@@ -7,6 +7,7 @@ import {
 // Avoid loading Credo's ESM/native dependencies in Jest; only the symbols the resolver touches are stubbed.
 jest.mock('@credo-ts/core', () => {
   const parseDid = (didUrl: string) => {
+    if (!didUrl.startsWith('did:')) throw new Error(`Error parsing did '${didUrl}'`)
     const [did, fragment] = didUrl.split('#')
     return { did, method: did.split(':')[1], fragment, didUrl }
   }
@@ -179,6 +180,14 @@ describe('getCredentialBindingResolver', () => {
       expect(kms.createKeyForSignatureAlgorithm).not.toHaveBeenCalled()
     })
 
+    it('answers a malformed holder DID URL with a bad request', async () => {
+      const { options } = setup(sdJwtIssuer)
+
+      await expect(
+        getCredentialBindingResolver({ holderDidUrl: 'not-a-did', bindingPolicy: 'prefer' })(options),
+      ).rejects.toThrow(/is not a valid DID or DID URL/)
+    })
+
     it('fails even with prefer when the verification method is not in the DID document', async () => {
       const { options } = setup(sdJwtIssuer)
 
@@ -253,6 +262,71 @@ describe('getCredentialBindingResolver', () => {
           holderDidUrl: WALLET_KEY,
           bindingPolicy: 'prefer',
         }),
+      ).resolves.toBeUndefined()
+    })
+
+    it('names the configuration whose jwt proof algorithms the key cannot sign', async () => {
+      const { options } = setup({})
+      const es256Only = {
+        offeredCredentialConfigurations: {
+          IecSdJwt: {
+            format: 'dc+sd-jwt',
+            cryptographic_binding_methods_supported: ['did:web'],
+            proof_types_supported: { jwt: { proof_signing_alg_values_supported: ['ES256'] } },
+          },
+        },
+      } as any
+
+      await expect(
+        assertOfferAcceptsHolderDid(options.agentContext, es256Only, ['IecSdJwt'], { holderDidUrl: WALLET_KEY }),
+      ).rejects.toThrow(/^IecSdJwt: Key '.*#key-1' signs with EdDSA, Ed25519, but the issuer accepts ES256/)
+    })
+
+    it('rejects a configuration that requires key attestations or no jwt proof', async () => {
+      const { options } = setup({})
+      const offerWith = (proofTypes: object) =>
+        ({
+          offeredCredentialConfigurations: {
+            IecSdJwt: {
+              format: 'dc+sd-jwt',
+              cryptographic_binding_methods_supported: ['did:web'],
+              proof_types_supported: proofTypes,
+            },
+          },
+        }) as any
+
+      await expect(
+        assertOfferAcceptsHolderDid(
+          options.agentContext,
+          offerWith({ jwt: { proof_signing_alg_values_supported: ['EdDSA'], key_attestations_required: {} } }),
+          ['IecSdJwt'],
+          { holderDidUrl: WALLET_KEY },
+        ),
+      ).rejects.toThrow(HolderBindingNotSupportedError)
+      await expect(
+        assertOfferAcceptsHolderDid(
+          options.agentContext,
+          offerWith({ attestation: { proof_signing_alg_values_supported: ['EdDSA'] } }),
+          ['IecSdJwt'],
+          { holderDidUrl: WALLET_KEY },
+        ),
+      ).rejects.toThrow(/does not accept a jwt proof/)
+    })
+
+    it('accepts a configuration whose jwt proof the key can sign', async () => {
+      const { options } = setup({})
+      const edDsa = {
+        offeredCredentialConfigurations: {
+          IecSdJwt: {
+            format: 'dc+sd-jwt',
+            cryptographic_binding_methods_supported: ['did:web'],
+            proof_types_supported: { jwt: { proof_signing_alg_values_supported: ['ES256', 'EdDSA'] } },
+          },
+        },
+      } as any
+
+      await expect(
+        assertOfferAcceptsHolderDid(options.agentContext, edDsa, ['IecSdJwt'], { holderDidUrl: WALLET_KEY }),
       ).resolves.toBeUndefined()
     })
 

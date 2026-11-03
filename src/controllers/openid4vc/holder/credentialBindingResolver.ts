@@ -76,18 +76,16 @@ async function resolveHolderDidBinding(
   const { verificationMethod, verificationMethodId } = await resolveHolderVerificationMethod(agentContext, holderDidUrl)
 
   assertDidBindingAllowed(verificationMethodId, credentialFormat, supportedDidMethods, supportsAllDidMethods)
-
-  if (!proofTypes.jwt || proofTypes.jwt.keyAttestationsRequired) {
-    throw new HolderBindingNotSupportedError('Issuer does not accept a jwt proof without key attestations')
-  }
-
-  const keyAlgorithms = getPublicJwkFromVerificationMethod(verificationMethod).supportedSignatureAlgorithms
-  const issuerAlgorithms = proofTypes.jwt.supportedSignatureAlgorithms
-  if (!issuerAlgorithms.some((algorithm) => keyAlgorithms.includes(algorithm))) {
-    throw new HolderBindingNotSupportedError(
-      `Key '${verificationMethodId}' signs with ${keyAlgorithms.join(', ')}, but the issuer accepts ${issuerAlgorithms.join(', ')}`,
-    )
-  }
+  assertJwtProofAllowed(
+    verificationMethod,
+    verificationMethodId,
+    proofTypes.jwt
+      ? {
+          keyAttestationsRequired: Boolean(proofTypes.jwt.keyAttestationsRequired),
+          algorithms: proofTypes.jwt.supportedSignatureAlgorithms,
+        }
+      : undefined,
+  )
 
   return verificationMethodId
 }
@@ -103,7 +101,7 @@ export async function assertOfferAcceptsHolderDid(
   credentialConfigurationIds: string[],
   { holderDidUrl, bindingPolicy = 'require' }: { holderDidUrl: string; bindingPolicy?: CredentialBindingPolicy },
 ) {
-  const { verificationMethodId } = await resolveHolderVerificationMethod(agentContext, holderDidUrl)
+  const { verificationMethod, verificationMethodId } = await resolveHolderVerificationMethod(agentContext, holderDidUrl)
   if (bindingPolicy === 'prefer') return
 
   for (const configurationId of credentialConfigurationIds) {
@@ -119,6 +117,21 @@ export async function assertOfferAcceptsHolderDid(
         bindingMethods?.filter((method) => method.startsWith('did:')),
         bindingMethods?.includes('did') ?? false,
       )
+      // Without proof_types_supported the issuer states no proof requirements to check
+      const proofTypes = configuration.proof_types_supported
+      if (proofTypes) {
+        const jwt = proofTypes.jwt
+        assertJwtProofAllowed(
+          verificationMethod,
+          verificationMethodId,
+          jwt
+            ? {
+                keyAttestationsRequired: Boolean(jwt.key_attestations_required),
+                algorithms: jwt.proof_signing_alg_values_supported,
+              }
+            : undefined,
+        )
+      }
     } catch (error) {
       if (error instanceof HolderBindingNotSupportedError) {
         throw new HolderBindingNotSupportedError(`${configurationId}: ${error.message}`)
@@ -152,11 +165,35 @@ function assertDidBindingAllowed(
   }
 }
 
+/** Checks that the issuer accepts a jwt proof, without key attestations, signed with the holder's key. */
+function assertJwtProofAllowed(
+  verificationMethod: VerificationMethod,
+  verificationMethodId: string,
+  jwtProof: { keyAttestationsRequired: boolean; algorithms: string[] } | undefined,
+) {
+  if (!jwtProof || jwtProof.keyAttestationsRequired) {
+    throw new HolderBindingNotSupportedError('Issuer does not accept a jwt proof without key attestations')
+  }
+
+  const keyAlgorithms = getPublicJwkFromVerificationMethod(verificationMethod).supportedSignatureAlgorithms
+  if (!jwtProof.algorithms.some((algorithm) => (keyAlgorithms as string[]).includes(algorithm))) {
+    throw new HolderBindingNotSupportedError(
+      `Key '${verificationMethodId}' signs with ${keyAlgorithms.join(', ')}, but the issuer accepts ${jwtProof.algorithms.join(', ')}`,
+    )
+  }
+}
+
 async function resolveHolderVerificationMethod(
   agentContext: AgentContext,
   holderDidUrl: string,
 ): Promise<{ verificationMethod: VerificationMethod; verificationMethodId: string }> {
-  const { did, fragment } = parseDid(holderDidUrl)
+  let parsedDid: ReturnType<typeof parseDid>
+  try {
+    parsedDid = parseDid(holderDidUrl)
+  } catch {
+    throw new BadRequestError(`Holder DID URL '${holderDidUrl}' is not a valid DID or DID URL`)
+  }
+  const { did, fragment } = parsedDid
 
   let didDocument
   try {

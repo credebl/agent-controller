@@ -447,11 +447,23 @@ export interface credentialPayloadToSign {
   method: string
   credential: jsonLdCredentialOptions // TODO: add support for other credential format
 }
-// trustedIssuers (Credo 0.7.4) may be a callback, which tsoa cannot model
+/** A DID trusted to issue the credential being verified (Credo's `TrustedIssuerDid`). */
+export interface TrustedIssuerDidOption {
+  method: 'did'
+  /** The trusted issuer DID */
+  issuance: string
+}
+
+// Credo 0.7.4 also accepts a callback for trustedIssuers, which tsoa cannot model; only the list is exposed
 export interface SafeW3cJsonLdVerifyCredentialOptions extends Omit<W3cJsonLdVerifyCredentialOptions, 'trustedIssuers'> {
   // Ommited due to issues with TSOA
   // FIXME: Check type
   proof: SingleOrArray<any | DataIntegrityProofOptions>
+  /**
+   * Issuer DIDs to accept. When set, verification fails for a credential from any other DID;
+   * an empty list trusts no issuer.
+   */
+  trustedIssuers?: TrustedIssuerDidOption[]
 }
 
 export type ExtensibleW3cCredentialSubject = W3cCredentialSubject & {

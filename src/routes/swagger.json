@@ -3939,6 +3939,28 @@
 					}
 				]
 			},
+			"TrustedIssuerDidOption": {
+				"description": "A DID trusted to issue the credential being verified (Credo's `TrustedIssuerDid`).",
+				"properties": {
+					"method": {
+						"type": "string",
+						"enum": [
+							"did"
+						],
+						"nullable": false
+					},
+					"issuance": {
+						"type": "string",
+						"description": "The trusted issuer DID"
+					}
+				},
+				"required": [
+					"method",
+					"issuance"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"LinkedDataProof": {
 				"description": "Linked Data Proof",
 				"properties": {
@@ -4170,6 +4192,13 @@
 					},
 					"proof": {
 						"$ref": "#/components/schemas/SingleOrArray_any-or-DataIntegrityProofOptions_"
+					},
+					"trustedIssuers": {
+						"items": {
+							"$ref": "#/components/schemas/TrustedIssuerDidOption"
+						},
+						"type": "array",
+						"description": "Issuer DIDs to accept. When set, verification fails for a credential from any other DID;\nan empty list trusts no issuer."
 					}
 				},
 				"required": [

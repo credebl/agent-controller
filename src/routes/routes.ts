@@ -1653,6 +1653,15 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"union","subSchemas":[{"dataType":"union","subSchemas":[{"dataType":"any"},{"ref":"DataIntegrityProofOptions"}]},{"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"any"},{"ref":"DataIntegrityProofOptions"}]}}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "TrustedIssuerDidOption": {
+        "dataType": "refObject",
+        "properties": {
+            "method": {"dataType":"enum","enums":["did"],"required":true},
+            "issuance": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "LinkedDataProof": {
         "dataType": "refObject",
         "properties": {
@@ -1735,6 +1744,7 @@ const models: TsoaRoute.Models = {
             "proofPurpose": {"dataType":"any"},
             "verifyCredentialStatus": {"dataType":"boolean"},
             "proof": {"ref":"SingleOrArray_any-or-DataIntegrityProofOptions_","required":true},
+            "trustedIssuers": {"dataType":"array","array":{"dataType":"refObject","ref":"TrustedIssuerDidOption"}},
         },
         "additionalProperties": false,
     },

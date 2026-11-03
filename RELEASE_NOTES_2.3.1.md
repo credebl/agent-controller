@@ -24,7 +24,7 @@ With `holderDidUrl`, the controller checks for each credential configuration tha
 - the DID method is in the issuer's `cryptographic_binding_methods_supported`;
 - the issuer accepts one of the key's signature algorithms (an Ed25519 key needs `EdDSA`).
 
-The checks against the offer's metadata run before the token request. With `require`, a credential the issuer cannot bind fails with a 400 that names the configuration, and the pre-authorized code and transaction code stay unused. A DID that is not in the tenant, or a verification method that is not in its DID document, is always a 400, whatever the policy.
+The DID method and the `jwt` proof checks (proof type, key attestations, signature algorithm) also run against the offer's metadata before the token request. With `require`, a credential the issuer cannot bind fails with a 400 that names the configuration, and the pre-authorized code and transaction code stay unused. A malformed `holderDidUrl`, a DID that is not in the tenant, or a verification method that is not in its DID document is always a 400, whatever the policy.
 
 Example:
 
@@ -65,12 +65,12 @@ Lockfile updates, all within existing version ranges:
 - **`credentialsToRequest` is now honoured.** A client that sent a subset of the offered configurations now receives only that subset. To receive everything, omit the field.
 - **Offers that mix formats** may allow different DID methods per format. For example, an issuer may allow `did:web` for `dc+sd-jwt` but only `did:key` for `ldp_vc`. With `require`, such an offer is rejected as a whole. Use `prefer`, or request only the configurations that can be bound.
 - **OpenAPI schema renames.** Credo 0.7.4 renames the proof schemas behind `/agent/credential/verify` (`DataIntegrityProof` → `AnonCredsW3cCredentialProof`, `SingleOrArray_LinkedDataProof-or-DataIntegrityProof_` → `SingleOrArray_LinkedDataProof-or-AnonCredsW3cCredentialProof_`) and loosens `proofPurpose`. Request and response shapes are unchanged, but clients generated from `swagger.json` may see new type names.
-- **`trustedIssuers` is not exposed.** It was added to `W3cJsonLdVerifyCredentialOptions` in Credo 0.7.4 and can be a callback, so it is left out of the verify request body.
+- **`trustedIssuers` on `/agent/credential/verify`.** Credo 0.7.4 adds `trustedIssuers` to the JSON-LD verify options. The request body accepts it as a list of `{ "method": "did", "issuance": "<issuer DID>" }`: a credential from any other DID then fails verification, and an empty list trusts no issuer. Credo's callback form is not exposed.
 - **Docker:** rebuild the image. The Node 26 base image is unchanged.
 
 ## Verification
 
-- `yarn check-types`, `yarn lint` (0 errors), `yarn check-format`, `yarn compile` and `yarn test` (3 suites, 42 tests, 38 of them new: credential binding resolver and `requestCredential`) pass.
+- `yarn check-types`, `yarn lint` (0 errors), `yarn check-format`, `yarn compile` and `yarn test` (3 suites, 46 tests, 42 of them new: credential binding resolver and `requestCredential`) pass.
 - End to end on 2026-11-03, against local multi-tenant Postgres wallets:
   - **Binding to a `did:web`.** An Entity wallet tenant bound an SD-JWT to its `did:web#key-1`, and the issuer resolved the `did:web` to verify the proof.
   - **`require` and the code.** With `require`, a mixed offer was rejected before the token request, and the same offer then succeeded for the SD-JWT alone.
