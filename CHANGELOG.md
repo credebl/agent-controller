@@ -14,7 +14,7 @@
 
 ### Dependencies
 
-- Credo `0.7.0` → `0.7.4` (all `@credo-ts/*` packages and `resolutions`). Storage version is unchanged (0.5), so existing wallets open without migration.
+- Credo `0.7.0` → `0.7.4` (all `@credo-ts/*` packages and `resolutions`; `@credo-ts/push-notifications` stays at `^0.7.1`, its latest release). Storage version is unchanged (0.5), so existing wallets open without migration.
 - patch-package patches regenerated for 0.7.4; the core patch drops the `defaultDocumentLoader` exports that Credo now provides.
 
 ### Security
