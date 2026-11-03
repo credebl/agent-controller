@@ -313,6 +313,23 @@ describe('getCredentialBindingResolver', () => {
       ).rejects.toThrow(/does not accept a jwt proof/)
     })
 
+    it('rejects a jwt proof type that lists no signing algorithms', async () => {
+      const { options } = setup({})
+      const noAlgorithms = {
+        offeredCredentialConfigurations: {
+          IecSdJwt: {
+            format: 'dc+sd-jwt',
+            cryptographic_binding_methods_supported: ['did:web'],
+            proof_types_supported: { jwt: {} },
+          },
+        },
+      } as any
+
+      await expect(
+        assertOfferAcceptsHolderDid(options.agentContext, noAlgorithms, ['IecSdJwt'], { holderDidUrl: WALLET_KEY }),
+      ).rejects.toThrow(/^IecSdJwt: Issuer metadata does not list proof_signing_alg_values_supported/)
+    })
+
     it('accepts a configuration whose jwt proof the key can sign', async () => {
       const { options } = setup({})
       const edDsa = {

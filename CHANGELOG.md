@@ -5,12 +5,12 @@
 ### Features
 
 - **oid4vc holder:** `POST /openid4vc/holder/request-credential` accepts optional `holderDidUrl` (a verification method, or a DID to use its first authentication key) and `bindingPolicy` (`require` by default, or `prefer`), so credentials can be bound to an existing DID of the tenant instead of a new key. Without `holderDidUrl` nothing changes.
-- **w3c verify:** `/agent/credential/verify` accepts `trustedIssuers`, a list of issuer DIDs to accept (Credo 0.7.4).
+- **w3c verify:** `/agent/credential/verify` accepts `trustedIssuers`, a list of issuers to accept such as `[{ "method": "did", "issuance": "did:web:issuer.example" }]` (Credo 0.7.4); an empty list trusts no issuer.
 
 ### Bug Fixes
 
 - **oid4vc holder:** `credentialsToRequest` is now honoured (all offered configurations were requested before); ids that are not in the offer return 400.
-- **oid4vc holder:** a requested holder DID that the issuer cannot bind to (DID method, `jwt` proof type, key attestations or signature algorithm) is rejected before the token request, so the pre-authorized code and transaction code are not used up; a malformed `holderDidUrl` returns 400.
+- **oid4vc holder:** with `bindingPolicy: require`, a holder DID that the issuer cannot bind to (DID method, `jwt` proof type, key attestations or signature algorithm) is rejected before the token request, so the pre-authorized code and transaction code are not used up; with `prefer`, those credentials fall back to a new key. A malformed `holderDidUrl`, or a DID or verification method that is not in the tenant, returns 400 under either policy.
 
 ### Dependencies
 

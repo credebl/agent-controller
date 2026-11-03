@@ -24,7 +24,7 @@ With `holderDidUrl`, the controller checks for each credential configuration tha
 - the DID method is in the issuer's `cryptographic_binding_methods_supported`;
 - the issuer accepts one of the key's signature algorithms (an Ed25519 key needs `EdDSA`).
 
-The DID method and the `jwt` proof checks (proof type, key attestations, signature algorithm) also run against the offer's metadata before the token request. With `require`, a credential the issuer cannot bind fails with a 400 that names the configuration, and the pre-authorized code and transaction code stay unused. A malformed `holderDidUrl`, a DID that is not in the tenant, or a verification method that is not in its DID document is always a 400, whatever the policy.
+With `require`, the DID method and the `jwt` proof checks (proof type, key attestations, signature algorithm) also run against the offer's metadata before the token request: a credential the issuer cannot bind fails with a 400 that names the configuration, and the pre-authorized code and transaction code stay unused. With `prefer`, these checks are skipped and such credentials fall back to a new key. A malformed `holderDidUrl`, a DID that is not in the tenant, or a verification method that is not in its DID document is always a 400, whatever the policy.
 
 Example:
 
@@ -70,7 +70,7 @@ Lockfile updates, all within existing version ranges:
 
 ## Verification
 
-- `yarn check-types`, `yarn lint` (0 errors), `yarn check-format`, `yarn compile` and `yarn test` (3 suites, 46 tests, 42 of them new: credential binding resolver and `requestCredential`) pass.
+- `yarn check-types`, `yarn lint` (0 errors), `yarn check-format`, `yarn compile` and `yarn test` (3 suites, 47 tests, 43 of them new: credential binding resolver and `requestCredential`) pass.
 - End to end on 2026-11-03, against local multi-tenant Postgres wallets:
   - **Binding to a `did:web`.** An Entity wallet tenant bound an SD-JWT to its `did:web#key-1`, and the issuer resolved the `did:web` to verify the proof.
   - **`require` and the code.** With `require`, a mixed offer was rejected before the token request, and the same offer then succeeded for the SD-JWT alone.

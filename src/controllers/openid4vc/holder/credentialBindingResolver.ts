@@ -169,10 +169,15 @@ function assertDidBindingAllowed(
 function assertJwtProofAllowed(
   verificationMethod: VerificationMethod,
   verificationMethodId: string,
-  jwtProof: { keyAttestationsRequired: boolean; algorithms: string[] } | undefined,
+  jwtProof: { keyAttestationsRequired: boolean; algorithms: string[] | undefined } | undefined,
 ) {
   if (!jwtProof || jwtProof.keyAttestationsRequired) {
     throw new HolderBindingNotSupportedError('Issuer does not accept a jwt proof without key attestations')
+  }
+  if (!jwtProof.algorithms) {
+    throw new HolderBindingNotSupportedError(
+      'Issuer metadata does not list proof_signing_alg_values_supported for the jwt proof type',
+    )
   }
 
   const keyAlgorithms = getPublicJwkFromVerificationMethod(verificationMethod).supportedSignatureAlgorithms
