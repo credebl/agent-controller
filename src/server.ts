@@ -8,6 +8,7 @@ import type { Response as ExResponse, Request as ExRequest, NextFunction, ErrorR
 
 import { Agent } from '@credo-ts/core'
 import { TenantAgent } from '@credo-ts/tenants'
+import { ValidateError } from '@tsoa/runtime'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import dotenv from 'dotenv'
@@ -15,7 +16,6 @@ import express from 'express'
 import { rateLimit } from 'express-rate-limit'
 import * as fs from 'fs'
 import { generateHTML, serve } from 'swagger-ui-express'
-import { ValidateError } from 'tsoa'
 import { container } from 'tsyringe'
 
 import { setDynamicApiKey } from './authentication'

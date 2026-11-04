@@ -2,9 +2,22 @@ import type { RestMultiTenantAgentModules } from '../../cliAgent'
 import type { TenantRecord } from '@credo-ts/tenants'
 
 import { Agent, JsonTransformer, injectable, RecordNotFoundError } from '@credo-ts/core'
+import {
+  Body,
+  Controller,
+  Delete,
+  Post,
+  Route,
+  Tags,
+  Path,
+  Security,
+  Request,
+  Res,
+  TsoaResponse,
+  Get,
+} from '@tsoa/runtime'
 import { Request as Req } from 'express'
 import jwt from 'jsonwebtoken'
-import { Body, Controller, Delete, Post, Route, Tags, Path, Security, Request, Res, TsoaResponse, Get } from 'tsoa'
 
 import { AgentRole, SCOPES } from '../../enums'
 import ErrorHandlingService from '../../errorHandlingService'

@@ -1,6 +1,6 @@
 import { getUnqualifiedSchemaId, parseIndySchemaId, RegisterSchemaReturnStateFinished } from '@credo-ts/anoncreds'
+import { Example, Get, Post, Route, Tags, Security, Path, Body, Controller, Request } from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Example, Get, Post, Route, Tags, Security, Path, Body, Controller, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { CredentialEnum, EndorserMode, SchemaError, SCOPES } from '../../../enums'

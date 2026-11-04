@@ -1,7 +1,7 @@
 // import type { DidCommBasicMessageRecord, DidCommBasicMessageStorageProps } from '@credo-ts/didcomm'
 
 // import { Request as Req } from 'express'
-// import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
+// import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from '@tsoa/runtime'
 // import { injectable } from 'tsyringe'
 
 // import { SCOPES } from '../../../enums'

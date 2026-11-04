@@ -1,8 +1,8 @@
 import type { ValidResponse } from '@credo-ts/question-answer'
 
 import { QuestionAnswerRecord, QuestionAnswerRole, QuestionAnswerState } from '@credo-ts/question-answer'
+import { Body, Controller, Get, Path, Post, Route, Tags, Query, Security, Example, Request } from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Body, Controller, Get, Path, Post, Route, Tags, Query, Security, Example, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'

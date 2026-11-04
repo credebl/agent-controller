@@ -1,6 +1,6 @@
 import { OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
+import { Body, Controller, Delete, Get, Path, Post, Put, Query, Request, Route, Tags, Security } from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Body, Controller, Delete, Get, Path, Post, Put, Query, Request, Route, Tags, Security } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'

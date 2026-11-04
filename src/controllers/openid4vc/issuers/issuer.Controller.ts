@@ -1,5 +1,19 @@
+import {
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Put,
+  Route,
+  Tags,
+  Path,
+  Query,
+  Body,
+  Security,
+  Request,
+  Example,
+} from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Controller, Delete, Get, Post, Put, Route, Tags, Path, Query, Body, Security, Request, Example } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'

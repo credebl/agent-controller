@@ -2,9 +2,9 @@ import type { SchemaMetadata } from '../types'
 
 import { generateSecp256k1KeyPair } from '@ayanworks/credo-polygon-w3c-module'
 import { DidOperation, DidOperationOptions } from '@ayanworks/credo-polygon-w3c-module'
+import { Route, Tags, Security, Controller, Post, Body, Get, Path, Request } from '@tsoa/runtime'
 import { Request as Req } from 'express'
 import * as fs from 'fs'
-import { Route, Tags, Security, Controller, Post, Body, Get, Path, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { CredentialEnum, SCOPES } from '../../enums'

@@ -1,5 +1,5 @@
+import { Body, Delete, Get, Path, Post, Put, Query, Route, Request, Security, Tags } from '@tsoa/runtime'
 import { Request as Req } from 'express'
-import { Body, Delete, Get, Path, Post, Put, Query, Route, Request, Security, Tags } from 'tsoa'
 
 import { SCOPES } from '../../../enums'
 import { OpenId4VcSiopCreateVerifierOptions, OpenId4VcUpdateVerifierRecordOptions } from '../types/verifier.types'
