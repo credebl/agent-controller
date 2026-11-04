@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [2.4.0](https://github.com/credebl/agent-controller/compare/v2.3.1...v2.4.0) (2026-11-04)
 
 ### Features
 
@@ -18,6 +18,10 @@
 ### Behaviour changes
 
 - Consumers that compare `credentialSubject.id` of newly issued W3C credentials with a verification method URL now receive the bare DID. Credo verifiers accept both.
+
+### Security
+
+- `joi` 17.13.8 → 17.13.9 (high), `follow-redirects` 1.16.1 → 1.16.2 (high) and `@hapi/content` 6.0.2 → 6.0.3 (high), as lockfile updates within existing ranges
 
 ## [2.3.1](https://github.com/credebl/agent-controller/compare/v2.3.0...v2.3.1) (2026-11-04)
 
