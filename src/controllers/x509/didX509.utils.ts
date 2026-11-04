@@ -1,10 +1,10 @@
 import type { DidX509Policy } from './x509.types'
 import type { AgentContext } from '@credo-ts/core'
-import type { JsonWebKey, KeyObject } from 'crypto'
+import type { JsonWebKey, KeyObject } from 'node:crypto'
 
 import { DidRepository } from '@credo-ts/core'
 import { computeFingerprintAsync, loadPemCertificateChain, loadX509Chain, pctEncode } from '@didx509/core'
-import { createPrivateKey, createPublicKey, X509Certificate as NodeX509Certificate } from 'crypto'
+import { createPrivateKey, createPublicKey, X509Certificate as NodeX509Certificate } from 'node:crypto'
 
 import { BadRequestError } from '../../errors'
 
@@ -35,7 +35,7 @@ export function parseCertificateChain(input: string[]): X509Certificate[] {
     const trimmed = entry.trim()
     try {
       if (trimmed.includes('-----BEGIN')) return loadPemCertificateChain(trimmed)
-      return loadX509Chain(trimmed.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''))
+      return loadX509Chain(Buffer.from(trimmed, 'base64').toString('base64url'))
     } catch (error) {
       throw new BadRequestError(`certificateChain contains an invalid certificate: ${(error as Error).message}`)
     }
@@ -57,7 +57,8 @@ export function buildPolicy(policy: DidX509Policy): string {
       const entries = Object.entries(policy.fields ?? {})
       if (!entries.length)
         throw new BadRequestError('A subject policy needs at least one field, e.g. { "CN": "example.com" }')
-      return `subject:${entries.map(([key, value]) => `${pctEncode(key)}:${pctEncode(value)}`).join(':')}`
+      const fields = entries.map(([key, value]) => pctEncode(key) + ':' + pctEncode(value)).join(':')
+      return `subject:${fields}`
     }
     case 'san':
       if (!policy.sanType || !policy.value) throw new BadRequestError('A san policy needs sanType and value')

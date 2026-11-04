@@ -1,8 +1,8 @@
-import type { KeyObject } from 'crypto'
+import type { KeyObject } from 'node:crypto'
 
 import { resolveDid } from '@didx509/core'
 import { X509CertificateGenerator, X509Certificate, BasicConstraintsExtension } from '@peculiar/x509'
-import { generateKeyPairSync, webcrypto } from 'crypto'
+import { generateKeyPairSync, webcrypto } from 'node:crypto'
 
 import {
   assertKeyMatchesCertificate,

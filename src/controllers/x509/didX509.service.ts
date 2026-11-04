@@ -2,7 +2,7 @@ import type { DidX509ChainResponse, DidX509ImportOptionsDto, DidX509ImportRespon
 import type { AgentType } from '../../types'
 
 import { DidRepository, Kms, TypedArrayEncoder } from '@credo-ts/core'
-import { createPublicKey } from 'crypto'
+import { createPublicKey } from 'node:crypto'
 
 import { BadRequestError } from '../../errors'
 import { NODE_KMS_BACKEND } from '../../utils/kms/nodeKms'
