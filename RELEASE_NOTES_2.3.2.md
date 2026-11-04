@@ -1,4 +1,4 @@
-# Agent Controller v2.4.0
+# Agent Controller v2.3.2
 
 Release date: 2026-11-04 · Previous release: v2.3.1
 

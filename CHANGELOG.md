@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.4.0](https://github.com/credebl/agent-controller/compare/v2.3.1...v2.4.0) (2026-11-04)
+## [2.3.2](https://github.com/credebl/agent-controller/compare/v2.3.1...v2.3.2) (2026-11-04)
 
 ### Features
 
