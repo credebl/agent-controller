@@ -31,10 +31,13 @@ class DidX509Service {
     const privateKey = parsePrivateKey(options.privateKey, options.passphrase)
     assertKeyMatchesCertificate(privateKey, leaf)
 
-    const policies = options.policies?.length
-      ? options.policies
-      : [{ type: 'subject' as const, fields: this.commonNameOf(leaf) }]
-    const did = options.did ?? (await buildDidX509(chain, policies))
+    // The default policy needs a common name, which an explicitly provided did does not
+    const did =
+      options.did ??
+      (await buildDidX509(
+        chain,
+        options.policies?.length ? options.policies : [{ type: 'subject' as const, fields: this.commonNameOf(leaf) }],
+      ))
     const x509chain = toX509ChainOption(chain)
 
     // Resolving validates the DID against the chain (fingerprint of the root, policies, chain order, validity period)
@@ -83,7 +86,7 @@ class DidX509Service {
 
   /**
    * Imports the key into the KMS. The key id is the JWK thumbprint so importing the same key twice is idempotent.
-   * Askar handles EC and Ed25519 keys, anything else (RSA) goes to the Node KMS backend.
+   * Askar handles Ed25519 and the P-256 / P-384 EC keys. RSA and P-521 (Askar has no ES512 signing) go to the Node KMS.
    */
   private async importKey(agent: AgentType, privateKey: ReturnType<typeof parsePrivateKey>): Promise<string> {
     const jwk = privateKeyToJwk(privateKey)
@@ -95,13 +98,17 @@ class DidX509Service {
     try {
       await agent.kms.importKey({
         privateJwk: { ...jwk, kid: keyId } as Kms.KmsJwkPrivate,
-        ...(jwk.kty === 'RSA' ? { backend: NODE_KMS_BACKEND } : {}),
+        ...(this.needsNodeKms(jwk) ? { backend: NODE_KMS_BACKEND } : {}),
       })
     } catch (error) {
       if (!(error instanceof Kms.KeyManagementKeyExistsError)) throw error
       agent.config.logger.debug('[importDidX509] key already exists in the KMS, reusing it', { keyId })
     }
     return keyId
+  }
+
+  private needsNodeKms(jwk: { kty: string; crv?: string }): boolean {
+    return jwk.kty === 'RSA' || (jwk.kty === 'EC' && jwk.crv === 'P-521')
   }
 
   private commonNameOf(leaf: ReturnType<typeof parseCertificateChain>[number]): Record<string, string> {
