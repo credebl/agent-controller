@@ -17,6 +17,7 @@ import ErrorHandlingService from '../../../errorHandlingService'
 import { PurgeRecordType } from '../../../purge/PurgeTypes'
 import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { AgentType } from '../../../types'
+import { revokeBitstringInStatusList } from '../../../utils/statusListService'
 import { CredentialExchangeRecordExample, RecordId } from '../../examples'
 import {
   AcceptCredentialRequestOptions,
@@ -26,6 +27,7 @@ import {
   CreateOfferOptions,
   AcceptCredential,
   CreateOfferOobOptions,
+  RevokeBitstringCredentialOptions,
   ThreadId,
 } from '../../types'
 import { OutOfBandController } from '../outofband/OutOfBandController'
@@ -314,6 +316,24 @@ export class CredentialController extends Controller {
     try {
       const credentialDetails = await request.agent.modules.didcomm.credentials.getFormatData(credentialRecordId)
       return credentialDetails
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  @Post('/revoke')
+  public async revokeBitstringCredential(
+    @Request() request: Req,
+    @Body() revokeOptions: RevokeBitstringCredentialOptions,
+  ) {
+    try {
+      await revokeBitstringInStatusList(
+        request.agent as any,
+        revokeOptions.listId,
+        revokeOptions.index,
+        revokeOptions.issuerDid,
+      )
+      return { revoked: true, listId: revokeOptions.listId, index: revokeOptions.index }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
