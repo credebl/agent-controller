@@ -25,7 +25,7 @@ Release date: 2026-11-04 · Previous release: v2.3.1
 
 ## Upgrade notes
 
-- **No breaking API changes.** `verificationMethodType` is optional and defaults to the old behaviour. Existing DIDs keep their 2018 keys; only new DIDs that ask for 2020 get one.
+- **No required request-field changes.** `verificationMethodType` is optional and defaults to the old behaviour. Existing DIDs keep their 2018 keys; only new DIDs that ask for 2020 get one. Three behaviour changes can still affect existing clients; read the next three items.
 - **`credentialSubject.id` changes for newly issued W3C credentials.** Consumers that compare it with a verification method URL now receive the bare DID. Credo verifiers accept both.
 - **DCQL clients.** A DCQL `ldp_vc` query with short type names (`MyCredential`) now returns 400. Use expanded IRIs.
 - **Holder behaviour.** A W3C credential that does not match the holder DID is rejected only when `holderDidUrl` is set with `bindingPolicy: require`. Other requests are unchanged.
