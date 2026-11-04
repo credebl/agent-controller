@@ -1,5 +1,5 @@
 diff --git a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
-index 15b71d3..4bc669a 100644
+index 15b71d3..f3fa190 100644
 --- a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
 @@ -80,7 +80,7 @@ let DcqlService = class DcqlService {
@@ -11,6 +11,57 @@ index 15b71d3..4bc669a 100644
  			});
  			allRecords.push(...w3cRecords);
  		}
+@@ -617,11 +617,20 @@ let DcqlService = class DcqlService {
+ 	getProofTypeForLdpVc(agentContext, verificationMethod) {
+ 		const signatureSuiteRegistry = agentContext.dependencyManager.resolve(SignatureSuiteRegistry);
+ 		const publicJwk = getPublicJwkFromVerificationMethod(verificationMethod);
+-		const supportedSignatureSuites = signatureSuiteRegistry.getAllByPublicJwkType(publicJwk);
++		const supportedSignatureSuites = preferSuitesForVerificationMethodType(signatureSuiteRegistry.getAllByPublicJwkType(publicJwk), verificationMethod.type);
+ 		if (supportedSignatureSuites.length === 0) throw new DcqlError(`Couldn't find a supported signature suite for the given jwk ${publicJwk.jwkTypeHumanDescription}`);
+ 		return supportedSignatureSuites[0].proofType;
+ 	}
+ };
++/**
++* Keeps the signature suites that accept the verification method's type, so an Ed25519VerificationKey2020
++* key is used with Ed25519Signature2020 rather than the first suite for its key type (Ed25519Signature2018).
++* Falls back to all suites for the key type when none lists the verification method type.
++*/
++function preferSuitesForVerificationMethodType(suites, verificationMethodType) {
++	const matching = suites.filter((suite) => suite.verificationMethodTypes.includes(verificationMethodType));
++	return matching.length > 0 ? matching : suites;
++}
+ DcqlService = __decorate([injectable()], DcqlService);
+ /**
+ * A credential is bound to its holder through a key (`cnf`) or its subject. Verifying a presentation
+diff --git a/node_modules/@credo-ts/core/build/modules/dif-presentation-exchange/DifPresentationExchangeService.mjs b/node_modules/@credo-ts/core/build/modules/dif-presentation-exchange/DifPresentationExchangeService.mjs
+index 3367607..716e2c8 100644
+--- a/node_modules/@credo-ts/core/build/modules/dif-presentation-exchange/DifPresentationExchangeService.mjs
++++ b/node_modules/@credo-ts/core/build/modules/dif-presentation-exchange/DifPresentationExchangeService.mjs
+@@ -197,7 +197,7 @@ let DifPresentationExchangeService = class DifPresentationExchangeService {
+ 		const suitableSignatureSuites = this.getSigningAlgorithmsForPresentationDefinitionAndInputDescriptors(algorithmsSatisfyingDefinition, inputDescriptorAlgorithms);
+ 		const signatureSuiteRegistry = agentContext.dependencyManager.resolve(SignatureSuiteRegistry);
+ 		const publicJwk = getPublicJwkFromVerificationMethod(verificationMethod);
+-		const supportedSignatureSuites = signatureSuiteRegistry.getAllByPublicJwkType(publicJwk);
++		const supportedSignatureSuites = preferSuitesForVerificationMethodType(signatureSuiteRegistry.getAllByPublicJwkType(publicJwk), verificationMethod.type);
+ 		if (supportedSignatureSuites.length === 0) throw new DifPresentationExchangeError(`Couldn't find a supported signature suite for the given jwk ${getJwkHumanDescription(publicJwk.toJson())}`);
+ 		if (suitableSignatureSuites) {
+ 			const foundSignatureSuite = supportedSignatureSuites.find((suite) => suitableSignatureSuites.includes(suite.proofType));
+@@ -353,6 +353,15 @@ let DifPresentationExchangeService = class DifPresentationExchangeService {
+ 		return agentContext.dependencyManager.resolve(MdocApi);
+ 	}
+ };
++/**
++* Keeps the signature suites that accept the verification method's type, so an Ed25519VerificationKey2020
++* key is used with Ed25519Signature2020 rather than the first suite for its key type (Ed25519Signature2018).
++* Falls back to all suites for the key type when none lists the verification method type.
++*/
++function preferSuitesForVerificationMethodType(suites, verificationMethodType) {
++	const matching = suites.filter((suite) => suite.verificationMethodTypes.includes(verificationMethodType));
++	return matching.length > 0 ? matching : suites;
++}
+ DifPresentationExchangeService = __decorate([injectable(), __decorateMetadata("design:paramtypes", [typeof W3cCredentialService === "undefined" ? Object : W3cCredentialService])], DifPresentationExchangeService);
+ //#endregion
+ export { DifPresentationExchangeService };
 diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
 index 5d00447..1ac877e 100644
 --- a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs

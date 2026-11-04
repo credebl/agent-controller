@@ -16,6 +16,8 @@ import {
   DidDocument,
   verkeyToPublicJwk,
   getKmsKeyIdForVerifiacationMethod,
+  getPublicJwkFromVerificationMethod,
+  type VerificationMethod,
 } from '@credo-ts/core'
 import { Request as Req } from 'express'
 import jwt from 'jsonwebtoken'
@@ -221,7 +223,9 @@ export class AgentController extends Controller {
 
       // Try multiple ways to get the kmsKeyId
       const derivedKeyId = getKmsKeyIdForVerifiacationMethod(verificationMethod)
-      const publicKeyBase58 = (verificationMethod as any).publicKeyBase58
+      // Keys imported without a kms key id use the base58 public key; 2020 and Multikey VMs only carry publicKeyMultibase
+      const publicKeyBase58 =
+        (verificationMethod as any).publicKeyBase58 ?? publicKeyBase58FromVerificationMethod(verificationMethod)
       const vmId = verificationMethod.id || ''
       const idPart = vmId.includes('#') ? vmId.split('#')[1] : undefined
 
@@ -253,5 +257,14 @@ export class AgentController extends Controller {
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
+  }
+}
+
+function publicKeyBase58FromVerificationMethod(verificationMethod: VerificationMethod): string | undefined {
+  try {
+    const { publicKey } = getPublicJwkFromVerificationMethod(verificationMethod)
+    return publicKey.kty === 'OKP' ? TypedArrayEncoder.toBase58(publicKey.publicKey) : undefined
+  } catch {
+    return undefined
   }
 }

@@ -1430,6 +1430,11 @@ const models: TsoaRoute.Models = {
         "enums": ["a128gcm","a256gcm","a128cbchs256","a256cbchs512","a128kw","a256kw","bls12381g1","bls12381g2","c20p","xc20p","ed25519","x25519","k256","p256","p384"],
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Ed25519VerificationMethodType": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["Ed25519VerificationKey2018"]},{"dataType":"enum","enums":["Ed25519VerificationKey2020"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "DidCreate": {
         "dataType": "refObject",
         "properties": {
@@ -1444,6 +1449,7 @@ const models: TsoaRoute.Models = {
             "didDocument": {"ref":"DidDocument"},
             "privatekey": {"dataType":"string"},
             "endpoint": {"dataType":"string"},
+            "verificationMethodType": {"ref":"Ed25519VerificationMethodType"},
         },
         "additionalProperties": false,
     },

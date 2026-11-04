@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- **did:web:** `POST /dids/write` with `method: web` accepts `verificationMethodType` (`Ed25519VerificationKey2018` by default, or `Ed25519VerificationKey2020`, which publishes `publicKeyMultibase` with the `ed25519-2020/v1` context).
+- **JSON-LD signing follows the key type:** OID4VCI `ldp_vc` issuance and DCQL / Presentation Exchange `ldp_vp` presentations use `Ed25519Signature2020` for an `Ed25519VerificationKey2020` key and `Ed25519Signature2018` for an `Ed25519VerificationKey2018` key (Credo picked the 2018 suite for every Ed25519 key, which rejects a 2020 key). `did:key` keeps signing with `Ed25519Signature2018`.
+- **oid4vc holder:** with `holderDidUrl` and `bindingPolicy: require`, a W3C credential whose `credentialSubject` is not the holder DID returns 422 and is not stored.
+
+### Bug Fixes
+
+- **oid4vc issuer:** the `credentialSubject.id` of `ldp_vc` and `jwt_vc_json(-ld)` credentials is the holder's bare DID (`did:web:example.com`), not the verification method of the proof key (`did:web:example.com#key-1`). A subject `id` in the offer payload must name the same DID; otherwise the credential request fails, as the holder could not present it.
+- **oid4vc holder:** an `ldp_vc` configuration that lists JWA algorithms (`EdDSA`) in `proof_signing_alg_values_supported` is accepted; Credo only looked for signature suite names there (`Ed25519Signature2018`). Suite names still work.
+- **oid4vc verifier:** a DCQL `ldp_vc` query whose `meta.type_values` are not expanded JSON-LD type IRIs (`MyCredential` instead of `https://example.org/vocab#MyCredential`) returns 400; wallets could never match it.
+- **sign raw data:** the key of a DID whose verification method only has `publicKeyMultibase` is found.
+
+### Behaviour changes
+
+- Consumers that compare `credentialSubject.id` of newly issued W3C credentials with a verification method URL now receive the bare DID. Credo verifiers accept both.
+
 ## [2.3.1](https://github.com/credebl/agent-controller/compare/v2.3.0...v2.3.1) (2026-11-04)
 
 ### Features

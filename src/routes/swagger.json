@@ -2533,7 +2533,7 @@
 					"holderDidUrl": {
 						"type": "string",
 						"description": "Bind the credentials to this DID instead of a new key: a verification method id\n(e.g. `did:web:example.com#key-1`), or a bare DID to use its first authentication key.\nThe DID must have been created or imported in this wallet.",
-						"example": "did:web:ayanworks.github.io:iec:0522012345#key-1"
+						"example": "did:web:example.com#key-1"
 					},
 					"bindingPolicy": {
 						"$ref": "#/components/schemas/CredentialBindingPolicy",
@@ -3387,6 +3387,13 @@
 				],
 				"type": "string"
 			},
+			"Ed25519VerificationMethodType": {
+				"type": "string",
+				"enum": [
+					"Ed25519VerificationKey2018",
+					"Ed25519VerificationKey2020"
+				]
+			},
 			"DidCreate": {
 				"properties": {
 					"keyType": {
@@ -3421,6 +3428,10 @@
 					},
 					"endpoint": {
 						"type": "string"
+					},
+					"verificationMethodType": {
+						"$ref": "#/components/schemas/Ed25519VerificationMethodType",
+						"description": "Verification method type of the Ed25519 key in a new `did:web` document. Defaults to\n`Ed25519VerificationKey2018`. `Ed25519VerificationKey2020` publishes `publicKeyMultibase` and signs\nJSON-LD credentials and presentations with `Ed25519Signature2020`."
 					}
 				},
 				"required": [

@@ -328,7 +328,15 @@ export interface DidCreate {
   didDocument?: DidDocument
   privatekey?: string
   endpoint?: string
+  /**
+   * Verification method type of the Ed25519 key in a new `did:web` document. Defaults to
+   * `Ed25519VerificationKey2018`. `Ed25519VerificationKey2020` publishes `publicKeyMultibase` and signs
+   * JSON-LD credentials and presentations with `Ed25519Signature2020`.
+   */
+  verificationMethodType?: Ed25519VerificationMethodType
 }
+
+export type Ed25519VerificationMethodType = 'Ed25519VerificationKey2018' | 'Ed25519VerificationKey2020'
 
 export interface CreateTenantOptions {
   config: Omit<CustomTenantConfig, 'walletConfig'>

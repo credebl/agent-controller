@@ -38,7 +38,11 @@ import { StatusException } from '../../../errors/StatusException'
 import { BadRequestError } from '../../../errors/errors'
 import { CredentialType } from '../types/holder.types'
 
-import { assertOfferAcceptsHolderDid, getCredentialBindingResolver } from './credentialBindingResolver'
+import {
+  assertOfferAcceptsHolderDid,
+  assertW3cCredentialsBoundToHolderDid,
+  getCredentialBindingResolver,
+} from './credentialBindingResolver'
 type FilterValue = string | string[] | undefined
 
 export class HolderService {
@@ -390,6 +394,13 @@ export class HolderService {
       }),
       ...tokenResponse,
     })
+
+    if (holderDidUrl && bindingPolicy !== 'prefer') {
+      assertW3cCredentialsBoundToHolderDid(
+        credentialResponse.credentials.map((response) => response.record),
+        holderDidUrl,
+      )
+    }
 
     const sanitizedTags = this.sanitizeTags(tags)
 

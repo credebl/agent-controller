@@ -9,8 +9,10 @@ import {
   type KeyDidCreateOptions,
   Kms,
   type VerificationMethod,
+  W3cCredentialRecord,
   getPublicJwkFromVerificationMethod,
   parseDid,
+  tryParseDid,
 } from '@credo-ts/core'
 import {
   type OpenId4VciCredentialBindingOptions,
@@ -19,7 +21,7 @@ import {
   type OpenId4VciResolvedCredentialOffer,
 } from '@credo-ts/openid4vc'
 
-import { BadRequestError } from '../../../errors/errors'
+import { BadRequestError, UnprocessableEntityError } from '../../../errors/errors'
 
 export interface CredentialBindingResolverOptions {
   requestBatch?: boolean | number
@@ -36,6 +38,29 @@ export interface CredentialBindingResolverOptions {
  * falls back to a new key instead of throwing.
  */
 export class HolderBindingNotSupportedError extends BadRequestError {}
+
+/** The issuer returned a credential that is not bound to the requested holder DID. */
+export class HolderBindingMismatchError extends UnprocessableEntityError {}
+
+/**
+ * Checks that each W3C credential names the holder DID as a `credentialSubject`.
+ *
+ * Credo proves possession of the holder key to the issuer and verifies the issuer's signature, but not
+ * that the issuer used the proven DID as the subject. Call it before storing, with the `require` policy.
+ */
+export function assertW3cCredentialsBoundToHolderDid(records: unknown[], holderDidUrl: string) {
+  const holderDid = parseDid(holderDidUrl).did
+  for (const record of records) {
+    if (!(record instanceof W3cCredentialRecord)) continue
+
+    const subjectIds = record.firstCredential.credentialSubjectIds
+    if (!subjectIds.some((subjectId) => tryParseDid(subjectId)?.did === holderDid)) {
+      throw new HolderBindingMismatchError(
+        `The issuer returned a credential whose subject (${subjectIds.join(', ') || 'none'}) is not the holder DID '${holderDid}'`,
+      )
+    }
+  }
+}
 
 export function getCredentialBindingResolver({
   requestBatch,

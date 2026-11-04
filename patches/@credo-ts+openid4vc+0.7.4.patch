@@ -35,3 +35,83 @@ index 49796e0..2077f54 100644
  import { OpenId4VcModule } from "./OpenId4VcModule.mjs";
 -export { OpenId4VcApi, OpenId4VcHolderApi, OpenId4VcHolderModule, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionState, OpenId4VcIssuerApi, OpenId4VcIssuerEvents, OpenId4VcIssuerModule, OpenId4VcIssuerModuleConfig, OpenId4VcIssuerRecord, OpenId4VcIssuerService, OpenId4VcModule, OpenId4VcModuleConfig, OpenId4VcVerificationSessionRecord, OpenId4VcVerificationSessionRepository, OpenId4VcVerificationSessionState, OpenId4VcVerifierApi, OpenId4VcVerifierEvents, OpenId4VcVerifierModule, OpenId4VcVerifierModuleConfig, OpenId4VcVerifierRecord, OpenId4VcVerifierRepository, OpenId4VciAuthorizationFlow, OpenId4VciCredentialFormatProfile, OpenId4VciHolderService, OpenId4VciKeyAttestationLevel, OpenId4VpHolderService, OpenId4VpVerifierService, authorizationCodeGrantIdentifier, dynamicOid4vciClientAuthentication, getAllowedAndRequestedScopeValues, getCredentialConfigurationsSupportedForScopes, getOfferedCredentials, getOid4vcCallbacks, getOid4vcDecryptJweCallback, getOid4vcEncryptJweCallback, getOid4vcJwtSignCallback, getOid4vcJwtVerifyCallback, getRequestedCredentialConfigurationsForScope, getScopesFromCredentialConfigurationsSupported, keyAttestationLevelSatisfies, openId4VciSupportedCredentialFormats, preAuthorizedCodeGrantIdentifier };
 +export { OpenId4VcApi, OpenId4VcHolderApi, OpenId4VcHolderModule, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionState, OpenId4VcIssuerApi, OpenId4VcIssuerEvents, OpenId4VcIssuerModule, OpenId4VcIssuerModuleConfig, OpenId4VcIssuerRecord, OpenId4VcIssuerRepository, OpenId4VcIssuerService, OpenId4VcModule, OpenId4VcModuleConfig, OpenId4VcVerificationSessionRecord, OpenId4VcVerificationSessionRepository, OpenId4VcVerificationSessionState, OpenId4VcVerifierApi, OpenId4VcVerifierEvents, OpenId4VcVerifierModule, OpenId4VcVerifierModuleConfig, OpenId4VcVerifierRecord, OpenId4VcVerifierRepository, OpenId4VciAuthorizationFlow, OpenId4VciCredentialFormatProfile, OpenId4VciHolderService, OpenId4VciKeyAttestationLevel, OpenId4VpHolderService, OpenId4VpVerifierService, authorizationCodeGrantIdentifier, dynamicOid4vciClientAuthentication, getAllowedAndRequestedScopeValues, getCredentialConfigurationsSupportedForScopes, getOfferedCredentials, getOid4vcCallbacks, getOid4vcDecryptJweCallback, getOid4vcEncryptJweCallback, getOid4vcJwtSignCallback, getOid4vcJwtVerifyCallback, getRequestedCredentialConfigurationsForScope, getScopesFromCredentialConfigurationsSupported, keyAttestationLevelSatisfies, openId4VciSupportedCredentialFormats, preAuthorizedCodeGrantIdentifier };
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-holder/OpenId4VciHolderService.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-holder/OpenId4VciHolderService.mjs
+index fbe85f1..85e8688 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-holder/OpenId4VciHolderService.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-holder/OpenId4VciHolderService.mjs
+@@ -577,11 +577,13 @@ let OpenId4VciHolderService = class OpenId4VciHolderService {
+ 					break;
+ 				case "ldp_vc":
+ 					signatureAlgorithms = options.possibleProofOfPossessionSignatureAlgorithms.filter((signatureAlgorithm) => {
++						// The jwt proof is signed with a JWA alg, which is what issuers list. Older issuers list
++						// signature suite names here instead, so any suite for the alg's key type is accepted too.
++						if (proofSigningAlgsSupported.includes(signatureAlgorithm)) return true;
+ 						try {
+ 							const jwkClass = Kms.PublicJwk.supportedPublicJwkClassForSignatureAlgorithm(signatureAlgorithm);
+ 							const matchingSuites = signatureSuiteRegistry.getAllByPublicJwkType(jwkClass);
+-							if (matchingSuites.length === 0) return false;
+-							return proofSigningAlgsSupported.includes(matchingSuites[0].proofType);
++							return matchingSuites.some((suite) => proofSigningAlgsSupported.includes(suite.proofType));
+ 						} catch {
+ 							return false;
+ 						}
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
+index bf928c7..a3046a5 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
+@@ -1,7 +1,7 @@
+ import { OpenId4VcIssuerModuleConfig } from "./OpenId4VcIssuerModuleConfig.mjs";
+ import { storeActorIdForContextCorrelationId } from "../shared/router/tenants.mjs";
+ import "../shared/router/index.mjs";
+-import { credoJwtIssuerToOpenId4VcJwtIssuer, decodeJwtIssuer, encodeJwtIssuer, getProofTypeFromPublicJwk, getPublicJwkFromDid, getSupportedJwaSignatureAlgorithms } from "../shared/utils.mjs";
++import { credoJwtIssuerToOpenId4VcJwtIssuer, decodeJwtIssuer, encodeJwtIssuer, getProofTypeFromPublicJwk, getPublicJwkFromDid, getSupportedJwaSignatureAlgorithms, getVerificationMethodFromDid } from "../shared/utils.mjs";
+ import { dynamicOid4vciClientAuthentication, getOid4vcCallbacks } from "../shared/callbacks.mjs";
+ import { getCredentialConfigurationsSupportedForScopes, getOfferedCredentials, getScopesFromCredentialConfigurationsSupported } from "../shared/issuerMetadataUtils.mjs";
+ import "../shared/models/OpenId4VciCredentialFormatProfile.mjs";
+@@ -1159,7 +1159,8 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 			verificationMethod: options.verificationMethod,
+ 			alg: publicJwk.signatureAlgorithm
+ 		});
+-		const proofType = getProofTypeFromPublicJwk(agentContext, publicJwk);
++		const verificationMethod = await getVerificationMethodFromDid(agentContext, options.verificationMethod);
++		const proofType = getProofTypeFromPublicJwk(agentContext, publicJwk, verificationMethod.type);
+ 		return await this.w3cCredentialService.signCredential(agentContext, {
+ 			format: ClaimFormat.LdpVc,
+ 			credential: options.credential,
+diff --git a/node_modules/@credo-ts/openid4vc/build/shared/utils.mjs b/node_modules/@credo-ts/openid4vc/build/shared/utils.mjs
+index 34b99f1..e809065 100644
+--- a/node_modules/@credo-ts/openid4vc/build/shared/utils.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/shared/utils.mjs
+@@ -108,8 +108,21 @@ async function credoJwtIssuerToOpenId4VcJwtIssuer(agentContext, createJwtIssuer)
+ 	};
+ 	throw new CredoError(`Unsupported jwt issuer method '${createJwtIssuer.method}'`);
+ }
+-function getProofTypeFromPublicJwk(agentContext, key) {
+-	const supportedSignatureSuites = agentContext.dependencyManager.resolve(SignatureSuiteRegistry).getAllByPublicJwkType(key);
++/**
++* Keeps the signature suites that accept the verification method's type, so an Ed25519VerificationKey2020
++* key is used with Ed25519Signature2020 rather than the first suite for its key type (Ed25519Signature2018).
++* Falls back to all suites for the key type when none lists the verification method type.
++*/
++function preferSuitesForVerificationMethodType(suites, verificationMethodType) {
++	const matching = suites.filter((suite) => suite.verificationMethodTypes.includes(verificationMethodType));
++	return matching.length > 0 ? matching : suites;
++}
++async function getVerificationMethodFromDid(agentContext, didUrl, allowedPurposes = ["authentication"]) {
++	return (await agentContext.dependencyManager.resolve(DidsApi).resolveDidDocument(didUrl)).dereferenceKey(didUrl, allowedPurposes);
++}
++function getProofTypeFromPublicJwk(agentContext, key, verificationMethodType) {
++	const suitesForKey = agentContext.dependencyManager.resolve(SignatureSuiteRegistry).getAllByPublicJwkType(key);
++	const supportedSignatureSuites = verificationMethodType ? preferSuitesForVerificationMethodType(suitesForKey, verificationMethodType) : suitesForKey;
+ 	if (supportedSignatureSuites.length === 0) throw new CredoError(`Couldn't find a supported signature suite for the given key ${key.jwkTypeHumanDescription}.`);
+ 	return supportedSignatureSuites[0].proofType;
+ }
+@@ -125,6 +138,6 @@ function dcqlCredentialQueryToPresentationFormat(credential) {
+ 	}
+ }
+ //#endregion
+-export { credoJwtIssuerToOpenId4VcJwtIssuer, dcqlCredentialQueryToPresentationFormat, decodeJwtIssuer, encodeJwtIssuer, getProofTypeFromPublicJwk, getPublicJwkFromDid, getSupportedJwaSignatureAlgorithms, getSupportedResponseEncryptionJwks, supportedJarmContentEncryptionAlgorithms };
++export { credoJwtIssuerToOpenId4VcJwtIssuer, dcqlCredentialQueryToPresentationFormat, decodeJwtIssuer, encodeJwtIssuer, getProofTypeFromPublicJwk, getPublicJwkFromDid, getSupportedJwaSignatureAlgorithms, getSupportedResponseEncryptionJwks, getVerificationMethodFromDid, supportedJarmContentEncryptionAlgorithms };
+ 
+ //# sourceMappingURL=utils.mjs.map
+\ No newline at end of file

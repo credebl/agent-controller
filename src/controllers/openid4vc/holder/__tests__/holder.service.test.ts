@@ -1,4 +1,8 @@
-import { assertOfferAcceptsHolderDid, getCredentialBindingResolver } from '../credentialBindingResolver'
+import {
+  assertOfferAcceptsHolderDid,
+  assertW3cCredentialsBoundToHolderDid,
+  getCredentialBindingResolver,
+} from '../credentialBindingResolver'
 import { HolderService } from '../holder.service'
 
 // Avoid loading Credo's ESM/native dependencies in Jest; only the symbols the service touches are stubbed.
@@ -17,6 +21,7 @@ jest.mock('@credo-ts/openid4vc', () => ({
 jest.mock('../credentialBindingResolver', () => ({
   getCredentialBindingResolver: jest.fn(),
   assertOfferAcceptsHolderDid: jest.fn(),
+  assertW3cCredentialsBoundToHolderDid: jest.fn(),
 }))
 
 describe('HolderService pagination and search', () => {
@@ -293,6 +298,7 @@ describe('HolderService requestCredential', () => {
   beforeEach(() => {
     jest.mocked(getCredentialBindingResolver).mockReset()
     jest.mocked(assertOfferAcceptsHolderDid).mockReset()
+    jest.mocked(assertW3cCredentialsBoundToHolderDid).mockReset()
   })
 
   it('requests all offered credentials when credentialsToRequest is not given', async () => {
@@ -369,5 +375,37 @@ describe('HolderService requestCredential', () => {
     await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'openid-credential-offer://x' })
 
     expect(assertOfferAcceptsHolderDid).not.toHaveBeenCalled()
+  })
+
+  it('checks that W3C credentials are bound to the holder DID before storing them, with require', async () => {
+    const { agentReq, holder } = createAgentReq()
+    const record = { type: 'W3cCredentialRecord' }
+    holder.requestCredentials.mockResolvedValue({ credentials: [{ record }] })
+    agentReq.agent.w3cCredentials = { store: jest.fn() }
+    jest.mocked(assertW3cCredentialsBoundToHolderDid).mockImplementation(() => {
+      throw new Error('not the holder DID')
+    })
+
+    await expect(
+      new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'openid-credential-offer://x',
+        holderDidUrl: 'did:web:example.com#key-1',
+      }),
+    ).rejects.toThrow('not the holder DID')
+    expect(assertW3cCredentialsBoundToHolderDid).toHaveBeenCalledWith([record], 'did:web:example.com#key-1')
+    expect(agentReq.agent.w3cCredentials.store).not.toHaveBeenCalled()
+  })
+
+  it('does not check the credential binding with prefer or without holderDidUrl', async () => {
+    const { agentReq } = createAgentReq()
+
+    await new HolderService().requestCredential(agentReq, {
+      credentialOfferUri: 'openid-credential-offer://x',
+      holderDidUrl: 'did:web:example.com#key-1',
+      bindingPolicy: 'prefer',
+    })
+    await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'openid-credential-offer://x' })
+
+    expect(assertW3cCredentialsBoundToHolderDid).not.toHaveBeenCalled()
   })
 })
