@@ -35,6 +35,7 @@
     "prepublishOnly": "yarn run build",
     "test": "jest",
     "test:vc-jsonld": "node -r ts-node/register/transpile-only tests/v2-jsonld.smoke.ts",
+    "test:bitstring-status-list": "node -r ts-node/register/transpile-only tests/bitstring-status-list.integration.ts",
     "postinstall": "patch-package",
     "lint": "eslint --config eslint.config.mjs .",
     "validate": "yarn lint && yarn check-types && yarn check-format"
@@ -54,6 +55,7 @@
     "@credo-ts/tenants": "0.7.4",
     "@didx509/core": "0.1.3",
     "@didx509/credo": "0.1.2",
+    "@digitalcredentials/credentials-v2-context": "^0.0.1-beta.0",
     "@hyperledger/anoncreds-nodejs": "^0.4.0",
     "@hyperledger/indy-vdr-nodejs": "^0.3.0",
     "@opentelemetry/api": "^1.9.0",

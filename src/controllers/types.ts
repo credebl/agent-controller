@@ -225,6 +225,12 @@ export interface AcceptCredentialRequestOptions {
   comment?: string
 }
 
+export interface RevokeBitstringCredentialOptions {
+  listId: string
+  index: number
+  issuerDid: string
+}
+
 type ReceiveOutOfBandInvitationProps = Omit<ReceiveOutOfBandInvitationConfig, 'routing'>
 
 export interface ReceiveInvitationProps extends ReceiveOutOfBandInvitationProps {
