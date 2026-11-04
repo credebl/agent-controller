@@ -201,3 +201,82 @@ export interface X509CreateCertificateOptionsDto {
   validity?: ValidityDto
   extensions?: X509CertificateExtensionsOptionsDto
 }
+
+export type DidX509PolicyType = 'subject' | 'san' | 'eku' | 'fulcio-issuer'
+
+/**
+ * A policy narrows down which certificates of the chain may use the did:x509, see
+ * https://github.com/microsoft/did-x509/blob/main/specification.md#5-did-x509-policies
+ */
+export interface DidX509Policy {
+  /**
+   * @example "subject"
+   */
+  type: DidX509PolicyType
+
+  /**
+   * Only for `subject`: the attributes of the leaf certificate's subject the DID is restricted to.
+   * @example { "CN": "example.com", "O": "Example Org" }
+   */
+  fields?: Record<string, string>
+
+  /**
+   * Only for `san`: the type of the subject alternative name.
+   * @example "dns"
+   */
+  sanType?: 'dns' | 'email' | 'uri'
+
+  /**
+   * For `san` the name, for `eku` the OID, for `fulcio-issuer` the issuer.
+   * @example "example.com"
+   */
+  value?: string
+}
+
+export interface DidX509ImportOptionsDto {
+  /**
+   * Certificate chain, leaf first and root CA last. Every entry is either a PEM certificate / PEM bundle or a base64
+   * encoded DER certificate.
+   */
+  certificateChain: string[]
+
+  /**
+   * Private key of the leaf certificate: PEM (PKCS#8, SEC1 or PKCS#1) or base64 DER (PKCS#8). EC (P-256, P-384,
+   * P-521), Ed25519 and RSA keys are supported.
+   */
+  privateKey: string
+
+  /**
+   * Passphrase of the private key if it is encrypted
+   */
+  passphrase?: string
+
+  /**
+   * Policies of the DID. Defaults to the common name of the leaf certificate (`subject:CN`) when omitted.
+   * @example [{ "type": "subject", "fields": { "CN": "example.com" } }]
+   */
+  policies?: DidX509Policy[]
+
+  /**
+   * Import an existing did:x509 instead of deriving one from the chain. It is validated against the chain.
+   */
+  did?: string
+}
+
+export interface DidX509ImportResponse {
+  did: string
+  didDocument: Record<string, unknown>
+  /**
+   * Id of the leaf key in the agent's KMS
+   */
+  keyId: string
+  verificationMethodId: string
+}
+
+export interface DidX509ChainResponse {
+  did: string
+  /**
+   * base64url encoded DER certificates, leaf first
+   */
+  x509chain: string[]
+}

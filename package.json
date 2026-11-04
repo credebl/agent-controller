@@ -50,6 +50,8 @@
     "@credo-ts/push-notifications": "^0.7.1",
     "@credo-ts/question-answer": "0.7.4",
     "@credo-ts/tenants": "0.7.4",
+    "@didx509/core": "0.1.2",
+    "@didx509/credo": "0.1.2",
     "@hyperledger/anoncreds-nodejs": "^0.4.0",
     "@hyperledger/indy-vdr-nodejs": "^0.3.0",
     "@opentelemetry/api": "^1.9.0",
@@ -91,6 +93,7 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@peculiar/x509": "^2.0.0",
     "@types/body-parser": "^1.19.5",
     "@types/cors": "^2.8.18",
     "@types/eslint": "^9.6.1",
@@ -128,6 +131,12 @@
     "flatted": "3.4.2",
     "undici": "6.29.1",
     "ts-deepmerge": "8.0.0",
-    "ngrok/uuid": "11.1.1"
+    "ngrok/uuid": "11.1.1",
+    "@peculiar/asn1-schema": "2.11.1",
+    "@peculiar/asn1-rsa": "2.11.1",
+    "@peculiar/asn1-ecc": "2.11.1",
+    "@peculiar/asn1-cms": "2.11.1",
+    "@peculiar/asn1-x509": "2.11.1",
+    "@peculiar/asn1-x509-attr": "2.11.1"
   }
 }

@@ -56,6 +56,7 @@ import { agentDependencies, DidCommHttpInboundTransport, DidCommWsInboundTranspo
 import { OpenId4VcHolderModule, OpenId4VcModule } from '@credo-ts/openid4vc'
 import { QuestionAnswerModule } from '@credo-ts/question-answer'
 import { TenantsModule } from '@credo-ts/tenants'
+import { X509DidResolver } from '@didx509/credo'
 import { anoncreds } from '@hyperledger/anoncreds-nodejs'
 import { indyVdr } from '@hyperledger/indy-vdr-nodejs'
 import { askar } from '@openwallet-foundation/askar-nodejs'
@@ -64,6 +65,7 @@ import bodyParser from 'body-parser'
 import express from 'express'
 import { readFile } from 'fs/promises'
 
+import { getStoredX509Chain } from './controllers/x509/didX509.utils'
 import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network, NetworkName } from './enums'
 import { validatePurgeConfig } from './purge/PurgeConfigValidator'
 import {
@@ -78,6 +80,7 @@ import { AuthTypes, getAuthType } from './utils/auth'
 import { isCustomDocumentLoaderEnabled } from './utils/config'
 import { CustomDocumentLoader } from './utils/customDocumentLoader'
 import { generateSecretKey } from './utils/helpers'
+import { NodeKmsModule } from './utils/kms/nodeKms'
 import { TsLogger } from './utils/logger'
 import {
   getMixedCredentialRequestToCredentialMapper,
@@ -184,6 +187,8 @@ const getModules = (
       },
       multiWalletDatabaseScheme: walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
     }),
+    // Registered after Askar so Askar stays the default KMS, this one only handles what Askar can't (e.g. RSA keys)
+    nodeKms: new NodeKmsModule(),
 
     indyVdr: new IndyVdrModule({
       indyVdr,
@@ -202,6 +207,12 @@ const getModules = (
         new WebDidResolver(),
         new JwkDidResolver(),
         new PolygonDidResolver(),
+        new X509DidResolver({
+          // Credo's own signing and verification only know JsonWebKey2020, not the spec's JsonWebKey
+          jsonWebKey2020VerificationMethod: true,
+          // Chains of did:x509 DIDs imported into this agent, for flows that resolve without the x509chain option
+          getChain: getStoredX509Chain,
+        }),
       ],
     }),
 
