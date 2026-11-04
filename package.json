@@ -50,7 +50,7 @@
     "@credo-ts/push-notifications": "^0.7.1",
     "@credo-ts/question-answer": "0.7.4",
     "@credo-ts/tenants": "0.7.4",
-    "@didx509/core": "0.1.2",
+    "@didx509/core": "0.1.3",
     "@didx509/credo": "0.1.2",
     "@hyperledger/anoncreds-nodejs": "^0.4.0",
     "@hyperledger/indy-vdr-nodejs": "^0.3.0",
