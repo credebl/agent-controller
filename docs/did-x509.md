@@ -2,7 +2,7 @@
 
 An issuer, verifier or holder that already has a certificate issued by a CA (and its private key) can import them into the agent and get a `did:x509` identifier. The DID is derived from the certificate chain, the leaf key is stored in the agent's key management system (KMS), and the agent can sign with it like with any other DID.
 
-This guide covers the import flow. Using a did:x509 as the signer of SD-JWT VC credentials is covered below. Holder presentations, verification of did:x509 issuers you do not own, and the trust registry are planned and not covered yet.
+This guide covers the import flow. Using a did:x509 as the signer of SD-JWT VC credentials is covered below. Verifying credentials from did:x509 issuers is covered as well. Holder binding with a did:x509 and the trust registry are planned and not covered yet.
 
 ## What is a did:x509
 
@@ -177,7 +177,28 @@ The issued credential looks like this:
 
 ### Credo patch
 
-Credo 0.7 can put either a `kid` (DID signer) or an `x5c` chain (x5c signer) in the header, not both, and its verifier picks the `x5c` branch as soon as the header has one, which then rejects an `iss` that is a DID. The `patches/@credo-ts+core+0.7.4.patch` patch adds an optional `x5c` to the DID issuer and makes the verifier use the DID when `iss` is a DID and a `kid` is present. Credo-based holders and verifiers that do not carry this change reject these credentials. The change is meant to go upstream.
+Credo 0.7 can put either a `kid` (DID signer) or an `x5c` chain (x5c signer) in the header, not both, and its verifier picks the `x5c` branch as soon as the header has one, which then rejects an `iss` that is a DID. The `patches/@credo-ts+core+0.7.4.patch` patch adds an optional `x5c` to the DID issuer and makes the verifier use the DID when `iss` is a DID and a `kid` is present. The patch also covers verification (see [Verify credentials from did:x509 issuers](#verify-credentials-from-didx509-issuers)): for a did:x509 issuer with an `x5c` chain, the chain is trusted like an `x5c` chain and is passed to the DID resolver. Credo-based holders and verifiers that do not carry this change reject these credentials. The change is meant to go upstream, it is discussed in [credo-ts#3187](https://github.com/openwallet-foundation/credo-ts/issues/3187).
+
+## Verify credentials from did:x509 issuers
+
+When the agent verifies an SD-JWT VC (a presentation in an OpenID4VP flow, or any credential it checks) whose `iss` is a did:x509 and whose header has an `x5c` chain, it treats the credential as **bound to the DID**, with `x5c` as the evidence needed to resolve it. The DIDs do not have to be imported into the agent, the chain comes with the credential:
+
+1. **Trust:** the chain from `x5c` goes through the same check as the chain of an `x5c` issuer. Its root must be trusted by the agent's X.509 trust configuration, which is the trust list (`TRUST_LIST_URL`) or the trust service (`TRUST_SERVICE_*`). Nothing new has to be configured, list the root CA there.
+2. **Resolution:** the DID is resolved with the chain (`x509chain`). This checks the CA fingerprint in the DID, the policies against the leaf certificate (`subject`, `san`, ...), the chain and the validity period.
+3. **Signature:** the credential signature is verified with the key in the resolved DID document, which is the key of the leaf certificate.
+
+Because `iss` is resolved and not only the certificate checked, a certificate from a trusted CA cannot claim the did:x509 of another organisation: the policies of that DID do not match its leaf certificate and the resolution fails.
+
+| Case                                                                     | Result                                                                               |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Root of the chain is in the trust list                                   | accepted                                                                             |
+| No trusted certificates configured                                       | rejected: `No trusted certificates configured for X509 certificate chain validation` |
+| Another root is trusted, not the one of the chain                        | rejected: `No trusted certificate was found while validating the X.509 chain`        |
+| `iss` is a did:x509 that the chain's leaf does not satisfy (same CA)     | rejected: `Unable to resolve did document ...`                                       |
+| `x5c` header missing (a verifier that does not own the DID has no chain) | rejected: `Unable to resolve did document ...`                                       |
+| Payload changed after signing                                            | rejected: `Invalid JWT Signature`                                                    |
+
+Not covered yet: an allowlist of trusted DIDs (the trust decision is by root CA only), revocation and status list checks with the chain, and presenting with a did:x509 as holder binding.
 
 ## Errors
 
@@ -198,8 +219,8 @@ Credo 0.7 can put either a `kid` (DID signer) or an `x5c` chain (x5c signer) in 
 
 ## Limitations and what is planned
 
-- Only DIDs imported into the agent resolve without the chain. Verifying a did:x509 owned by someone else needs the chain from the credential (`x5c`). Support for this in the OpenID4VC verifier and holder flows is planned.
-- Holder binding with a did:x509, the did:x509 as verifier request signer, and the trust registry integration are planned.
+- Outside credential verification, only DIDs imported into the agent resolve without the chain. For credentials the chain comes from `x5c`, see [Verify credentials from did:x509 issuers](#verify-credentials-from-didx509-issuers).
+- Holder binding with a did:x509, the did:x509 as verifier request signer, an allowlist of trusted DIDs and the trust registry integration are planned.
 - The resolver does not cache DID documents, every resolution validates the chain.
 - Keys can only be imported through the API for now. Keeping the key in an external KMS (OpenBao) is tracked in [#437](https://github.com/credebl/agent-controller/pull/437).
 - Requires `@didx509/core` 0.1.3 or newer: earlier versions reject chains whose issuing CA has `pathlen:0`.

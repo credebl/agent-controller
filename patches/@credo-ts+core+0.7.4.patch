@@ -79,10 +79,36 @@ index 4f6db53..bdcf750 100644
  export interface SdJwtVcIssuerX5c {
    method: 'x5c';
 diff --git a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcService.mjs b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcService.mjs
-index 71f8efd..89cb8b8 100644
+index 71f8efd..4b0c7f7 100644
 --- a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcService.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcService.mjs
-@@ -289,7 +289,8 @@ let SdJwtVcService = class SdJwtVcService {
+@@ -36,6 +36,16 @@ import { getDomainFromUrl } from "../../utils/domain.mjs";
+ import { SdJwtVcModuleConfig } from "./SdJwtVcModuleConfig.mjs";
+ import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+ //#region src/modules/sd-jwt-vc/SdJwtVcService.ts
++/**
++* A did:x509 issuer that carries its certificate chain: the DID is resolved with the chain as evidence and the
++* chain itself is trusted like the chain of an x5c issuer (its root must be a trusted certificate).
++*/
++function isDidX509WithChain(issuer) {
++	return issuer.method === "did" && issuer.didUrl.startsWith("did:x509:") && Array.isArray(issuer.x5c) && issuer.x5c.length > 0;
++}
++function toX509ChainOption(x5c) {
++	return x5c.map((cert) => Buffer.from(cert.toString("base64"), "base64").toString("base64url")).join(",");
++}
+ let SdJwtVcService = class SdJwtVcService {
+ 	constructor(sdJwtVcRepository) {
+ 		this.sdJwtVcRepository = sdJwtVcRepository;
+@@ -280,7 +290,7 @@ let SdJwtVcService = class SdJwtVcService {
+ 			let publicJwk;
+ 			if (forSigning) publicJwk = await resolveSigningPublicJwkFromDidUrl(agentContext, issuer.didUrl);
+ 			else {
+-				const { verificationMethod } = await resolveDidUrl(agentContext, issuer.didUrl);
++				const { verificationMethod } = await resolveDidUrl(agentContext, issuer.didUrl, void 0, isDidX509WithChain(issuer) ? { x509chain: toX509ChainOption(issuer.x5c) } : void 0);
+ 				publicJwk = getPublicJwkFromVerificationMethod(verificationMethod);
+ 			}
+ 			const supportedSignatureAlgorithms = publicJwk.supportedSignatureAlgorithms;
+@@ -289,7 +299,8 @@ let SdJwtVcService = class SdJwtVcService {
  				alg: supportedSignatureAlgorithms[0],
  				publicJwk,
  				iss: parsedDid.did,
@@ -92,11 +118,42 @@ index 71f8efd..89cb8b8 100644
  			};
  		}
  		if (issuer.method === "x5c") {
+@@ -340,6 +351,13 @@ let SdJwtVcService = class SdJwtVcService {
+ 			if (!x509Issuers) throw new SdJwtVcError("No trusted certificates configured for X509 certificate chain validation. Issuer cannot be verified.");
+ 			return await TrustedIssuerContext.ensureTrustedSigner(agentContext, context, x509Issuers);
+ 		}
++		if (issuer.method === "did" && isDidX509WithChain(issuer)) return await this.verifyIssuer(agentContext, {
++			...sdJwtVc,
++			issuer: {
++				method: "x5c",
++				x5c: issuer.x5c
++			}
++		}, trustedIssuers);
+ 		if (issuer.method === "did") return await TrustedIssuerContext.ensureTrustedSigner(agentContext, {
+ 			verification: {
+ 				type: "credential",
 diff --git a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/utils.mjs b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/utils.mjs
-index 80d0fb3..54c6e78 100644
+index 80d0fb3..a122a1f 100644
 --- a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/utils.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/utils.mjs
-@@ -133,6 +133,23 @@ function parseHolderBindingFromCredential(payload) {
+@@ -19,8 +19,14 @@ async function resolveSigningPublicJwkFromDidUrl(agentContext, didUrl) {
+ 	const { publicJwk } = await agentContext.dependencyManager.resolve(DidsApi).resolveVerificationMethodFromCreatedDidRecord(didUrl);
+ 	return publicJwk;
+ }
+-async function resolveDidUrl(agentContext, didUrl, purposes = ["assertionMethod"]) {
+-	const didDocument = await agentContext.dependencyManager.resolve(DidResolverService).resolveDidDocument(agentContext, didUrl);
++async function resolveDidUrl(agentContext, didUrl, purposes = ["assertionMethod"], resolutionOptions) {
++	const resolverService = agentContext.dependencyManager.resolve(DidResolverService);
++	let didDocument;
++	if (resolutionOptions) {
++		const result = await resolverService.resolve(agentContext, didUrl, resolutionOptions);
++		if (!result.didDocument) throw new CredoError(`Unable to resolve did document for did '${didUrl}': ${result.didResolutionMetadata.error} ${result.didResolutionMetadata.message}`);
++		didDocument = result.didDocument;
++	} else didDocument = await resolverService.resolveDidDocument(agentContext, didUrl);
+ 	return {
+ 		verificationMethod: didDocument.dereferenceKey(didUrl, purposes),
+ 		didDocument
+@@ -133,6 +139,23 @@ function parseHolderBindingFromCredential(payload) {
  function parseIssuerFromCredential(header, payload) {
  	if (!payload || !header) throw new SdJwtVcError("SD-JWT is missing payload");
  	const iss = payload.iss;
