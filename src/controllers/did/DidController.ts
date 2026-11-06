@@ -427,11 +427,7 @@ export class DidController extends Controller {
       ],
     })
   }
-  public async handleKey(agent: AgentType, didOptions: DidCreate) {
-    let did
-    let didResponse
-    let didDocument
-
+  private validateDidKeyOptions(didOptions: DidCreate): void {
     if (!didOptions.keyType) {
       throw new BadRequestError('keyType is required')
     }
@@ -446,76 +442,114 @@ export class DidController extends Controller {
     if (!(normalizedCurve && supportedKeyTypesDID[DidMethod.Key]?.some((kt) => kt.crv === normalizedCurve))) {
       throw new BadRequestError(`Invalid keyType: ${didOptions.keyType}`)
     }
+  }
 
-    if (!didOptions.did) {
-      if (didOptions.seed) {
-        this.agent.config.logger.info('Creating DID:key with provided seed')
-        const privateJwk = transformPrivateKeyToPrivateJwk({
-          privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed),
-          type: getTypeFromCurve(didOptions.keyType ?? KeyAlgorithm.Ed25519),
-        }).privateJwk
+  private async createKeyDidFromSeed(
+    agent: AgentType,
+    didOptions: DidCreate,
+    keyType: KeyAlgorithm,
+  ): Promise<{ did: string; didDocument: DidDocument }> {
+    this.agent.config.logger.info('Creating DID:key with provided seed')
+    const privateJwk = transformPrivateKeyToPrivateJwk({
+      privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed as string),
+      type: getTypeFromCurve(keyType),
+    }).privateJwk
 
-        const openBao = openBaoBackendForDidMethod('key')
-        const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
-        const { keyId, publicJwk } = await agent.kms.importKey({
-          privateJwk,
-          ...(backend ? { backend } : {}),
-        })
+    const openBao = openBaoBackendForDidMethod('key')
+    const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
+    const { keyId, publicJwk } = await agent.kms.importKey({
+      privateJwk,
+      ...(backend ? { backend } : {}),
+    })
 
-        this.agent.config.logger.info(`This is keyId:::::: ${keyId}`)
-        const publicKey = Kms.PublicJwk.fromPublicJwk(publicJwk)
+    this.agent.config.logger.info(`This is keyId:::::: ${keyId}`)
+    const publicKey = Kms.PublicJwk.fromPublicJwk(publicJwk)
 
-        const didKey = new DidKey(publicKey)
-        didDocument = didKey.didDocument
-        did = didDocument.id
+    const didKey = new DidKey(publicKey)
+    const didDocument = didKey.didDocument
+    const did = didDocument.id
 
-        const verificationMethodId = didDocument.verificationMethod?.[0]?.id
-        const relativeKeyId = verificationMethodId?.split('#')[1]
+    const verificationMethodId = didDocument.verificationMethod?.[0]?.id
+    const relativeKeyId = verificationMethodId?.split('#')[1]
 
-        this.agent.config.logger.info(`This is did:::::: ${did}`)
-        this.agent.config.logger.info(`This is verificationMethodId:::::: ${verificationMethodId}`)
+    this.agent.config.logger.info(`This is did:::::: ${did}`)
+    this.agent.config.logger.info(`This is verificationMethodId:::::: ${verificationMethodId}`)
 
-        await agent.dids.import({
-          did,
-          didDocument,
-          overwrite: true,
-          keys: [
-            {
-              didDocumentRelativeKeyId: `#${relativeKeyId}`,
-              kmsKeyId: keyId,
-            },
-          ],
-        })
-      } else {
-        this.agent.config.logger.info('Creating DID:key without seed')
-        const type = getTypeFromCurve(didOptions.keyType ?? KeyAlgorithm.Ed25519)
-        const openBao = openBaoBackendForDidMethod('key')
-        const backend = openBao && openBaoBackendForCreate(type) ? openBao : undefined
-        const { keyId } = await agent.kms.createKey({
-          type,
-          ...(backend ? { backend } : {}),
-        })
-        this.agent.config.logger.info(`This is did:::::: ${did}`)
-        const didCreateResult = await agent.dids.create<KeyDidCreateOptions>({
-          method: 'key',
-          options: { keyId },
-        })
-        didDocument = didCreateResult.didState.didDocument
-        did = didCreateResult.didState.did
-      }
+    await agent.dids.import({
+      did,
+      didDocument,
+      overwrite: true,
+      keys: [
+        {
+          didDocumentRelativeKeyId: `#${relativeKeyId}`,
+          kmsKeyId: keyId,
+        },
+      ],
+    })
+
+    return { did, didDocument }
+  }
+
+  private async createKeyDid(
+    agent: AgentType,
+    keyType: KeyAlgorithm,
+  ): Promise<{ did: string; didDocument: DidDocument | undefined }> {
+    this.agent.config.logger.info('Creating DID:key without seed')
+    const type = getTypeFromCurve(keyType)
+    const openBao = openBaoBackendForDidMethod('key')
+    const backend = openBao && openBaoBackendForCreate(type) ? openBao : undefined
+    const { keyId } = await agent.kms.createKey({
+      type,
+      ...(backend ? { backend } : {}),
+    })
+    const didCreateResult = await agent.dids.create<KeyDidCreateOptions>({
+      method: 'key',
+      options: { keyId },
+    })
+    return {
+      did: didCreateResult.didState.did as string,
+      didDocument: didCreateResult.didState.didDocument,
+    }
+  }
+
+  private async importExistingKeyDid(
+    agent: AgentType,
+    did: string,
+  ): Promise<{ did: string; didDocument: DidDocument | undefined }> {
+    const createdDid = await agent.dids.getCreatedDids({
+      method: DidMethod.Key,
+      did,
+    })
+    const didDocument = createdDid[0]?.didDocument
+
+    await agent.dids.import({
+      did,
+      overwrite: true,
+      didDocument,
+    })
+
+    return { did, didDocument }
+  }
+
+  public async handleKey(agent: AgentType, didOptions: DidCreate) {
+    this.validateDidKeyOptions(didOptions)
+    const keyType = didOptions.keyType as KeyAlgorithm
+
+    let did: string
+    let didDocument: DidDocument | undefined
+
+    if (didOptions.did) {
+      const result = await this.importExistingKeyDid(agent, didOptions.did)
+      did = result.did
+      didDocument = result.didDocument
+    } else if (didOptions.seed) {
+      const result = await this.createKeyDidFromSeed(agent, didOptions, keyType)
+      did = result.did
+      didDocument = result.didDocument
     } else {
-      did = didOptions.did
-      const createdDid = await agent.dids.getCreatedDids({
-        method: DidMethod.Key,
-        did: didOptions.did,
-      })
-      didDocument = createdDid[0]?.didDocument
-
-      await agent.dids.import({
-        did,
-        overwrite: true,
-        didDocument,
-      })
+      const result = await this.createKeyDid(agent, keyType)
+      did = result.did
+      didDocument = result.didDocument
     }
 
     this.agent.config.logger.info(`This is did ${did}`)
@@ -524,9 +558,7 @@ export class DidController extends Controller {
     return { did: did, didDocument: didDocument }
   }
 
-  // TODO: Right now we are using seed as privateKey for did creation. Fix this is API payload
-  public async handleWeb(agent: AgentType, didOptions: DidCreate) {
-    let didDocument: DidDocument
+  private validateDidWebOptions(didOptions: DidCreate): string {
     if (!didOptions.domain) {
       throw new BadRequestError('For create did:web, domain is required')
     }
@@ -554,50 +586,59 @@ export class DidController extends Controller {
       )
     }
 
-    const domain = didOptions.domain
+    return verificationMethodType
+  }
+
+  private async createWebDidDocument(
+    agent: AgentType,
+    didOptions: DidCreate,
+    did: string,
+    keyId: string,
+    verificationMethodType: string,
+  ): Promise<{ key: { keyId: string }; didDocument: DidDocument }> {
+    const { privateJwk } = transformPrivateKeyToPrivateJwk({
+      type: {
+        crv: 'Ed25519',
+        kty: 'OKP',
+      },
+      privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed as string),
+    })
+
+    const openBao = openBaoBackendForDidMethod('web')
+    const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
+    const key = await agent.kms.importKey({
+      privateJwk,
+      ...(backend ? { backend } : {}),
+    })
+
+    const publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
+    const didDocument = new DidDocumentBuilder(did)
+      .addContext(
+        verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
+          ? SECURITY_ED25519_2020_CONTEXT_URL
+          : SECURITY_ED25519_2018_CONTEXT_URL,
+      )
+      .addVerificationMethod(
+        verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
+          ? getEd25519VerificationKey2020({ id: keyId, publicJwk, controller: did })
+          : getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }),
+      )
+      .addAuthentication(keyId)
+      .addAssertionMethod(keyId)
+      .build()
+
+    return { key, didDocument }
+  }
+
+  // TODO: Right now we are using seed as privateKey for did creation. Fix this is API payload
+  public async handleWeb(agent: AgentType, didOptions: DidCreate) {
+    const verificationMethodType = this.validateDidWebOptions(didOptions)
+
+    const domain = didOptions.domain as string
     const did = `did:${didOptions.method}:${domain}`
     const keyId = `${did}#key-1`
 
-    let key
-    let publicJwk
-
-    if (didOptions.keyType === KeyAlgorithm.Ed25519) {
-      const { privateJwk } = transformPrivateKeyToPrivateJwk({
-        type: {
-          crv: 'Ed25519',
-          kty: 'OKP',
-        },
-        privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed),
-      })
-
-      const openBao = openBaoBackendForDidMethod('web')
-      const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
-      key = await agent.kms.importKey({
-        privateJwk,
-        ...(backend ? { backend } : {}),
-      })
-
-      publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
-      didDocument = new DidDocumentBuilder(did)
-        .addContext(
-          verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
-            ? SECURITY_ED25519_2020_CONTEXT_URL
-            : SECURITY_ED25519_2018_CONTEXT_URL,
-        )
-        .addVerificationMethod(
-          verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
-            ? getEd25519VerificationKey2020({ id: keyId, publicJwk, controller: did })
-            : getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }),
-        )
-        .addAuthentication(keyId)
-        .addAssertionMethod(keyId)
-        .build()
-    } else if (didOptions.keyType === KeyAlgorithm.Bls12381G2) {
-      // Support for BBS signature is discontinued from credo-ts version 0.6.0
-      throw new BadRequestError(`Support for ${KeyAlgorithm.Bls12381G2} has been deprecated`)
-    } else {
-      throw new BadRequestError('Unsupported key type') // fallback, but this won't hit due to earlier check
-    }
+    const { key, didDocument } = await this.createWebDidDocument(agent, didOptions, did, keyId, verificationMethodType)
 
     await agent.dids.import({
       did,

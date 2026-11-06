@@ -75,15 +75,11 @@ class x509Service {
     return { publicCertificateBase64: selfSignedx509certificateBase64 }
   }
 
-  public async createCertificate(agentReq: Req, options: X509CreateCertificateOptionsDto) {
-    const agent = agentReq.agent
-
-    let authorityKeyID, subjectPublicKeyID, authorityKeyKmsId
-
-    if (options.authorityKey && options?.authorityKey?.seed) {
+  private async importOrCreateAuthorityKey(agent: Agent, options: X509CreateCertificateOptionsDto) {
+    if (options.authorityKey?.seed) {
       const { privateJwk } = transformSeedToPrivateJwk({
         type: getTypeFromCurve(options.authorityKey.keyType ?? 'P-256'),
-        seed: TypedArrayEncoder.fromUtf8String(options.authorityKey!.seed!),
+        seed: TypedArrayEncoder.fromUtf8String(options.authorityKey.seed),
       })
 
       const backend = openBaoBackendForJwk(privateJwk)
@@ -91,42 +87,53 @@ class x509Service {
         privateJwk,
         ...(backend ? { backend } : {}),
       })
-      authorityKeyID = publicJwk
-    } else {
-      const type = getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256')
-      const backend = openBaoBackendForCreate(type)
-      const { publicJwk, keyId } = await agent.kms.createKey({
-        type,
+      return { authorityKeyID: publicJwk }
+    }
+
+    const type = getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256')
+    const backend = openBaoBackendForCreate(type)
+    const { publicJwk, keyId } = await agent.kms.createKey({
+      type,
+      ...(backend ? { backend } : {}),
+    })
+    return { authorityKeyID: publicJwk, authorityKeyKmsId: keyId }
+  }
+
+  private async resolveSubjectPublicKey(
+    agent: Agent,
+    subjectPublicKey: X509CreateCertificateOptionsDto['subjectPublicKey'],
+  ) {
+    if (!subjectPublicKey) return undefined
+
+    if (subjectPublicKey.seed) {
+      const privateJwk = transformSeedToPrivateJwk({
+        seed: TypedArrayEncoder.fromUtf8String(subjectPublicKey.seed),
+        type: getTypeFromCurve(subjectPublicKey.keyType ?? 'P-256'),
+      }).privateJwk
+
+      const backend = openBaoBackendForJwk(privateJwk)
+      const importedKey = await agent.kms.importKey({
+        privateJwk,
         ...(backend ? { backend } : {}),
       })
-      authorityKeyID = publicJwk
-      authorityKeyKmsId = keyId
+      return importedKey.publicJwk
     }
 
-    if (options.subjectPublicKey) {
-      if (options?.subjectPublicKey?.seed) {
-        const privateJwk = transformSeedToPrivateJwk({
-          seed: TypedArrayEncoder.fromUtf8String(options.subjectPublicKey.seed),
-          type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256'),
-        }).privateJwk
+    const type = getTypeFromCurve(subjectPublicKey.keyType ?? 'P-256')
+    const backend = openBaoBackendForCreate(type)
+    const { publicJwk } = await agent.kms.createKey({
+      type,
+      ...(backend ? { backend } : {}),
+    })
+    return publicJwk
+  }
 
-        const backend = openBaoBackendForJwk(privateJwk)
-        const importedKey = await agentReq.agent.kms.importKey({
-          privateJwk,
-          ...(backend ? { backend } : {}),
-        })
+  public async createCertificate(agentReq: Req, options: X509CreateCertificateOptionsDto) {
+    const agent = agentReq.agent as Agent
 
-        subjectPublicKeyID = importedKey.publicJwk
-      } else {
-        const type = getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256')
-        const backend = openBaoBackendForCreate(type)
-        const { publicJwk } = await agent.kms.createKey({
-          type,
-          ...(backend ? { backend } : {}),
-        })
-        subjectPublicKeyID = publicJwk
-      }
-    }
+    const { authorityKeyID, authorityKeyKmsId } = await this.importOrCreateAuthorityKey(agent, options)
+    const subjectPublicKeyID = await this.resolveSubjectPublicKey(agent, options.subjectPublicKey)
+
     const certificate = await agent.x509.createCertificate({
       authorityKey: Kms.PublicJwk.fromPublicJwk(authorityKeyID),
       subjectPublicKey: subjectPublicKeyID ? Kms.PublicJwk.fromPublicJwk(subjectPublicKeyID) : undefined,
