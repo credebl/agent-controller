@@ -54,3 +54,9 @@ deleted. To roll back:
 
 Tenant isolation uses the key scope `<deployment id>:tenant-<tenantId>`. The deployment id defaults to the wallet id and
 can be set with `OPENBAO_DEPLOYMENT_ID`.
+
+## Verification
+
+Before merging the branch, run the cross-component checklist in [`openbao-e2e.md`](./openbao-e2e.md). It covers startup
+health, X.509 create/import, `did:x509` import and re-import, credentials, tenant purge, rollback, and the restricted
+AppRole.
