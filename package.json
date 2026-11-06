@@ -35,6 +35,7 @@
     "prepublishOnly": "yarn run build",
     "test": "jest",
     "test:vc-jsonld": "node -r ts-node/register/transpile-only tests/v2-jsonld.smoke.ts",
+    "test:v1-status-roundtrip": "node -r ts-node/register/transpile-only tests/v1-bitstring-roundtrip.smoke.ts",
     "test:bitstring-status-list": "node -r ts-node/register/transpile-only tests/bitstring-status-list.integration.ts",
     "postinstall": "patch-package",
     "lint": "eslint --config eslint.config.mjs .",

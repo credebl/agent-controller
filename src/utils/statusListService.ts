@@ -31,6 +31,16 @@ function getApiKeyHeaders() {
   return headers
 }
 
+const STATUS_LIST_PATCH_MAX_ATTEMPTS = 5
+
+function getIfMatchHeaders(etag: string | null): Record<string, string> {
+  return etag ? { 'If-Match': etag } : {}
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 async function getKmsKeyIdForDid(agent: Agent, did: string, verificationMethodId: string) {
   const didRecords = await agent.dids.getCreatedDids({ did })
   const didRecord = didRecords[0]
@@ -143,56 +153,53 @@ export async function checkAndCreateStatusList(agent: Agent, listId: string, iss
 }
 
 export async function revokeCredentialInStatusList(agent: Agent, listId: string, index: number, issuerDid: string) {
-  const previousLock = statusListLocks.get(listId) || Promise.resolve()
-
-  let releaseLock: () => void
-  const currentLock = new Promise<void>((resolve) => {
-    releaseLock = resolve
-  })
-
-  statusListLocks.set(listId, currentLock)
-
-  try {
-    await previousLock
-
+  return withStatusListLock(listId, async () => {
     const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`
 
-    const res = await fetchWithTimeout(uri, {
-      headers: getApiKeyHeaders(),
-    })
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '')
-      throw new Error(`Failed to fetch status list to revoke at ${uri}: ${res.status} ${res.statusText} ${errBody}`)
-    }
+    let lastError: Error | undefined
 
-    const currentJwt = await res.text()
-    const statusList = getListFromStatusListJWT(currentJwt)
+    for (let attempt = 0; attempt < STATUS_LIST_PATCH_MAX_ATTEMPTS; attempt++) {
+      const res = await fetchWithTimeout(uri, {
+        headers: getApiKeyHeaders(),
+      })
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '')
+        throw new Error(`Failed to fetch status list to revoke at ${uri}: ${res.status} ${res.statusText} ${errBody}`)
+      }
 
-    statusList.setStatus(index, 1)
+      const currentJwt = await res.text()
+      const statusList = getListFromStatusListJWT(currentJwt)
 
-    const didDocument = await agent.dids.resolve(issuerDid)
-    const verificationMethod = didDocument.didDocument ? getVerificationMethod(didDocument.didDocument) : undefined
-    if (!verificationMethod)
-      throw new Error(`Could not find suitable verification method (assertionMethod) for DID ${issuerDid}`)
+      statusList.setStatus(index, 1)
 
-    const newJwt = await signStatusList(agent, verificationMethod, statusList, listId, issuerDid)
+      const verificationMethod = await resolveAssertionMethod(agent, issuerDid)
+      const newJwt = await signStatusList(agent, verificationMethod, statusList, listId, issuerDid)
 
-    const patchRes = await fetchWithTimeout(`${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`, {
-      method: 'PATCH',
-      headers: getApiKeyHeaders(),
-      body: JSON.stringify({ jwt: newJwt }),
-    })
+      const patchRes = await fetchWithTimeout(uri, {
+        method: 'PATCH',
+        headers: { ...getApiKeyHeaders(), ...getIfMatchHeaders(res.headers.get('etag')) },
+        body: JSON.stringify({ jwt: newJwt }),
+      })
 
-    if (!patchRes.ok) {
+      if (patchRes.ok) {
+        return
+      }
+
       const errBody = await patchRes.text()
-      throw new Error(`Failed to update status list on server: ${patchRes.status} ${errBody}`)
+      lastError = new Error(`Failed to update status list on server: ${patchRes.status} ${errBody}`)
+      if (patchRes.status !== 412) {
+        throw lastError
+      }
+
+      await delay(50 * (attempt + 1))
     }
-  } finally {
-    releaseLock!()
-    if (statusListLocks.get(listId) === currentLock) {
-      statusListLocks.delete(listId)
-    }
-  }
+
+    throw new Error(
+      `Failed to update status list on server after ${STATUS_LIST_PATCH_MAX_ATTEMPTS} attempts: ${
+        lastError?.message ?? 'concurrent updates'
+      }`,
+    )
+  })
 }
 
 async function withStatusListLock<T>(listId: string, fn: () => Promise<T>): Promise<T> {
@@ -293,67 +300,85 @@ export async function checkAndCreateBitstringStatusList(
 export async function revokeBitstringInStatusList(agent: Agent, listId: string, index: number, issuerDid: string) {
   return withStatusListLock(listId, async () => {
     const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`
-    const res = await fetchWithTimeout(uri, { headers: getApiKeyHeaders() })
 
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '')
-      throw new Error(
-        `Failed to fetch bitstring status list to revoke at ${uri}: ${res.status} ${res.statusText} ${errBody}`,
-      )
-    }
+    let lastError: Error | undefined
 
-    const credential = (await res.json()) as JsonObject
-    const subjectValue = credential.credentialSubject
-    const subject = (Array.isArray(subjectValue) ? subjectValue[0] : subjectValue) as
-      Record<string, unknown> | undefined
+    for (let attempt = 0; attempt < STATUS_LIST_PATCH_MAX_ATTEMPTS; attempt++) {
+      const res = await fetchWithTimeout(uri, { headers: getApiKeyHeaders() })
 
-    if (!subject || typeof subject.encodedList !== 'string') {
-      throw new Error(`Status list ${listId} does not contain a bitstring encodedList`)
-    }
-    if (subject.statusSize !== undefined && subject.statusSize !== 1) {
-      throw new Error(
-        `Status list ${listId} uses statusSize ${String(subject.statusSize)}; only statusSize 1 is supported`,
-      )
-    }
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '')
+        throw new Error(
+          `Failed to fetch bitstring status list to revoke at ${uri}: ${res.status} ${res.statusText} ${errBody}`,
+        )
+      }
 
-    let bits: Uint8Array
-    try {
-      bits = decodeBitstring(subject.encodedList)
-    } catch (error) {
-      throw new BadRequestError(
-        `Status list ${listId} contains an invalid encodedList: ${error instanceof Error ? error.message : String(error)}`,
-      )
-    }
+      const credential = (await res.json()) as JsonObject
+      const subjectValue = credential.credentialSubject
+      const subject = (Array.isArray(subjectValue) ? subjectValue[0] : subjectValue) as
+        Record<string, unknown> | undefined
 
-    try {
-      setBit(bits, index, true)
-    } catch (error) {
-      throw new BadRequestError(
-        `Cannot revoke bit ${index} in status list ${listId}: ${error instanceof Error ? error.message : String(error)}`,
-      )
-    }
+      if (!subject || typeof subject.encodedList !== 'string') {
+        throw new Error(`Status list ${listId} does not contain a bitstring encodedList`)
+      }
+      if (subject.statusSize !== undefined && subject.statusSize !== 1) {
+        throw new Error(
+          `Status list ${listId} uses statusSize ${String(subject.statusSize)}; only statusSize 1 is supported`,
+        )
+      }
 
-    subject.encodedList = encodeBitstring(bits)
+      let bits: Uint8Array
+      try {
+        bits = decodeBitstring(subject.encodedList)
+      } catch (error) {
+        throw new BadRequestError(
+          `Status list ${listId} contains an invalid encodedList: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
 
-    if ('proof' in credential) {
-      delete credential.proof
-    }
+      try {
+        setBit(bits, index, true)
+      } catch (error) {
+        throw new BadRequestError(
+          `Cannot revoke bit ${index} in status list ${listId}: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
 
-    const verificationMethod = await resolveAssertionMethod(agent, issuerDid)
-    const vc = await signV2Credential(agent.context, {
-      credential,
-      verificationMethod: verificationMethod.id,
-    })
+      subject.encodedList = encodeBitstring(bits)
 
-    const patchRes = await fetchWithTimeout(uri, {
-      method: 'PATCH',
-      headers: getApiKeyHeaders(),
-      body: JSON.stringify({ vc }),
-    })
+      if ('proof' in credential) {
+        delete credential.proof
+      }
 
-    if (!patchRes.ok) {
+      const verificationMethod = await resolveAssertionMethod(agent, issuerDid)
+      const vc = await signV2Credential(agent.context, {
+        credential,
+        verificationMethod: verificationMethod.id,
+      })
+
+      const patchRes = await fetchWithTimeout(uri, {
+        method: 'PATCH',
+        headers: { ...getApiKeyHeaders(), ...getIfMatchHeaders(res.headers.get('etag')) },
+        body: JSON.stringify({ vc }),
+      })
+
+      if (patchRes.ok) {
+        return
+      }
+
       const errBody = await patchRes.text()
-      throw new Error(`Failed to update bitstring status list on server: ${patchRes.status} ${errBody}`)
+      lastError = new Error(`Failed to update bitstring status list on server: ${patchRes.status} ${errBody}`)
+      if (patchRes.status !== 412) {
+        throw lastError
+      }
+
+      await delay(50 * (attempt + 1))
     }
+
+    throw new Error(
+      `Failed to update bitstring status list on server after ${STATUS_LIST_PATCH_MAX_ATTEMPTS} attempts: ${
+        lastError?.message ?? 'concurrent updates'
+      }`,
+    )
   })
 }

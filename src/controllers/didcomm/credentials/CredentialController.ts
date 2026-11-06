@@ -17,7 +17,7 @@ import ErrorHandlingService from '../../../errorHandlingService'
 import { PurgeRecordType } from '../../../purge/PurgeTypes'
 import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { AgentType } from '../../../types'
-import { revokeBitstringInStatusList } from '../../../utils/statusListService'
+import { checkAndCreateBitstringStatusList, revokeBitstringInStatusList } from '../../../utils/statusListService'
 import { CredentialExchangeRecordExample, RecordId } from '../../examples'
 import {
   AcceptCredentialRequestOptions,
@@ -170,6 +170,7 @@ export class CredentialController extends Controller {
   @SchedulePurge(PurgeRecordType.DIDCOMM_CREDENTIAL, (r) => (r as any)?.id)
   public async createOffer(@Request() request: Req, @Body() createOfferOptions: CreateOfferOptions) {
     try {
+      await this.ensureBitstringStatusLists(request.agent as any, createOfferOptions.credentialFormats)
       const offer = await request.agent.modules.didcomm.credentials.offerCredential(createOfferOptions)
       return offer
     } catch (error) {
@@ -210,6 +211,8 @@ export class CredentialController extends Controller {
         })
         invitationDid = did.didState.did
       }
+
+      await this.ensureBitstringStatusLists(request.agent as any, outOfBandOption.credentialFormats)
 
       const offerOob = await request.agent.modules.didcomm.credentials.createOffer({
         protocolVersion: outOfBandOption.protocolVersion as CredentialProtocolVersionType<[]>,
@@ -337,6 +340,45 @@ export class CredentialController extends Controller {
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
+  }
+
+  private async ensureBitstringStatusLists(agent: AgentType, credentialFormats: unknown): Promise<void> {
+    const seen = new WeakSet<object>()
+
+    const visit = async (value: unknown): Promise<void> => {
+      if (!value || 'object' !== typeof value) {
+        return
+      }
+      if (seen.has(value as object)) {
+        return
+      }
+      seen.add(value as object)
+
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          await visit(item)
+        }
+        return
+      }
+
+      const record = value as Record<string, unknown>
+      const status = record.credentialStatus as Record<string, unknown> | undefined
+      if (status && 'string' === typeof status.statusListCredential) {
+        const statusListUri = status.statusListCredential
+        const listId = statusListUri.split('/').filter(Boolean).pop()
+        const issuer = record.issuer
+        const issuerDid = 'string' === typeof issuer ? issuer : (issuer as Record<string, unknown> | undefined)?.id
+        if (listId && 'string' === typeof issuerDid) {
+          await checkAndCreateBitstringStatusList(agent as any, listId, issuerDid)
+        }
+      }
+
+      for (const child of Object.values(record)) {
+        await visit(child)
+      }
+    }
+
+    await visit(credentialFormats)
   }
 
   private async ensureLinkSecretExists(agent: AgentType): Promise<void> {

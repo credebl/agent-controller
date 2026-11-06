@@ -14,6 +14,7 @@ import {
   ClaimFormat,
   W3cCredentialRecord,
   DidDocument,
+  Jwt,
   verkeyToPublicJwk,
   getKmsKeyIdForVerifiacationMethod,
   getPublicJwkFromVerificationMethod,
@@ -27,7 +28,10 @@ import { injectable } from 'tsyringe'
 import { AgentRole, SCOPES } from '../../enums'
 import ErrorHandlingService from '../../errorHandlingService'
 import { BadRequestError } from '../../errors/errors'
+import { verifyBitstringStatus } from '../../utils/bitstringStatusVerifier'
 import { ALGORITHM_MAP } from '../../utils/constant'
+import { CREDENTIALS_V2_CONTEXT_URL } from '../../vc-jsonld/constants'
+import { verifyV2Credential } from '../../vc-jsonld/verifyV2Credential'
 
 @Tags('Agent')
 @Route('/agent')
@@ -244,19 +248,66 @@ export class AgentController extends Controller {
     @Body() credentialToVerify: SafeW3cJsonLdVerifyCredentialOptions | any,
   ) {
     try {
-      const { credential, ...credentialOptions } = credentialToVerify
-      const transformedCredential = JsonTransformer.fromJSON(
-        credentialToVerify?.credential,
-        W3cJsonLdVerifiableCredential,
-      )
-      const signedCred = await request.agent.w3cCredentials.verifyCredential({
-        credential: transformedCredential,
-        ...credentialOptions,
-      })
-      return signedCred
+      const { credential, ...credentialOptions } = credentialToVerify ?? {}
+      if (!credential) {
+        throw new BadRequestError('Missing "credential" to verify.')
+      }
+
+      const isV2 = this.isVcdm2Credential(credential)
+      let signedCred: any
+
+      if (typeof credential === 'string') {
+        signedCred = isV2
+          ? await request.agent.w3cV2Credentials.verifyCredential({ credential, ...credentialOptions })
+          : ((await request.agent.w3cCredentials.verifyCredential({ credential, ...credentialOptions })) as unknown as {
+              isValid: boolean
+              [key: string]: unknown
+            })
+      } else if (isV2) {
+        signedCred = await verifyV2Credential(request.agent.context, { credential, ...credentialOptions })
+      } else {
+        const transformedCredential = JsonTransformer.fromJSON(credential, W3cJsonLdVerifiableCredential)
+        signedCred = (await request.agent.w3cCredentials.verifyCredential({
+          credential: transformedCredential,
+          ...credentialOptions,
+        })) as unknown as { isValid: boolean; [key: string]: unknown }
+      }
+
+      const status = await verifyBitstringStatus(request.agent.context, credential)
+      const verified = signedCred.isValid && status.verified
+
+      return {
+        ...signedCred,
+        isValid: verified,
+        verified,
+        revocation: status,
+      }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
+  }
+
+  private isVcdm2Credential(credential: unknown): boolean {
+    if (typeof credential === 'string') {
+      try {
+        const claims = (Jwt.fromSerializedJwt(credential).payload.additionalClaims ?? {}) as Record<string, unknown>
+        const vc = claims.vc as Record<string, unknown> | undefined
+        return this.hasV2Context(vc ?? claims)
+      } catch {
+        return false
+      }
+    }
+
+    return this.hasV2Context(credential)
+  }
+
+  private hasV2Context(credential: unknown): boolean {
+    if (!credential || typeof credential !== 'object') {
+      return false
+    }
+    const context = (credential as Record<string, unknown>)['@context']
+    const contexts = Array.isArray(context) ? context : [context]
+    return contexts.includes(CREDENTIALS_V2_CONTEXT_URL)
   }
 }
 
