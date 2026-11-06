@@ -228,6 +228,15 @@ export class OpenBaoKmsModule implements Module {
   }
 
   /**
+   * Drops cached public keys so the next read reflects OpenBao state. A key deleted out of band (an operator or another
+   * replica) would otherwise stay readable from the cache and look usable for a few minutes.
+   */
+  public clearPublicKeyCache(): void {
+    if (!this.enabled) return
+    this.service.clearPublicKeyCache()
+  }
+
+  /**
    * Deletes every OpenBao key in a tenant's scope. Called before the tenant record is removed so a deleted tenant does
    * not leave undecryptable keys behind. In rollback mode (`OPENBAO_WRITE_ENABLED=false`) keys are intentionally kept.
    */
@@ -261,6 +270,10 @@ export class OpenBaoApi {
 
   public async assertHealthy(): Promise<void> {
     await this.module.assertHealthy()
+  }
+
+  public clearPublicKeyCache(): void {
+    this.module.clearPublicKeyCache()
   }
 
   public purgeTenant(tenantId: string): Promise<number> {

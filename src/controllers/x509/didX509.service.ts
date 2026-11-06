@@ -1,7 +1,7 @@
 import type { DidX509ChainResponse, DidX509ImportOptionsDto, DidX509ImportResponse } from './x509.types'
 import type { AgentType } from '../../types'
 
-import { openBaoKeyId } from '@credebl/credo-ts-openbao'
+import { openBaoKeyId, OPENBAO_KEY_ID_PREFIX } from '@credebl/credo-ts-openbao'
 import { DidRepository, Kms, TypedArrayEncoder } from '@credo-ts/core'
 import { createPublicKey, type KeyObject } from 'node:crypto'
 
@@ -114,6 +114,9 @@ class DidX509Service {
   private async assertStoredKeyMatches(agent: AgentType, keyId: string, privateKey: KeyObject): Promise<void> {
     let storedPublicKey: Kms.KmsJwkPublicAsymmetric
     try {
+      // OpenBao caches public keys. Clear it first so a key deleted out of band is actually reported as unreadable
+      // instead of being served from the cache as a usable binding.
+      if (keyId.startsWith(OPENBAO_KEY_ID_PREFIX)) agent.modules.openBao.clearPublicKeyCache()
       storedPublicKey = (await agent.kms.getPublicKey({ keyId })) as Kms.KmsJwkPublicAsymmetric
     } catch {
       throw new BadRequestError(`The existing DID is bound to KMS key ${keyId}, which cannot be read`)

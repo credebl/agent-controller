@@ -10,6 +10,7 @@ import { didX509Service } from '../didX509.service'
 
 // The plug-in ships as ESM; only the key-id helper is used by the service.
 jest.mock('@credebl/credo-ts-openbao', () => ({
+  OPENBAO_KEY_ID_PREFIX: 'ob_',
   openBaoKeyId: (keyId: string) => (keyId.startsWith('ob_') ? keyId : `ob_${keyId}`),
 }))
 
@@ -94,6 +95,7 @@ describe('did:x509 import', () => {
       crv: 'Ed25519',
       x: 'stored-public-key',
     }),
+    kmsKeyId = 'askar-key',
   ) {
     const didDocument = {
       verificationMethod: [{ id: `${did}#key-1` }],
@@ -102,7 +104,7 @@ describe('did:x509 import', () => {
     const didRecord = {
       did,
       didDocument,
-      keys: [{ kmsKeyId: 'askar-key', didDocumentRelativeKeyId: '#key-1' }],
+      keys: [{ kmsKeyId, didDocumentRelativeKeyId: '#key-1' }],
       metadata: new Map<string, unknown>(),
     }
     const didRepository = {
@@ -113,6 +115,7 @@ describe('did:x509 import', () => {
       dids: { resolve: jest.fn().mockResolvedValue({ didDocument }), import: jest.fn() },
       context: { resolve: jest.fn().mockReturnValue(didRepository) },
       kms: { importKey: jest.fn(), getPublicKey },
+      modules: { openBao: { clearPublicKeyCache: jest.fn() } },
     }
     return { agent, didRecord, didRepository }
   }
@@ -171,6 +174,35 @@ describe('did:x509 import', () => {
 
     expect(didRepository.update).not.toHaveBeenCalled()
     expect(agent.kms.importKey).not.toHaveBeenCalled()
+  })
+
+  it('clears the OpenBao public key cache before checking an OpenBao-bound key', async () => {
+    const { chain, leafPrivateKey } = await createChain()
+    const did = 'did:x509:0:sha256:root::subject:CN:issuer.example.com'
+    const { agent } = existingDidFixture(did, undefined, 'ob_thumbprint')
+
+    await didX509Service.importDidX509(agent as never, {
+      did,
+      certificateChain: chain,
+      privateKey: leafPrivateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+    })
+
+    expect(agent.modules.openBao.clearPublicKeyCache).toHaveBeenCalledTimes(1)
+    expect(agent.kms.getPublicKey).toHaveBeenCalledWith({ keyId: 'ob_thumbprint' })
+  })
+
+  it('does not touch the OpenBao cache for a non-OpenBao bound key', async () => {
+    const { chain, leafPrivateKey } = await createChain()
+    const did = 'did:x509:0:sha256:root::subject:CN:issuer.example.com'
+    const { agent } = existingDidFixture(did)
+
+    await didX509Service.importDidX509(agent as never, {
+      did,
+      certificateChain: chain,
+      privateKey: leafPrivateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+    })
+
+    expect(agent.modules.openBao.clearPublicKeyCache).not.toHaveBeenCalled()
   })
 
   it('returns the namespaced OpenBao key id when OpenBao stores the key', async () => {
