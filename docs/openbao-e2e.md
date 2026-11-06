@@ -9,12 +9,12 @@ rotation prohibitions are in the plugin's
 
 ## Branches under test
 
-| Component        | Branch                                                             |
-| ---------------- | ------------------------------------------------------------------ |
-| agent-controller | `feat/openbao-kms`                                                 |
-| credo-ts-openbao | `feat/openbao-kms` (vendored as `@credebl/credo-ts-openbao@0.2.0`) |
-| platform         | `feat/did-x509-import`                                             |
-| studio           | `feat/create-x509-certificates`                                    |
+| Component        | Branch                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| agent-controller | `feat/openbao-kms`                                                                    |
+| credo-ts-openbao | `main` (`d55a67a`, merged from PR #10; vendored as `@credebl/credo-ts-openbao@0.2.0`) |
+| platform         | `feat/did-x509-import`                                                                |
+| studio           | `feat/create-x509-certificates`                                                       |
 
 Record the exact SHAs used for the run. Re-run this checklist after any rebase of those branches.
 

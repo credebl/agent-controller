@@ -8,6 +8,7 @@ until the package is published to npm.
 | Package       | `@credebl/credo-ts-openbao@0.2.0`                                  |
 | Source        | <https://github.com/sovio-id/credo-ts-openbao>                     |
 | Source commit | `118fa78c6d83f9d28210ca5b1ad7b6b670e1eca3`                         |
+| Merged as     | `d55a67a40ec0097be06b6ad3a120d8dd6c2aeff1` (PR #10)                |
 | Tarball       | `credebl-credo-ts-openbao-0.2.0.tgz`                               |
 | SHA-256       | `d5c3f4e1a207b7e2bc74b4cc28f157574033ce638ad72489e00e584d4f44f9bd` |
 | SHA-1         | `55d247b9ba708ae5b8b4f2f2b6345bc394e16afb`                         |
@@ -15,6 +16,11 @@ until the package is published to npm.
 Agent-controller CI runs `yarn install --frozen-lockfile --ignore-scripts`, so
 it cannot build a git dependency and cannot fetch an unpublished package. The
 tarball therefore contains the compiled `build/` output.
+
+PR #10 is merged, but the runtime source is identical between `118fa78` and the
+merge commit `d55a67a`, so the tarball does not need to be rebuilt. Only rebuild
+when a file under `src/`, `test/`, `docs/seal.md`, or the package metadata
+changes.
 
 ## Updating the plugin
 
