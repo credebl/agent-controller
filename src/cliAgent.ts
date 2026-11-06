@@ -81,6 +81,7 @@ import { isCustomDocumentLoaderEnabled } from './utils/config'
 import { CustomDocumentLoader } from './utils/customDocumentLoader'
 import { generateSecretKey } from './utils/helpers'
 import { NodeKmsModule } from './utils/kms/nodeKms'
+import { OpenBaoKmsModule, getOpenBaoConfigFromEnv, type OpenBaoKmsConfig } from './utils/kms/openBao'
 import { TsLogger } from './utils/logger'
 import {
   getMixedCredentialRequestToCredentialMapper,
@@ -134,6 +135,7 @@ export interface AriesRestConfig {
   schemaFileServerURL?: string
   apiKey: string
   updateJwtSecret?: boolean
+  openBaoConfig?: OpenBaoKmsConfig
 }
 
 export async function readRestConfig(path: string) {
@@ -171,6 +173,7 @@ const getModules = (
   walletScheme: AskarMultiWalletDatabaseScheme,
   storeOptions: AskarModuleConfigStoreOptions,
   endpoints: string[],
+  openBaoConfig?: OpenBaoKmsConfig,
 ) => {
   const legacyIndyCredentialFormat = new LegacyIndyDidCommCredentialFormatService()
   const legacyIndyProofFormat = new LegacyIndyDidCommProofFormatService()
@@ -189,6 +192,11 @@ const getModules = (
     }),
     // Registered after Askar so Askar stays the default KMS, this one only handles what Askar can't (e.g. RSA keys)
     nodeKms: new NodeKmsModule(),
+    // Optional and registered last, so it never becomes the default backend for implicit key creation.
+    openBao: new OpenBaoKmsModule({
+      config: openBaoConfig,
+      deploymentId: storeOptions.id,
+    }),
 
     indyVdr: new IndyVdrModule({
       indyVdr,
@@ -341,6 +349,7 @@ const getWithTenantModules = (
   walletScheme: AskarMultiWalletDatabaseScheme,
   walletConfig: AskarModuleConfigStoreOptions,
   endpoints: string[],
+  openBaoConfig?: OpenBaoKmsConfig,
 ) => {
   const modules = getModules(
     networkConfig,
@@ -355,6 +364,7 @@ const getWithTenantModules = (
     walletScheme,
     walletConfig,
     endpoints,
+    openBaoConfig,
   )
   return {
     tenants: new TenantsModule<typeof modules>({
@@ -404,6 +414,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     walletScheme,
     apiKey,
     updateJwtSecret,
+    openBaoConfig: configuredOpenBao,
     ...afjConfig
   } = restConfig
 
@@ -473,6 +484,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       },
     ]
   }
+  const openBaoConfig = configuredOpenBao ?? getOpenBaoConfigFromEnv()
   let modules
 
   if (afjConfig.tenancy) {
@@ -489,6 +501,7 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
       walletConfig,
       endpoints || [],
+      openBaoConfig,
     )
   } else {
     modules = getModules(
@@ -504,8 +517,12 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
       walletScheme || AskarMultiWalletDatabaseScheme.ProfilePerWallet,
       walletConfig,
       endpoints || [],
+      openBaoConfig,
     )
   }
+
+  // A sealed or unreachable OpenBao must fail startup, not the first signing request.
+  await modules.openBao.assertHealthy()
 
   const agent = new Agent({
     config: agentConfig,

@@ -34,6 +34,7 @@ import { BadRequestError, InternalServerError } from '../../errors'
 import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
+import { openBaoBackendForCreate, openBaoBackendForDidMethod, openBaoBackendForJwk } from '../../utils/kms/openBao'
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
 import { DidCreate, supportedKeyTypesDID } from '../types'
 import { didX509Service } from '../x509/didX509.service'
@@ -454,8 +455,11 @@ export class DidController extends Controller {
           type: getTypeFromCurve(didOptions.keyType ?? KeyAlgorithm.Ed25519),
         }).privateJwk
 
+        const openBao = openBaoBackendForDidMethod('key')
+        const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
         const { keyId, publicJwk } = await agent.kms.importKey({
           privateJwk,
+          ...(backend ? { backend } : {}),
         })
 
         this.agent.config.logger.info(`This is keyId:::::: ${keyId}`)
@@ -484,8 +488,12 @@ export class DidController extends Controller {
         })
       } else {
         this.agent.config.logger.info('Creating DID:key without seed')
+        const type = getTypeFromCurve(didOptions.keyType ?? KeyAlgorithm.Ed25519)
+        const openBao = openBaoBackendForDidMethod('key')
+        const backend = openBao && openBaoBackendForCreate(type) ? openBao : undefined
         const { keyId } = await agent.kms.createKey({
-          type: getTypeFromCurve(didOptions.keyType ?? KeyAlgorithm.Ed25519),
+          type,
+          ...(backend ? { backend } : {}),
         })
         this.agent.config.logger.info(`This is did:::::: ${did}`)
         const didCreateResult = await agent.dids.create<KeyDidCreateOptions>({
@@ -562,7 +570,12 @@ export class DidController extends Controller {
         privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed),
       })
 
-      key = await agent.kms.importKey({ privateJwk })
+      const openBao = openBaoBackendForDidMethod('web')
+      const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
+      key = await agent.kms.importKey({
+        privateJwk,
+        ...(backend ? { backend } : {}),
+      })
 
       publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
       didDocument = new DidDocumentBuilder(did)

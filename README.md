@@ -228,6 +228,7 @@ The agent can be configured in three ways:
 ## Guides
 
 - [did:x509: import a CA issued certificate chain as a DID](docs/did-x509.md)
+- [Optional OpenBao KMS: configuration, key routing, and rollback](docs/openbao.md)
 
 ## Development
 
