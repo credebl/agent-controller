@@ -231,8 +231,8 @@ export class OpenBaoKmsModule implements Module {
    * Deletes every OpenBao key in a tenant's scope. Called before the tenant record is removed so a deleted tenant does
    * not leave undecryptable keys behind. In rollback mode (`OPENBAO_WRITE_ENABLED=false`) keys are intentionally kept.
    */
-  public async purgeTenant(tenantId: string): Promise<number> {
-    if (!this.writeEnabled) return 0
+  public purgeTenant(tenantId: string): Promise<number> {
+    if (!this.writeEnabled) return Promise.resolve(0)
     const service = this.service
     return service.purgeScope(service.scopeForCorrelationId(`tenant-${tenantId}`))
   }
@@ -263,7 +263,7 @@ export class OpenBaoApi {
     await this.module.assertHealthy()
   }
 
-  public async purgeTenant(tenantId: string): Promise<number> {
+  public purgeTenant(tenantId: string): Promise<number> {
     return this.module.purgeTenant(tenantId)
   }
 }
