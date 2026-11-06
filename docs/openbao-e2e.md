@@ -18,6 +18,20 @@ rotation prohibitions are in the plugin's
 
 Record the exact SHAs used for the run. Re-run this checklist after any rebase of those branches.
 
+Run under test (agent-controller scope, 2026-11-07):
+
+| Component        | SHA                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| agent-controller | `d244ba03f84503a3feb6f7309afe6484e7a52774` (`feat/openbao-kms`)                           |
+| credo-ts-openbao | `d55a67a40ec0097be06b6ad3a120d8dd6c2aeff1` (`main`, vendored tarball `0.2.0`)             |
+| platform         | `638d266ac565d3037de191ea40a6f820f60b6110` (`feat/did-x509-import`, not yet e2e)          |
+| studio           | `affbd0d3d55c8ef60b48c7736d56eb37192a3ebb` (`feat/create-x509-certificates`, not yet e2e) |
+
+OpenBao `2.7.2`, PostgreSQL `16.15` storage in database `credebl_openbao`, schema `openbao`
+(`openbao_kv_store`), AppRole auth. Local e2e configuration is in
+`$TMPDIR/opencode/openbao-e2e/openbao-postgres.hcl`; production storage settings are in the plugin's
+[`docs/seal.md`](https://github.com/sovio-id/credo-ts-openbao/blob/main/docs/seal.md#12-postgresql-storage-notes).
+
 ## 1. Preconditions
 
 - [ ] OpenBao is reachable and unsealed; PostgreSQL storage points at the `credebl_openbao` database, schema `openbao`.
@@ -230,6 +244,50 @@ For the sign-off comment on the PR, attach or paste:
 - Tenant-delete proof (keys before/after).
 - Rollback proof (existing key still signs; new key id is not `ob_`).
 - Any OpenBao audit log lines for sign/verify/key creation.
+
+## 12. Agent-controller run record (2026-11-07)
+
+This run covers sections 1–10 for agent-controller only. Platform and studio have not been exercised yet, so
+the cross-component gate is still open. Evidence was collected against the PostgreSQL-backed OpenBao above;
+an earlier pass used PebbleDB and produced the same key behaviour.
+
+| Area                             | Result | Evidence                                                                                                                                       |
+| -------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Startup, healthy                 | pass   | agent starts with `OPENBAO_ENABLED=true`; `/agent/token` returns 200                                                                           |
+| Startup, unreachable             | pass   | `OpenBaoUnreachableError: OpenBao at http://127.0.0.1:8200 is unreachable: connect ECONNREFUSED`; process exits                                |
+| Startup, sealed                  | pass   | `OpenBaoSealedError: ... status 503: OpenBao is sealed`; process exits                                                                         |
+| Wrong AppRole secret             | pass   | first KMS call: `authentication failed with HTTP 400: invalid role or secret ID`                                                               |
+| Empty auth/transit mounts        | pass   | defaults `approle` and `transit` are used (unit tests plus startup)                                                                            |
+| X.509 create (P-256)             | pass   | `keyId ob_b6d7429b-...`, Transit key type `ecdsa-p256`; key absent from Askar                                                                  |
+| X.509 create (Ed25519)           | pass   | `keyId ob_ba3ab682-...`, Transit key type `ed25519`                                                                                            |
+| X.509 create (P-384/P-521)       | known  | pre-existing Credo error `Unsupported hash algorithm for ECDSA with P384/P521: SHA-256`; no OpenBao regression (import path passes)            |
+| did:x509 import, six families    | pass   | `p256`, `p384`, `p521`, `ed25519`, `rsa2048`, `rsa4096` all return `ob_` ids; Transit types `ecdsa-p256/p384/p521`, `ed25519`, `rsa-2048/4096` |
+| did:x509 chain                   | pass   | `GET /dids/x509/chain/{did}` returns `{ did, x509chain: [leaf, root] }`                                                                        |
+| did:x509 re-import               | pass   | same DID and same `keyId`; zero new Transit keys                                                                                               |
+| did:x509 deleted key             | pass   | re-import rejected: `bound to KMS key ob_..., which cannot be read`                                                                            |
+| did:x509 wrong key               | pass   | re-import rejected: `does not match the private key of the first (leaf) certificate`                                                           |
+| did:key opt-out / opt-in         | pass   | opt-out uses an Askar UUID; opt-in uses `ob_...` (`ed25519`, `p256`) and creates one Transit key per key                                       |
+| did:key re-import                | pass   | same DID/document, binding preserved, zero new Transit keys, signing still verifies                                                            |
+| did:web re-import                | pass   | same seed reuses one Transit key, same DID/document, zero new Transit keys, signing still verifies                                             |
+| X25519 / secp256k1               | pass   | both keep Askar UUID key ids even with `OPENBAO_DID_KEY_ENABLED=true`; zero new Transit keys                                                   |
+| Tenant isolation                 | pass   | tenant B cannot sign with tenant A's key (`not found in backends 'askar', 'node', 'openbao'`); same material in two tenants → two scoped keys  |
+| Tenant delete / purge            | pass   | `DELETE /multi-tenancy/{id}` → 204, tenant 404, only that tenant's `ac_<scope>_*` keys removed, other tenants unchanged                        |
+| Tenant delete failure injection  | pass   | OpenBao stopped → delete returns 500 with the unreachable error and the tenant remains; delete succeeds after recovery                         |
+| Rollback (`WRITE_ENABLED=false`) | pass   | existing `ob_` DID signs/verifies; new did:key and X.509 keys use Askar UUIDs; zero new Transit keys; tenant delete keeps keys                 |
+| Re-enable writes                 | pass   | existing `ob_` DID still signs; new X.509 key returns `ob_...` and adds exactly one Transit key                                                |
+| Backend unregistered             | pass   | `OPENBAO_ENABLED=false` starts; signing an `ob_` DID fails clearly with `not found in backends 'askar', 'node'` and the agent stays up         |
+| Askar baseline                   | pass   | did:key create/sign/verify and X.509 create use non-`ob_` ids; zero new Transit keys                                                           |
+| Read/sign-only role              | pass   | existing key signs; key create/config/delete/rotate/export/backup return 403; with `WRITE_ENABLED=true` the app surfaces the 403               |
+| Restart / seal recovery          | pass   | restart with PostgreSQL storage: 11 keys before and after; signing verifies; stop → clear error, unseal → signing works                        |
+| PostgreSQL restore               | pass   | cold `pg_dump -n openbao` restored into a clean database; a second OpenBao listed the same 11 keys and signed with a restored Transit key      |
+| KV v2 not required               | pass   | all flows run without `OPENBAO_KV_MOUNT`                                                                                                       |
+
+Still open for the cross-component gate:
+
+- OID4VC credential issue/verify, status list, Indy DID + DIDComm, and platform/studio flows (section 5.5 and
+  the platform/studio parts of section 11).
+- Dedicated-agent scope and restart persistence were exercised locally (`default` scope,
+  `ac_21418f9aa040e5a6_*`) but are not yet repeated through platform.
 
 ## Exit criteria
 
