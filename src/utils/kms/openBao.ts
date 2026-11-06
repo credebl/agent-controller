@@ -7,7 +7,8 @@ import {
   StaticTokenAuth,
   type AuthProvider,
 } from '@credebl/credo-ts-openbao'
-import { inject, injectable, Kms as CredoKms } from '@credo-ts/core'
+import { inject, injectable, Kms as CredoKms, TypedArrayEncoder } from '@credo-ts/core'
+import { createPrivateKey, createPublicKey, type JsonWebKey } from 'node:crypto'
 
 /**
  * Optional OpenBao Transit KMS. It is registered after Askar and the Node KMS so neither of those changes behaviour when
@@ -127,6 +128,16 @@ export function openBaoBackendForCreate(type: Kms.KmsCreateKeyType): string | un
 export function openBaoBackendForJwk(jwk: { kty: string; crv?: string }): string | undefined {
   if (!isOpenBaoWriteEnabled()) return undefined
   return isTransitJwkSupported(jwk) ? OPENBAO_KMS_BACKEND : undefined
+}
+
+/**
+ * Deterministic key id for a JWK imported into OpenBao: the RFC 7638 thumbprint of its public key. Passing it as the
+ * JWK `kid` makes importing the same key twice reuse the existing Transit key instead of leaving an orphan behind.
+ */
+export function openBaoKeyIdForPrivateJwk(privateJwk: Kms.KmsJwkPrivate): string {
+  const privateKey = createPrivateKey({ key: privateJwk as unknown as JsonWebKey, format: 'jwk' })
+  const publicJwk = createPublicKey(privateKey).export({ format: 'jwk' }) as Kms.KmsJwkPublicAsymmetric
+  return TypedArrayEncoder.toBase64Url(CredoKms.PublicJwk.fromPublicJwk(publicJwk).getJwkThumbprint())
 }
 
 /** The OpenBao backend to use for a DID method, honouring the opt-in flags for did:key and did:web. */

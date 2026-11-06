@@ -2,6 +2,7 @@ import type { DidResolutionResultProps } from '../types'
 import type { PolygonDidCreateOptions } from '@ayanworks/credo-polygon-w3c-module/build/dids/PolygonDidRegistrar.mjs'
 import type { DidDocument, KeyDidCreateOptions, PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
+import { openBaoKeyId } from '@credebl/credo-ts-openbao'
 import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
 import {
   TypedArrayEncoder,
@@ -34,7 +35,12 @@ import { BadRequestError, InternalServerError } from '../../errors'
 import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
-import { openBaoBackendForCreate, openBaoBackendForDidMethod, openBaoBackendForJwk } from '../../utils/kms/openBao'
+import {
+  openBaoBackendForCreate,
+  openBaoBackendForDidMethod,
+  openBaoBackendForJwk,
+  openBaoKeyIdForPrivateJwk,
+} from '../../utils/kms/openBao'
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
 import { DidCreate, supportedKeyTypesDID } from '../types'
 import { didX509Service } from '../x509/didX509.service'
@@ -444,6 +450,37 @@ export class DidController extends Controller {
     }
   }
 
+  /**
+   * Imports a private JWK into the selected backend. OpenBao imports use the public key thumbprint as the key id so
+   * importing the same key twice (for example re-creating a did:web from the same seed) reuses the existing Transit
+   * key instead of leaving an orphaned duplicate behind.
+   */
+  private async importKey(
+    agent: AgentType,
+    privateJwk: Kms.KmsJwkPrivate,
+    backend?: string,
+  ): Promise<{ keyId: string; publicJwk: Kms.KmsJwkPublicAsymmetric }> {
+    if (!backend) {
+      const imported = await agent.kms.importKey({ privateJwk })
+      return { keyId: imported.keyId, publicJwk: imported.publicJwk as Kms.KmsJwkPublicAsymmetric }
+    }
+
+    const thumbprint = openBaoKeyIdForPrivateJwk(privateJwk)
+    try {
+      const imported = await agent.kms.importKey({
+        privateJwk: { ...privateJwk, kid: thumbprint },
+        backend,
+      })
+      return { keyId: imported.keyId, publicJwk: imported.publicJwk as Kms.KmsJwkPublicAsymmetric }
+    } catch (error) {
+      if (!(error instanceof Kms.KeyManagementKeyExistsError)) throw error
+      // The key was imported before; the plugin namespaces the id, so bind the id that was actually stored.
+      const keyId = openBaoKeyId(thumbprint)
+      const publicJwk = (await agent.kms.getPublicKey({ keyId })) as Kms.KmsJwkPublicAsymmetric
+      return { keyId, publicJwk }
+    }
+  }
+
   private async createKeyDidFromSeed(
     agent: AgentType,
     didOptions: DidCreate,
@@ -457,10 +494,7 @@ export class DidController extends Controller {
 
     const openBao = openBaoBackendForDidMethod('key')
     const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
-    const { keyId, publicJwk } = await agent.kms.importKey({
-      privateJwk,
-      ...(backend ? { backend } : {}),
-    })
+    const { keyId, publicJwk } = await this.importKey(agent, privateJwk, backend)
 
     this.agent.config.logger.info(`This is keyId:::::: ${keyId}`)
     const publicKey = Kms.PublicJwk.fromPublicJwk(publicJwk)
@@ -516,18 +550,25 @@ export class DidController extends Controller {
     agent: AgentType,
     did: string,
   ): Promise<{ did: string; didDocument: DidDocument | undefined }> {
-    const createdDid = await agent.dids.getCreatedDids({
-      method: DidMethod.Key,
-      did,
-    })
-    const didDocument = createdDid[0]?.didDocument
+    // `DidsApi.import` replaces the record's key bindings with the ones passed in, so re-importing an existing DID
+    // without its keys would silently unbind it from the KMS key it signs with. Return the stored record instead.
+    const createdDids = await agent.dids.getCreatedDids({ did })
+    const existingDid = createdDids[0]
+    if (existingDid) {
+      // did:key records are stored without a document (it is derived from the DID), so resolve it rather than
+      // overwriting the record.
+      const didDocument = existingDid.didDocument ?? (await agent.dids.resolve(did)).didDocument
+      if (!didDocument) {
+        throw new BadRequestError(`Unable to resolve the existing DID ${did}`)
+      }
+      return { did: existingDid.did, didDocument }
+    }
 
-    await agent.dids.import({
-      did,
-      overwrite: true,
-      didDocument,
-    })
-
+    const { didDocument } = await agent.dids.resolve(did)
+    if (!didDocument) {
+      throw new BadRequestError(`Unable to resolve DID ${did}`)
+    }
+    await agent.dids.import({ did, didDocument })
     return { did, didDocument }
   }
 
@@ -606,12 +647,11 @@ export class DidController extends Controller {
 
     const openBao = openBaoBackendForDidMethod('web')
     const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
-    const key = await agent.kms.importKey({
-      privateJwk,
-      ...(backend ? { backend } : {}),
-    })
+    const key = await this.importKey(agent, privateJwk, backend)
 
-    const publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
+    const publicJwk = Kms.PublicJwk.fromPublicJwk(
+      key.publicJwk as Kms.KmsJwkPublicOkp,
+    ) as Kms.PublicJwk<Kms.Ed25519PublicJwk>
     const didDocument = new DidDocumentBuilder(did)
       .addContext(
         verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020

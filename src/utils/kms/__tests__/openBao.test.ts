@@ -2,7 +2,17 @@
 jest.mock('@credo-ts/core', () => ({
   inject: () => () => undefined,
   injectable: () => (target: unknown) => target,
-  Kms: { KeyManagementModuleConfig: class {} },
+  Kms: {
+    KeyManagementModuleConfig: class {},
+    PublicJwk: {
+      fromPublicJwk: (publicJwk: unknown) => ({
+        getJwkThumbprint: () => new Uint8Array(Buffer.from(JSON.stringify(publicJwk))),
+      }),
+    },
+  },
+  TypedArrayEncoder: {
+    toBase64Url: (bytes: Uint8Array) => Buffer.from(bytes).toString('base64url'),
+  },
 }))
 
 jest.mock('@credebl/credo-ts-openbao', () => ({
@@ -13,6 +23,8 @@ jest.mock('@credebl/credo-ts-openbao', () => ({
   openBaoKeyId: (keyId: string) => (keyId.startsWith('ob_') ? keyId : `ob_${keyId}`),
 }))
 
+import { generateKeyPairSync } from 'node:crypto'
+
 import {
   OPENBAO_KMS_BACKEND,
   getOpenBaoConfigFromEnv,
@@ -21,6 +33,7 @@ import {
   openBaoBackendForCreate,
   openBaoBackendForDidMethod,
   openBaoBackendForJwk,
+  openBaoKeyIdForPrivateJwk,
 } from '../openBao'
 
 const OPENBAO_ENV = [
@@ -172,5 +185,15 @@ describe('OpenBao backend selection', () => {
 
     expect(openBaoBackendForDidMethod('key')).toBe(OPENBAO_KMS_BACKEND)
     expect(openBaoBackendForDidMethod('web')).toBe(OPENBAO_KMS_BACKEND)
+  })
+})
+
+describe('OpenBao import key ids', () => {
+  it('derives a stable id from the key material so re-imports reuse one Transit key', () => {
+    const first = generateKeyPairSync('ed25519').privateKey.export({ format: 'jwk' })
+    const second = generateKeyPairSync('ed25519').privateKey.export({ format: 'jwk' })
+
+    expect(openBaoKeyIdForPrivateJwk(first)).toBe(openBaoKeyIdForPrivateJwk(first))
+    expect(openBaoKeyIdForPrivateJwk(first)).not.toBe(openBaoKeyIdForPrivateJwk(second))
   })
 })
