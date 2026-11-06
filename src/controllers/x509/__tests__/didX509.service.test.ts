@@ -2,6 +2,7 @@ import 'reflect-metadata'
 
 import type { KeyObject } from 'node:crypto'
 
+import { Kms } from '@credo-ts/core'
 import { X509CertificateGenerator } from '@peculiar/x509'
 import { generateKeyPairSync, webcrypto } from 'node:crypto'
 
@@ -23,7 +24,7 @@ jest.mock('@credo-ts/core', () => ({
     KeyManagementModuleConfig: class {},
     KeyManagementKeyExistsError: class KeyManagementKeyExistsError extends Error {},
     PublicJwk: {
-      fromPublicJwk: () => ({ getJwkThumbprint: () => new Uint8Array([1, 2, 3]) }),
+      fromPublicJwk: jest.fn(() => ({ getJwkThumbprint: () => new Uint8Array([1, 2, 3]) })),
     },
   },
   TypedArrayEncoder: {
@@ -79,15 +80,21 @@ describe('did:x509 import', () => {
     process.env = { ...original }
     delete process.env.OPENBAO_ENABLED
     delete process.env.OPENBAO_WRITE_ENABLED
+    jest.clearAllMocks()
   })
 
   afterAll(() => {
     process.env = original
   })
 
-  it('reuses the key binding of an existing DID instead of rebinding it', async () => {
-    const { chain, leafPrivateKey } = await createChain()
-    const did = 'did:x509:0:sha256:root::subject:CN:issuer.example.com'
+  function existingDidFixture(
+    did: string,
+    getPublicKey = jest.fn().mockResolvedValue({
+      kty: 'OKP',
+      crv: 'Ed25519',
+      x: 'stored-public-key',
+    }),
+  ) {
     const didDocument = {
       verificationMethod: [{ id: `${did}#key-1` }],
       toJSON: () => ({ id: did }),
@@ -105,8 +112,15 @@ describe('did:x509 import', () => {
     const agent = {
       dids: { resolve: jest.fn().mockResolvedValue({ didDocument }), import: jest.fn() },
       context: { resolve: jest.fn().mockReturnValue(didRepository) },
-      kms: { importKey: jest.fn() },
+      kms: { importKey: jest.fn(), getPublicKey },
     }
+    return { agent, didRecord, didRepository }
+  }
+
+  it('reuses the key binding of an existing DID instead of rebinding it', async () => {
+    const { chain, leafPrivateKey } = await createChain()
+    const did = 'did:x509:0:sha256:root::subject:CN:issuer.example.com'
+    const { agent, didRepository } = existingDidFixture(did)
 
     const result = await didX509Service.importDidX509(agent as never, {
       did,
@@ -119,6 +133,44 @@ describe('did:x509 import', () => {
     expect(didRepository.update).toHaveBeenCalledTimes(1)
     expect(agent.kms.importKey).not.toHaveBeenCalled()
     expect(agent.dids.import).not.toHaveBeenCalled()
+  })
+
+  it('rejects an existing DID whose bound key does not match the certificate', async () => {
+    const { chain, leafPrivateKey } = await createChain()
+    const did = 'did:x509:0:sha256:root::subject:CN:issuer.example.com'
+    const { agent, didRecord, didRepository } = existingDidFixture(did)
+    ;(Kms.PublicJwk.fromPublicJwk as jest.Mock)
+      .mockReturnValueOnce({ getJwkThumbprint: () => new Uint8Array([1, 2, 3]) })
+      .mockReturnValueOnce({ getJwkThumbprint: () => new Uint8Array([9, 9, 9]) })
+
+    await expect(
+      didX509Service.importDidX509(agent as never, {
+        did,
+        certificateChain: chain,
+        privateKey: leafPrivateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+      }),
+    ).rejects.toThrow('does not match the private key of the first (leaf) certificate')
+
+    expect(didRecord.metadata.size).toBe(0)
+    expect(didRepository.update).not.toHaveBeenCalled()
+    expect(agent.kms.importKey).not.toHaveBeenCalled()
+  })
+
+  it('rejects an existing DID whose bound key cannot be read', async () => {
+    const { chain, leafPrivateKey } = await createChain()
+    const did = 'did:x509:0:sha256:root::subject:CN:issuer.example.com'
+    const { agent, didRepository } = existingDidFixture(did, jest.fn().mockRejectedValue(new Error('key not found')))
+
+    await expect(
+      didX509Service.importDidX509(agent as never, {
+        did,
+        certificateChain: chain,
+        privateKey: leafPrivateKey.export({ format: 'pem', type: 'pkcs8' }).toString(),
+      }),
+    ).rejects.toThrow('which cannot be read')
+
+    expect(didRepository.update).not.toHaveBeenCalled()
+    expect(agent.kms.importKey).not.toHaveBeenCalled()
   })
 
   it('returns the namespaced OpenBao key id when OpenBao stores the key', async () => {

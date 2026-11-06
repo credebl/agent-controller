@@ -3,7 +3,7 @@ import type { AgentType } from '../../types'
 
 import { openBaoKeyId } from '@credebl/credo-ts-openbao'
 import { DidRepository, Kms, TypedArrayEncoder } from '@credo-ts/core'
-import { createPublicKey } from 'node:crypto'
+import { createPublicKey, type KeyObject } from 'node:crypto'
 
 import { BadRequestError } from '../../errors'
 import { NODE_KMS_BACKEND } from '../../utils/kms/nodeKms'
@@ -61,6 +61,8 @@ class DidX509Service {
     // key lives in a different backend (for example an Askar-backed DID after OpenBao is enabled).
     if (didRecord?.keys?.length) {
       const key = didRecord.keys[0]
+      // The stored binding is reused, so make sure it still holds the certificate's key before returning it.
+      await this.assertStoredKeyMatches(agent, key.kmsKeyId, privateKey)
       didRecord.metadata.set(X509_CHAIN_METADATA_KEY, { chain: x509chain })
       await didRepository.update(agent.context, didRecord)
 
@@ -103,6 +105,30 @@ class DidX509Service {
     const x509chain = await getStoredX509Chain(did, agent.context)
     if (!x509chain) throw new BadRequestError(`No certificate chain stored for ${did}`)
     return { did, x509chain: x509chain.split(',') }
+  }
+
+  /**
+   * Confirms that an already bound key still corresponds to the imported certificate. The binding is reused, so a
+   * stale or foreign key id must be rejected instead of being returned to the caller as a usable signing key.
+   */
+  private async assertStoredKeyMatches(agent: AgentType, keyId: string, privateKey: KeyObject): Promise<void> {
+    let storedPublicKey: Kms.KmsJwkPublicAsymmetric
+    try {
+      storedPublicKey = (await agent.kms.getPublicKey({ keyId })) as Kms.KmsJwkPublicAsymmetric
+    } catch {
+      throw new BadRequestError(`The existing DID is bound to KMS key ${keyId}, which cannot be read`)
+    }
+
+    const expectedThumbprint = Kms.PublicJwk.fromPublicJwk(
+      createPublicKey(privateKey).export({ format: 'jwk' }) as Kms.KmsJwkPublicAsymmetric,
+    ).getJwkThumbprint()
+    const storedThumbprint = Kms.PublicJwk.fromPublicJwk(storedPublicKey).getJwkThumbprint()
+
+    if (!Buffer.from(expectedThumbprint).equals(Buffer.from(storedThumbprint))) {
+      throw new BadRequestError(
+        `The existing DID is bound to KMS key ${keyId}, which does not match the private key of the first (leaf) certificate in certificateChain`,
+      )
+    }
   }
 
   /**
