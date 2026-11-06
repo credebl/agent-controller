@@ -18,14 +18,14 @@ rotation prohibitions are in the plugin's
 
 Record the exact SHAs used for the run. Re-run this checklist after any rebase of those branches.
 
-Run under test (agent-controller scope, 2026-11-07):
+Run under test (2026-11-07):
 
-| Component        | SHA                                                                                       |
-| ---------------- | ----------------------------------------------------------------------------------------- |
-| agent-controller | `d244ba03f84503a3feb6f7309afe6484e7a52774` (`feat/openbao-kms`)                           |
-| credo-ts-openbao | `d55a67a40ec0097be06b6ad3a120d8dd6c2aeff1` (`main`, vendored tarball `0.2.0`)             |
-| platform         | `638d266ac565d3037de191ea40a6f820f60b6110` (`feat/did-x509-import`, not yet e2e)          |
-| studio           | `affbd0d3d55c8ef60b48c7736d56eb37192a3ebb` (`feat/create-x509-certificates`, not yet e2e) |
+| Component        | SHA                                                                             |
+| ---------------- | ------------------------------------------------------------------------------- |
+| agent-controller | `f740356990bc580dd3f5a776f2734274502c284a` (`feat/openbao-kms`)                 |
+| credo-ts-openbao | `d55a67a40ec0097be06b6ad3a120d8dd6c2aeff1` (`main`, vendored tarball `0.2.0`)   |
+| platform         | `90c167cf09bbbbb3f5296daa9e2e5eb38245e988` (`feat/did-x509-import`)             |
+| studio           | `6abb5534a397de7d9c209458ab6aef01e2cae380` (`feat/create-x509-certificates`)    |
 
 OpenBao `2.7.2`, PostgreSQL `16.15` storage in database `credebl_openbao`, schema `openbao`
 (`openbao_kv_store`), AppRole auth. Local e2e configuration is in
@@ -288,6 +288,51 @@ Still open for the cross-component gate:
   the platform/studio parts of section 11).
 - Dedicated-agent scope and restart persistence were exercised locally (`default` scope,
   `ac_21418f9aa040e5a6_*`) but are not yet repeated through platform.
+
+## 13. Platform and studio run record (2026-11-07)
+
+The platform `x509` and `agent-service` microservices were run directly over NATS against a seeded platform database
+(user `11111111-1111-4111-8111-111111111111`, organisation `22222222-2222-4222-8222-222222222222`, dedicated
+org-agent `33333333-3333-4333-8333-333333333333`, agent endpoint `http://127.0.0.1:4001`) and the live
+agent-controller/OpenBao stack. Requests use the platform's NATS envelope (`{ pattern, data, id }`); a bare payload is
+treated as an event and never replied to.
+
+This exercises the platform service layer and the studio build/contract. A full platform HTTP/UI flow (Keycloak,
+api-gateway, browser) was not available in this environment; see the blockers below.
+
+| Area                                   | Result | Evidence                                                                                                                                        |
+| -------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `import-did-x509` over NATS            | pass   | `did` and `org_dids.id a58956b9-7802-4dd7-ad61-ffba9b2df8be`; `keyId ob_rnMYkvg9LNltR2Gfkx2nA3hqQTZ_8xUxjG680kID4UQ`                            |
+| `import-did-x509` re-import            | pass   | same `org_dids.id`, same DID, same `keyId`; zero duplicate rows and zero new Transit keys                                                       |
+| `get-did-x509-chain` over NATS         | pass   | `{ did, x509chain: [leaf, root] }`                                                                                                              |
+| `create-x509-certificate` P-256        | pass   | record `e88bb3f0-9a41-458e-b5ec-d87d37b3cca6`, `keyId ob_db421c17-...`, status `Active`, one matching Transit key, self-signed cert verifies   |
+| `create-x509-certificate` Ed25519      | pass   | record `a99e0260-63bc-4637-9e5f-a1dd00e310a0`, `keyId ob_170b3e90-...`, status `Active`, one matching Transit key, self-signed cert verifies   |
+| `get-all-certificates` / get one       | pass   | returns the created and imported records with the same `ob_` key ids                                                                            |
+| `import-x509-certificate` (base64 DER) | pass   | record `2e2e6855-...`, `keyId ob_22d76889-...`, status `Pending activation` because its validity overlaps an active record                     |
+| `import-x509-certificate` (PEM key)    | pass   | no `keyType` supplied; platform derived `Ed25519` from the certificate, `keyId ob_a3062ae9-...`, `isImported: true`                             |
+| Transit key count                      | pass   | tenant scope `ac_6ba806f9a2bcab26_*` grew only by the key ids returned by the create/import calls                                               |
+| Studio build and lint                  | pass   | `next build`, `next lint`; `/x509-certificate` route built                                                                                      |
+| Studio-to-platform contract            | pass   | routes `/x509/:orgId`, `/x509/:orgId/import`, `/x509/:orgId/activate/:id` match the platform controller; key-type and key-format fixes below     |
+
+### Contract fixes found by this run
+
+- Platform X.509 create rejects a `subject` when no `subjectPublicKey` is supplied (Credo self-signed rule). The
+  working create request omits `subject`.
+- Platform validates `authorityKey.keyType` against `x5cKeyType` (`P-256`, `Ed25519`). Studio sent `p256`/`ed25519`
+  and now sends the enum values.
+- Platform import now derives `keyType` from the decoded certificate and forwards that to the agent, so callers may
+  omit it or use a different spelling.
+- agent-controller certificate import now accepts a PEM private key in addition to base64 DER PKCS#8.
+- Platform import records now persist `isImported: true`; previously the column kept its `false` default.
+
+### Blockers and remaining gate
+
+- Full platform/studio HTTP/UI e2e is blocked: no Keycloak realm/client/admin setup or platform `.env` in the repos;
+  the compose files use prebuilt `ghcr.io/credebl/*:latest` images, and building the ~10 services from source is not
+  feasible with the available disk (~4.5 GiB).
+- Still to repeat through platform once that environment exists: OID4VC credential issue/verify, status list,
+  Indy DID + DIDComm, and the dedicated-agent flow.
+- The SBOM & CBOM workflow remains disabled for this work; re-enable it with approval.
 
 ## Exit criteria
 
