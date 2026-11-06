@@ -1,13 +1,19 @@
 import type { OpenId4VcIssuanceSessionsCreateOffer } from '../types/issuer.types'
 import type { Request as Req } from 'express'
 
-import { CREDENTIALS_CONTEXT_V1_URL, CREDENTIALS_CONTEXT_V2_URL } from '@credo-ts/core'
 import { OpenId4VcIssuanceSessionRepository, type OpenId4VcIssuanceSessionState } from '@credo-ts/openid4vc'
 
 import { CredentialFormat, SignerMethod } from '../../../enums/enum'
 import { BadRequestError, NotFoundError } from '../../../errors/errors'
 import { STATUS_LISTS_PATH } from '../../../utils/constant'
-import { checkAndCreateStatusList, getServerUrl, revokeCredentialInStatusList } from '../../../utils/statusListService'
+import {
+  checkAndCreateBitstringStatusList,
+  checkAndCreateStatusList,
+  getServerUrl,
+  revokeBitstringInStatusList,
+  revokeCredentialInStatusList,
+} from '../../../utils/statusListService'
+import { transformPayloadForVersion } from '../../../utils/vcContext'
 
 class IssuanceSessionsService {
   public async createCredentialOffer(options: OpenId4VcIssuanceSessionsCreateOffer, agentReq: Req) {
@@ -33,13 +39,15 @@ class IssuanceSessionsService {
         const statusBlock = await this.processStatusList(cred, options, agentReq, offerStatusInfo)
 
         const currentVct = cred.payload && 'vct' in cred.payload ? cred.payload.vct : undefined
-        const transformedPayload = this.transformPayloadForVersion(
+        const statusProperty = isJsonLdFormat ? { credentialStatus: statusBlock } : { status: statusBlock }
+        const transformedPayload = transformPayloadForVersion(
           {
             ...cred.payload,
             vct: currentVct ?? (typeof supported.vct === 'string' ? supported.vct : undefined),
-            ...(statusBlock ? { status: statusBlock } : {}),
+            ...(statusBlock ? statusProperty : {}),
           },
           effectiveVersion,
+          isJsonLdFormat && Boolean(statusBlock),
         )
 
         return {
@@ -127,82 +135,6 @@ class IssuanceSessionsService {
     }
   }
 
-  private transformPayloadForVersion(payload: any, version: 'v1.1' | 'v2.0' | undefined) {
-    if (version !== 'v2.0') {
-      return payload
-    }
-
-    const transformed = { ...payload }
-
-    // Rule: issuanceDate -> validFrom
-    if (transformed.issuanceDate && !transformed.validFrom) {
-      transformed.validFrom = transformed.issuanceDate
-    }
-
-    // Rule: expirationDate -> validUntil
-    if (transformed.expirationDate && !transformed.validUntil) {
-      transformed.validUntil = transformed.expirationDate
-      delete transformed.expirationDate
-    }
-
-    // Normalize dates to ISO format
-    if (transformed.validFrom) transformed.validFrom = this.formatDate(transformed.validFrom)
-    if (transformed.validUntil) transformed.validUntil = this.formatDate(transformed.validUntil)
-
-    // Rule: issuer string -> object (standardizing for v2.0 if it is a DID)
-    if (typeof transformed.issuer === 'string' && transformed.issuer.startsWith('did:')) {
-      transformed.issuer = { id: transformed.issuer }
-    }
-
-    this.updateContextForVersion(transformed, version)
-
-    return transformed
-  }
-
-  private formatDate(date: any): any {
-    if (!date) return undefined
-    if (date instanceof Date) return date.toISOString()
-    if (typeof date === 'string') {
-      try {
-        const d = new Date(date)
-        if (Number.isNaN(d.getTime())) return date
-        return d.toISOString()
-      } catch {
-        return date
-      }
-    }
-    return date
-  }
-
-  private updateContextForVersion(transformed: any, version: 'v1.1' | 'v2.0' | undefined) {
-    const v1Context = CREDENTIALS_CONTEXT_V1_URL
-    const v2Context = CREDENTIALS_CONTEXT_V2_URL
-
-    if (version === 'v2.0') {
-      let currentCtx: any[] = []
-      if (Array.isArray(transformed['@context'])) {
-        currentCtx = transformed['@context']
-      } else if (typeof transformed['@context'] === 'string') {
-        currentCtx = [transformed['@context']]
-      }
-
-      const ctxSet = new Set(currentCtx)
-      ctxSet.delete(v1Context)
-      ctxSet.delete(v2Context)
-      // W3C V2.0 requires the V2 context to be the very first element.
-      transformed['@context'] = [v2Context, v1Context, ...Array.from(ctxSet)]
-    } else if (!transformed['@context']) {
-      // W3C V1.1 / Default behavior
-      transformed['@context'] = [v1Context]
-    } else if (Array.isArray(transformed['@context'])) {
-      const ctxSet = new Set(transformed['@context'])
-      ctxSet.delete(v1Context)
-      transformed['@context'] = [v1Context, ...Array.from(ctxSet)]
-    } else if (typeof transformed['@context'] === 'string') {
-      transformed['@context'] = [v1Context, transformed['@context']]
-    }
-  }
-
   private async processStatusList(
     cred: any,
     options: OpenId4VcIssuanceSessionsCreateOffer,
@@ -216,10 +148,13 @@ class IssuanceSessionsService {
     const effectiveIssuerDid = cred.signerOptions?.method === SignerMethod.Did ? cred.signerOptions.did : undefined
     const effectiveStatusList = cred.statusListDetails || options.statusListDetails
 
-    if (![CredentialFormat.VcSdJwt, CredentialFormat.DcSdJwt].includes(cred.format as unknown as CredentialFormat)) {
-      throw new BadRequestError(
-        `Revocation is only supported for SD-JWT formats (vc+sd-jwt, dc+sd-jwt), got '${cred.format}'`,
-      )
+    const isSdJwtFormat = [CredentialFormat.VcSdJwt, CredentialFormat.DcSdJwt].includes(
+      cred.format as unknown as CredentialFormat,
+    )
+    const isJsonLdFormat = cred.format === CredentialFormat.JwtVcJsonLd || cred.format === CredentialFormat.LdpVc
+
+    if (!isSdJwtFormat && !isJsonLdFormat) {
+      throw new BadRequestError(`Revocation is only supported for SD-JWT and W3C JSON-LD formats, got '${cred.format}'`)
     }
 
     if (!process.env.STATUS_LIST_SERVER_URL) {
@@ -234,21 +169,41 @@ class IssuanceSessionsService {
       throw new BadRequestError('Status list details must be provided for revocable credentials')
     }
 
-    await checkAndCreateStatusList(
-      agentReq.agent as any,
-      effectiveStatusList.listId,
-      effectiveIssuerDid,
-      effectiveStatusList.listSize,
-    )
-
     const listUri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${effectiveStatusList.listId}`
+
+    if (isJsonLdFormat) {
+      await checkAndCreateBitstringStatusList(
+        agentReq.agent as any,
+        effectiveStatusList.listId,
+        effectiveIssuerDid,
+        effectiveStatusList.listSize,
+      )
+    } else {
+      await checkAndCreateStatusList(
+        agentReq.agent as any,
+        effectiveStatusList.listId,
+        effectiveIssuerDid,
+        effectiveStatusList.listSize,
+      )
+    }
 
     offerStatusInfo.push({
       credentialSupportedId: cred.credentialSupportedId,
       listId: effectiveStatusList.listId,
       index: effectiveStatusList.index,
       issuerDid: effectiveIssuerDid,
+      ...(isJsonLdFormat ? { mechanism: 'bitstring' } : {}),
     })
+
+    if (isJsonLdFormat) {
+      return {
+        id: `${listUri}#${effectiveStatusList.index}`,
+        type: 'BitstringStatusListEntry',
+        statusPurpose: 'revocation',
+        statusListIndex: String(effectiveStatusList.index),
+        statusListCredential: listUri,
+      }
+    }
 
     return {
       status_list: {
@@ -346,7 +301,11 @@ class IssuanceSessionsService {
     }
 
     for (const info of statusInfo) {
-      await revokeCredentialInStatusList(agentReq.agent as any, info.listId, info.index, info.issuerDid)
+      if (info.mechanism === 'bitstring') {
+        await revokeBitstringInStatusList(agentReq.agent as any, info.listId, info.index, info.issuerDid)
+      } else {
+        await revokeCredentialInStatusList(agentReq.agent as any, info.listId, info.index, info.issuerDid)
+      }
     }
 
     return { message: 'Credentials in session revoked successfully' }

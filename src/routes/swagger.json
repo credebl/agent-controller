@@ -3973,55 +3973,6 @@
 				],
 				"type": "object"
 			},
-			"Partial_W3cCredentialValidations_": {
-				"properties": {},
-				"type": "object",
-				"description": "Make all properties in T optional"
-			},
-			"Error": {
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"message": {
-						"type": "string"
-					},
-					"stack": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"name",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"W3cVerifyResult_W3cCredentialValidations_": {
-				"properties": {
-					"isValid": {
-						"type": "boolean",
-						"description": "Whether the verification as a whole is valid. This means that\nall validations inside the validations object should have passed."
-					},
-					"validations": {
-						"$ref": "#/components/schemas/Partial_W3cCredentialValidations_",
-						"description": "Validations that have been performed"
-					},
-					"error": {
-						"$ref": "#/components/schemas/Error",
-						"description": "Error that was caught during verification not related to\nany of the specific validations that are performed"
-					}
-				},
-				"required": [
-					"isValid",
-					"validations"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"W3cVerifyCredentialResult": {
-				"$ref": "#/components/schemas/W3cVerifyResult_W3cCredentialValidations_"
-			},
 			"AnonCredsW3cCredentialProofOptions": {
 				"properties": {
 					"type": {
@@ -10270,9 +10221,7 @@
 						"description": "Ok",
 						"content": {
 							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/W3cVerifyCredentialResult"
-								}
+								"schema": {}
 							}
 						}
 					}
