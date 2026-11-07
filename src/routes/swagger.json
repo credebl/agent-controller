@@ -7,6 +7,14 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"KmsBackendName": {
+				"type": "string",
+				"enum": [
+					"askar",
+					"node",
+					"openbao"
+				]
+			},
 			"Curve": {
 				"type": "string",
 				"enum": [
@@ -3426,6 +3434,18 @@
 					"privatekey": {
 						"type": "string"
 					},
+					"privateKey": {
+						"type": "string",
+						"description": "Existing private key to import for `did:key` and `did:web`: PEM (PKCS#8, SEC1 or PKCS#1, optionally encrypted)\nor base64 DER (PKCS#8). `privateKeyJwk` is the JWK equivalent. When either is supplied, `keyType` and `seed` are\nignored and the key material determines the DID."
+					},
+					"privateKeyJwk": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"description": "Existing private JWK to import for `did:key` and `did:web`."
+					},
+					"passphrase": {
+						"type": "string",
+						"description": "Passphrase of an encrypted PEM `privateKey`."
+					},
 					"endpoint": {
 						"type": "string"
 					},
@@ -6068,6 +6088,9 @@
 							"application/json": {
 								"schema": {
 									"properties": {
+										"kmsBackend": {
+											"$ref": "#/components/schemas/KmsBackendName"
+										},
 										"keyId": {
 											"type": "string"
 										},
@@ -6076,6 +6099,7 @@
 										}
 									},
 									"required": [
+										"kmsBackend",
 										"keyId",
 										"publicCertificateBase64"
 									],
@@ -6119,12 +6143,16 @@
 							"application/json": {
 								"schema": {
 									"properties": {
+										"kmsBackend": {
+											"type": "string"
+										},
 										"keyId": {},
 										"issuerCertificate": {
 											"type": "string"
 										}
 									},
 									"required": [
+										"kmsBackend",
 										"keyId",
 										"issuerCertificate"
 									],

@@ -327,6 +327,16 @@ export interface DidCreate {
   endorserDid?: string
   didDocument?: DidDocument
   privatekey?: string
+  /**
+   * Existing private key to import for `did:key` and `did:web`: PEM (PKCS#8, SEC1 or PKCS#1, optionally encrypted)
+   * or base64 DER (PKCS#8). `privateKeyJwk` is the JWK equivalent. When either is supplied, `keyType` and `seed` are
+   * ignored and the key material determines the DID.
+   */
+  privateKey?: string
+  /** Existing private JWK to import for `did:key` and `did:web`. */
+  privateKeyJwk?: Record<string, unknown>
+  /** Passphrase of an encrypted PEM `privateKey`. */
+  passphrase?: string
   endpoint?: string
   /**
    * Verification method type of the Ed25519 key in a new `did:web` document. Defaults to

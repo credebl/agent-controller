@@ -9,8 +9,10 @@ import {
   DidDocumentBuilder,
   getEd25519VerificationKey2018,
   getEd25519VerificationKey2020,
+  getJsonWebKey2020,
   SECURITY_ED25519_2018_CONTEXT_URL,
   SECURITY_ED25519_2020_CONTEXT_URL,
+  SECURITY_JWS_CONTEXT_URL,
   VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2018,
   VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020,
   createPeerDidDocumentFromServices,
@@ -24,6 +26,7 @@ import {
 import { Key, KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import axios from 'axios'
 import { Request as Req } from 'express'
+import { createPublicKey } from 'node:crypto'
 import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 import { container } from 'tsyringe'
@@ -35,7 +38,9 @@ import { BadRequestError, InternalServerError } from '../../errors'
 import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
+import { needsNodeKms, NODE_KMS_BACKEND, selectKmsBackendForJwk } from '../../utils/kms/backend'
 import {
+  OPENBAO_KMS_BACKEND,
   openBaoBackendForCreate,
   openBaoBackendForDidMethod,
   openBaoBackendForJwk,
@@ -44,6 +49,7 @@ import {
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
 import { DidCreate, supportedKeyTypesDID } from '../types'
 import { didX509Service } from '../x509/didX509.service'
+import { parsePrivateKey, parsePrivateKeyJwk, privateKeyToJwk } from '../x509/didX509.utils'
 import { DidX509ImportOptionsDto } from '../x509/x509.types'
 
 @Tags('Dids')
@@ -433,7 +439,98 @@ export class DidController extends Controller {
       ],
     })
   }
+  /**
+   * `did:key` and `did:web` accept an existing private key instead of deriving one from a seed. The key can be a PEM /
+   * base64 DER string (`privateKey`) or a JWK (`privateKeyJwk`).
+   */
+  private hasImportedPrivateKey(didOptions: DidCreate): boolean {
+    return Boolean(didOptions.privateKey || didOptions.privateKeyJwk)
+  }
+
+  private readImportedPrivateKey(didOptions: DidCreate): Kms.KmsJwkPrivate {
+    if (didOptions.privateKey && didOptions.privateKeyJwk) {
+      throw new BadRequestError('Provide either privateKey or privateKeyJwk, not both')
+    }
+
+    const privateKey = didOptions.privateKeyJwk
+      ? parsePrivateKeyJwk(didOptions.privateKeyJwk)
+      : didOptions.privateKey?.trim().startsWith('{')
+        ? parsePrivateKeyJwk(didOptions.privateKey)
+        : parsePrivateKey(didOptions.privateKey as string, didOptions.passphrase)
+
+    return privateKeyToJwk(privateKey) as Kms.KmsJwkPrivate
+  }
+
+  /**
+   * `did:key` can represent the key types Credo knows how to embed in a did:key document. `did:web` publishes a
+   * JsonWebKey2020 verification method, so it additionally accepts RSA keys. X25519 cannot sign and is therefore not
+   * accepted for did:web.
+   */
+  private assertImportedKeySupported(method: 'key' | 'web', jwk: { kty: string; crv?: string }): void {
+    const description = jwk.crv ? `${jwk.kty} ${jwk.crv}` : jwk.kty
+
+    if (method === 'key') {
+      const supported = supportedKeyTypesDID[DidMethod.Key].some(
+        (keyType) => keyType.kty === jwk.kty && keyType.crv === jwk.crv,
+      )
+      if (!supported) {
+        throw new BadRequestError(
+          `did:key cannot be created from a ${description} key. Supported key types are Ed25519, X25519, P-256, P-384, P-521 and secp256k1. Use did:web or did:x509 for RSA keys.`,
+        )
+      }
+      return
+    }
+
+    const supportedWebKeyTypes: { kty: string; crv?: string }[] = [
+      { kty: 'OKP', crv: 'Ed25519' },
+      { kty: 'EC', crv: 'P-256' },
+      { kty: 'EC', crv: 'P-384' },
+      { kty: 'EC', crv: 'P-521' },
+      { kty: 'EC', crv: 'secp256k1' },
+      { kty: 'RSA' },
+    ]
+    const supported = supportedWebKeyTypes.some(
+      (keyType) => keyType.kty === jwk.kty && (keyType.crv === undefined || keyType.crv === jwk.crv),
+    )
+    if (!supported) {
+      throw new BadRequestError(
+        `did:web cannot be created from a ${description} key. Supported key types are Ed25519, P-256, P-384, P-521, secp256k1 and RSA.`,
+      )
+    }
+  }
+
+  /**
+   * OpenBao only holds did:key / did:web keys when the matching opt-in flag is enabled. Otherwise Askar handles the key,
+   * except for key types it cannot sign with, which go to the Node KMS.
+   */
+  private importedKeyBackend(method: 'key' | 'web', jwk: { kty: string; crv?: string }): string | undefined {
+    const selection = selectKmsBackendForJwk(jwk)
+    if (selection.name !== OPENBAO_KMS_BACKEND || openBaoBackendForDidMethod(method)) {
+      return selection.backend
+    }
+    return needsNodeKms(jwk) ? NODE_KMS_BACKEND : undefined
+  }
+
+  private firstVerificationMethodId(didDocument: DidDocument): string | undefined {
+    const verificationMethod = didDocument.verificationMethod?.[0]
+    if (verificationMethod) {
+      return typeof verificationMethod === 'string' ? verificationMethod : verificationMethod.id
+    }
+
+    const keyAgreement = didDocument.keyAgreement?.[0]
+    if (keyAgreement) {
+      return typeof keyAgreement === 'string' ? keyAgreement : keyAgreement.id
+    }
+
+    return undefined
+  }
+
   private validateDidKeyOptions(didOptions: DidCreate): void {
+    // The key material determines the DID when an existing key is imported, so `keyType` is not required then.
+    if (this.hasImportedPrivateKey(didOptions)) {
+      return
+    }
+
     if (!didOptions.keyType) {
       throw new BadRequestError('keyType is required')
     }
@@ -474,8 +571,8 @@ export class DidController extends Controller {
       return { keyId: imported.keyId, publicJwk: imported.publicJwk as Kms.KmsJwkPublicAsymmetric }
     } catch (error) {
       if (!(error instanceof Kms.KeyManagementKeyExistsError)) throw error
-      // The key was imported before; the plugin namespaces the id, so bind the id that was actually stored.
-      const keyId = openBaoKeyId(thumbprint)
+      // The key was imported before. Its id is the thumbprint, prefixed when it lives in OpenBao.
+      const keyId = backend === OPENBAO_KMS_BACKEND ? openBaoKeyId(thumbprint) : thumbprint
       const publicJwk = (await agent.kms.getPublicKey({ keyId })) as Kms.KmsJwkPublicAsymmetric
       return { keyId, publicJwk }
     }
@@ -508,6 +605,42 @@ export class DidController extends Controller {
 
     this.agent.config.logger.info(`This is did:::::: ${did}`)
     this.agent.config.logger.info(`This is verificationMethodId:::::: ${verificationMethodId}`)
+
+    await agent.dids.import({
+      did,
+      didDocument,
+      overwrite: true,
+      keys: [
+        {
+          didDocumentRelativeKeyId: `#${relativeKeyId}`,
+          kmsKeyId: keyId,
+        },
+      ],
+    })
+
+    return { did, didDocument }
+  }
+
+  private async createKeyDidFromPrivateKey(
+    agent: AgentType,
+    didOptions: DidCreate,
+  ): Promise<{ did: string; didDocument: DidDocument }> {
+    this.agent.config.logger.info('Creating DID:key from an imported private key')
+
+    const privateJwk = this.readImportedPrivateKey(didOptions)
+    this.assertImportedKeySupported('key', privateJwk)
+
+    const { keyId, publicJwk } = await this.importKey(agent, privateJwk, this.importedKeyBackend('key', privateJwk))
+
+    const didKey = new DidKey(Kms.PublicJwk.fromPublicJwk(publicJwk))
+    const didDocument = didKey.didDocument
+    const did = didDocument.id
+
+    const verificationMethodId = this.firstVerificationMethodId(didDocument)
+    if (!verificationMethodId) {
+      throw new BadRequestError('The key does not produce a usable did:key document')
+    }
+    const relativeKeyId = verificationMethodId.split('#')[1]
 
     await agent.dids.import({
       did,
@@ -583,6 +716,10 @@ export class DidController extends Controller {
       const result = await this.importExistingKeyDid(agent, didOptions.did)
       did = result.did
       didDocument = result.didDocument
+    } else if (this.hasImportedPrivateKey(didOptions)) {
+      const result = await this.createKeyDidFromPrivateKey(agent, didOptions)
+      did = result.did
+      didDocument = result.didDocument
     } else if (didOptions.seed) {
       const result = await this.createKeyDidFromSeed(agent, didOptions, keyType)
       did = result.did
@@ -604,16 +741,19 @@ export class DidController extends Controller {
       throw new BadRequestError('For create did:web, domain is required')
     }
 
-    if (!didOptions.seed) {
-      throw new BadRequestError('Seed is required')
+    const hasImportedKey = this.hasImportedPrivateKey(didOptions)
+    if (!hasImportedKey && !didOptions.seed) {
+      throw new BadRequestError('Seed or privateKey is required')
     }
 
-    if (!didOptions.keyType) {
-      throw new BadRequestError('keyType is required')
-    }
+    if (!hasImportedKey) {
+      if (!didOptions.keyType) {
+        throw new BadRequestError('keyType is required')
+      }
 
-    if (didOptions.keyType !== KeyAlgorithm.Ed25519) {
-      throw new BadRequestError('Only ed25519 key type supported')
+      if (didOptions.keyType !== KeyAlgorithm.Ed25519) {
+        throw new BadRequestError('Only ed25519 key type supported')
+      }
     }
 
     const verificationMethodType =
@@ -637,34 +777,60 @@ export class DidController extends Controller {
     keyId: string,
     verificationMethodType: string,
   ): Promise<{ key: { keyId: string }; didDocument: DidDocument }> {
-    const { privateJwk } = transformPrivateKeyToPrivateJwk({
-      type: {
-        crv: 'Ed25519',
-        kty: 'OKP',
-      },
-      privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed as string),
-    })
+    const hasImportedKey = this.hasImportedPrivateKey(didOptions)
 
-    const openBao = openBaoBackendForDidMethod('web')
-    const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
+    let privateJwk: Kms.KmsJwkPrivate
+    if (hasImportedKey) {
+      privateJwk = this.readImportedPrivateKey(didOptions)
+      this.assertImportedKeySupported('web', privateJwk)
+    } else {
+      privateJwk = transformPrivateKeyToPrivateJwk({
+        type: {
+          crv: 'Ed25519',
+          kty: 'OKP',
+        },
+        privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed as string),
+      }).privateJwk
+    }
+
+    const backend = hasImportedKey
+      ? this.importedKeyBackend('web', privateJwk)
+      : openBaoBackendForDidMethod('web') && openBaoBackendForJwk(privateJwk)
+        ? OPENBAO_KMS_BACKEND
+        : undefined
     const key = await this.importKey(agent, privateJwk, backend)
 
-    const publicJwk = Kms.PublicJwk.fromPublicJwk(
-      key.publicJwk as Kms.KmsJwkPublicOkp,
-    ) as Kms.PublicJwk<Kms.Ed25519PublicJwk>
+    if (privateJwk.kty === 'OKP' && privateJwk.crv === 'Ed25519') {
+      const publicJwk = Kms.PublicJwk.fromPublicJwk(
+        key.publicJwk as Kms.KmsJwkPublicOkp,
+      ) as Kms.PublicJwk<Kms.Ed25519PublicJwk>
+      const didDocument = new DidDocumentBuilder(did)
+        .addContext(
+          verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
+            ? SECURITY_ED25519_2020_CONTEXT_URL
+            : SECURITY_ED25519_2018_CONTEXT_URL,
+        )
+        .addVerificationMethod(
+          verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
+            ? getEd25519VerificationKey2020({ id: keyId, publicJwk, controller: did })
+            : getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }),
+        )
+        .addAuthentication(keyId)
+        .addAssertionMethod(keyId)
+        .build()
+
+      return { key, didDocument }
+    }
+
+    // EC and RSA keys are published as a JsonWebKey2020 verification method.
+    const publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
     const didDocument = new DidDocumentBuilder(did)
-      .addContext(
-        verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
-          ? SECURITY_ED25519_2020_CONTEXT_URL
-          : SECURITY_ED25519_2018_CONTEXT_URL,
-      )
-      .addVerificationMethod(
-        verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
-          ? getEd25519VerificationKey2020({ id: keyId, publicJwk, controller: did })
-          : getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }),
-      )
+      .addContext(SECURITY_JWS_CONTEXT_URL)
+      .addVerificationMethod(getJsonWebKey2020({ did, publicJwk, verificationMethodId: keyId }))
       .addAuthentication(keyId)
       .addAssertionMethod(keyId)
+      .addCapabilityInvocation(keyId)
+      .addCapabilityDelegation(keyId)
       .build()
 
     return { key, didDocument }

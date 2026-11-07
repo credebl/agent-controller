@@ -51,6 +51,11 @@ const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "KmsBackendName": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["askar"]},{"dataType":"enum","enums":["node"]},{"dataType":"enum","enums":["openbao"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Curve": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["Ed25519"]},{"dataType":"enum","enums":["X25519"]},{"dataType":"enum","enums":["P-256"]},{"dataType":"enum","enums":["P-384"]},{"dataType":"enum","enums":["P-521"]},{"dataType":"enum","enums":["secp256k1"]}],"validators":{}},
@@ -1448,6 +1453,9 @@ const models: TsoaRoute.Models = {
             "endorserDid": {"dataType":"string"},
             "didDocument": {"ref":"DidDocument"},
             "privatekey": {"dataType":"string"},
+            "privateKey": {"dataType":"string"},
+            "privateKeyJwk": {"ref":"Record_string.unknown_"},
+            "passphrase": {"dataType":"string"},
             "endpoint": {"dataType":"string"},
             "verificationMethodType": {"ref":"Ed25519VerificationMethodType"},
         },
