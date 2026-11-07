@@ -18,8 +18,8 @@ function envelopeFor(session: ReturnType<typeof createImportSession>, plaintext 
 describe('key import envelope', () => {
   beforeEach(() => resetImportSessions())
 
-  it('decrypts material for the agent and method that created the session', () => {
-    const session = createImportSession('key', 'tenant-1')
+  it('decrypts material for the agent and method that created the session', async () => {
+    const session = await createImportSession('key', 'tenant-1')
 
     expect(
       consumeImportSession({
@@ -31,8 +31,8 @@ describe('key import envelope', () => {
     ).toEqual({ privateKey: '-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----' })
   })
 
-  it('accepts a private JWK and an optional passphrase', () => {
-    const session = createImportSession('web', 'tenant-1')
+  it('accepts a private JWK and an optional passphrase', async () => {
+    const session = await createImportSession('web', 'tenant-1')
     const payload = JSON.stringify({
       privateKeyJwk: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y', d: 'd' },
       passphrase: 'correct horse',
@@ -48,8 +48,8 @@ describe('key import envelope', () => {
     ).toEqual({ privateKeyJwk: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y', d: 'd' }, passphrase: 'correct horse' })
   })
 
-  it('creates sessions for did:polygon keys', () => {
-    const session = createImportSession('polygon', 'tenant-1')
+  it('creates sessions for did:polygon keys', async () => {
+    const session = await createImportSession('polygon', 'tenant-1')
     const payload = JSON.stringify({ privateKey: 'ab'.repeat(32) })
 
     expect(session.protectedHeader.method).toBe('polygon')
@@ -63,8 +63,8 @@ describe('key import envelope', () => {
     ).toEqual({ privateKey: 'ab'.repeat(32) })
   })
 
-  it('binds the envelope to the DID method', () => {
-    const session = createImportSession('key', 'tenant-1')
+  it('binds the envelope to the DID method', async () => {
+    const session = await createImportSession('key', 'tenant-1')
     const jwe = envelopeFor(session)
 
     expect(() =>
@@ -72,8 +72,8 @@ describe('key import envelope', () => {
     ).toThrow(KeyImportSessionError)
   })
 
-  it('binds the envelope to the agent', () => {
-    const session = createImportSession('key', 'tenant-1')
+  it('binds the envelope to the agent', async () => {
+    const session = await createImportSession('key', 'tenant-1')
     const jwe = envelopeFor(session)
 
     expect(() =>
@@ -81,8 +81,8 @@ describe('key import envelope', () => {
     ).toThrow(KeyImportSessionError)
   })
 
-  it('is single use', () => {
-    const session = createImportSession('key', 'tenant-1')
+  it('is single use', async () => {
+    const session = await createImportSession('key', 'tenant-1')
     const jwe = envelopeFor(session)
 
     consumeImportSession({ sessionId: session.sessionId, jwe, agentBinding: 'tenant-1', method: 'key' })
@@ -91,8 +91,8 @@ describe('key import envelope', () => {
     ).toThrow(KeyImportSessionError)
   })
 
-  it('rejects an expired session', () => {
-    const session = createImportSession('key', 'tenant-1', 0)
+  it('rejects an expired session', async () => {
+    const session = await createImportSession('key', 'tenant-1', 0)
     const jwe = envelopeFor(session)
 
     expect(() =>
@@ -106,8 +106,8 @@ describe('key import envelope', () => {
     ).toThrow(KeyImportSessionError)
   })
 
-  it('rejects tampering with the authenticated header', () => {
-    const session = createImportSession('key', 'tenant-1')
+  it('rejects tampering with the authenticated header', async () => {
+    const session = await createImportSession('key', 'tenant-1')
     const segments = envelopeFor(session).split('.')
     const header = JSON.parse(Buffer.from(segments[0], 'base64url').toString('utf8'))
     segments[0] = Buffer.from(JSON.stringify({ ...header, method: 'web' }), 'utf8').toString('base64url')
@@ -122,8 +122,8 @@ describe('key import envelope', () => {
     ).toThrow(KeyImportEnvelopeError)
   })
 
-  it('rejects a payload with both key formats', () => {
-    const session = createImportSession('key', 'tenant-1')
+  it('rejects a payload with both key formats', async () => {
+    const session = await createImportSession('key', 'tenant-1')
     const payload = JSON.stringify({ privateKey: 'pem', privateKeyJwk: { kty: 'OKP' } })
 
     expect(() =>
@@ -136,8 +136,8 @@ describe('key import envelope', () => {
     ).toThrow(KeyImportSessionError)
   })
 
-  it('rejects an oversized envelope before parsing it', () => {
-    const session = createImportSession('key', 'tenant-1')
+  it('rejects an oversized envelope before parsing it', async () => {
+    const session = await createImportSession('key', 'tenant-1')
 
     expect(() =>
       consumeImportSession({

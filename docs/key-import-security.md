@@ -195,8 +195,13 @@ credential flow does not change.
 
 ## Plaintext removal and compatibility
 
-The production create DID and x509 import APIs no longer document `privateKey`, `privateKeyJwk` or `passphrase`:
-the fields are hidden from the OpenAPI document (`@ApiHideProperty`).
+The plaintext fields `privateKey`, `privateKeyJwk`, `passphrase` and the did:polygon `privatekey` are treated
+differently by each layer:
+
+- The platform gateway hides them from its OpenAPI document (`@ApiHideProperty`).
+- The agent controller's generated OpenAPI document (`src/routes/swagger.json`) still lists them on `DidCreate` and
+  `DidX509ImportOptionsDto`, marked `"deprecated": true`. Request validation still accepts their shape, and the
+  controller rejects them as described below.
 
 They are rejected at three independent layers unless the explicit migration flag is enabled:
 
@@ -216,7 +221,7 @@ Recommended migration path:
 3. If an old client cannot be changed immediately, enable `ALLOW_PLAINTEXT_KEY_IMPORT=true` on one agent/gateway
    pair, migrate that client, then remove the flag.
 4. Remove the plaintext fields from the DTOs entirely in the next major API version. Until then they stay hidden
-   from the OpenAPI document so new integrations do not discover them.
+   from the gateway OpenAPI document and marked deprecated in the agent controller one.
 
 Compatibility options for clients that cannot use the envelope:
 
