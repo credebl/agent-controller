@@ -2,7 +2,6 @@ import type { DidResolutionResultProps } from '../types'
 import type { PolygonDidCreateOptions } from '@ayanworks/credo-polygon-w3c-module/build/dids/PolygonDidRegistrar.mjs'
 import type { DidDocument, KeyDidCreateOptions, PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
-import { openBaoKeyId } from '@sovio-id/credo-openbao-kms'
 import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
 import {
   TypedArrayEncoder,
@@ -24,6 +23,7 @@ import {
   DidKey,
 } from '@credo-ts/core'
 import { Key, KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
+import { openBaoKeyId } from '@sovio-id/credo-openbao-kms'
 import axios from 'axios'
 import { Request as Req } from 'express'
 import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
