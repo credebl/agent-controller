@@ -2,7 +2,7 @@ import type { DidResolutionResultProps } from '../types'
 import type { PolygonDidCreateOptions } from '@ayanworks/credo-polygon-w3c-module/build/dids/PolygonDidRegistrar.mjs'
 import type { DidDocument, KeyDidCreateOptions, PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
-import { openBaoKeyId } from '@credebl/credo-ts-openbao'
+import { openBaoKeyId } from '@sovio-id/credo-openbao-kms'
 import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
 import {
   TypedArrayEncoder,
