@@ -7,8 +7,6 @@ coverage
 .DS_Store
 logs.txt
 *.tgz
-# Vendored build of @sovio-id/credo-openbao-kms until the package is published to npm
-!vendor/credo-openbao-kms/*.tgz
 
 # dotenv environment variable files
 .env
