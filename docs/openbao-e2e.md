@@ -47,7 +47,7 @@ OpenBao `2.7.2`, PostgreSQL `16.15` storage in database `credebl_openbao`, schem
 - [ ] OpenBao is reachable and unsealed; PostgreSQL storage points at the `credebl_openbao` database, schema `openbao`.
 - [ ] Transit is enabled at the mount agent-controller uses (`OPENBAO_TRANSIT_MOUNT`, default `transit`).
 - [ ] An AppRole exists with the policy in section 2; `OPENBAO_ROLE_ID` and `OPENBAO_SECRET_ID_FILE` are available.
-- [ ] agent-controller is built from `feat/openbao-kms` with the vendored plugin tarball.
+- [ ] agent-controller is built from `feat/openbao-kms` with `@sovio-id/credo-openbao-kms@0.2.0` from npm.
 - [ ] platform and studio are built from their branches above.
 - [ ] Test certificates are available for each key family: Ed25519, P-256, P-384, P-521, RSA-2048, RSA-4096.
 - [ ] A baseline Askar-only run of the same flows has passed (see section 4) so regressions are distinguishable from

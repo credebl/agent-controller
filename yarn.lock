@@ -2485,9 +2485,10 @@
   dependencies:
     "@sinonjs/commons" "^3.0.0"
 
-"@sovio-id/credo-openbao-kms@file:vendor/credo-openbao-kms/sovio-id-credo-openbao-kms-0.2.0.tgz":
+"@sovio-id/credo-openbao-kms@0.2.0":
   version "0.2.0"
-  resolved "file:vendor/credo-openbao-kms/sovio-id-credo-openbao-kms-0.2.0.tgz#b4bc708f7c46681b8e5d46151411ab092ae40eed"
+  resolved "https://registry.yarnpkg.com/@sovio-id/credo-openbao-kms/-/credo-openbao-kms-0.2.0.tgz#ed5f3403bb5edb63e9b0d210c5245378e8c39916"
+  integrity sha512-LJNLRjC/kYVxzKBiRPyOwIt8Xx3wlbF2r8vp8C8eIZTv021jonP946jILQPcviIUbrhU4OICWobDjssZDCGxNQ==
   dependencies:
     "@noble/curves" "^2.4.0"
 
