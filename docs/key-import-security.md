@@ -181,7 +181,7 @@ OpenBao is the root of trust when enabled. Imported keys use Transit's BYOK API,
 receives the private key in plaintext either:
 
 1. `GET /v1/transit/wrapping_key` returns a 4096-bit RSA public key.
-2. The client (the agent, using `@credebl/credo-ts-openbao`) wraps the key material with the OpenBao wrapping key
+2. The client (the agent, using `@sovio-id/credo-openbao-kms`) wraps the key material with the OpenBao wrapping key
    (`RSA-OAEP` + AES key wrap) and posts it to `/v1/transit/keys/:name/import`.
 3. OpenBao decrypts the wrapping and stores the key non-exportably. Signing happens inside OpenBao.
 

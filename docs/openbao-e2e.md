@@ -6,48 +6,48 @@ api-gateway HTTP/UI flow remains outstanding (see the blockers in section 13).
 
 Configuration and rollback semantics are in [`openbao.md`](./openbao.md). Seal, storage, disaster recovery, and the
 rotation prohibitions are in the plugin's
-[`docs/seal.md`](https://github.com/sovio-id/credo-ts-openbao/blob/main/docs/seal.md).
+[`docs/seal.md`](https://github.com/sovio-id/credo-openbao-kms/blob/main/docs/seal.md).
 
 ## Merge record
 
-| Component        | PR                                                      | Merged `main` commit                                                                     |
-| ---------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| agent-controller | #473, #474, #475, #476 (retargeted and merged in order) | `ec46825` (`Merge pull request #476 from credebl/feat/openbao-kms`)                      |
-| platform         | #1823                                                   | `94ce4da35` (`Merge pull request #1823 from credebl/feat/did-x509-import`)               |
-| studio           | #1344 (follow-up to the already merged #1265)           | `447e9479` (`Merge pull request #1344 from credebl/fix/x509-certificates-platform-enum`) |
-| credo-ts-openbao | sovio-id/credo-ts-openbao#10                            | `d55a67a` (vendored in agent-controller; npm publication pending)                        |
+| Component         | PR                                                      | Merged `main` commit                                                                     |
+| ----------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| agent-controller  | #473, #474, #475, #476 (retargeted and merged in order) | `ec46825` (`Merge pull request #476 from credebl/feat/openbao-kms`)                      |
+| platform          | #1823                                                   | `94ce4da35` (`Merge pull request #1823 from credebl/feat/did-x509-import`)               |
+| studio            | #1344 (follow-up to the already merged #1265)           | `447e9479` (`Merge pull request #1344 from credebl/fix/x509-certificates-platform-enum`) |
+| credo-openbao-kms | sovio-id/credo-openbao-kms#10                           | `d55a67a` (vendored in agent-controller; npm publication pending)                        |
 
 ## Branches under test
 
-| Component        | Branch                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------- |
-| agent-controller | `feat/openbao-kms`                                                                    |
-| credo-ts-openbao | `main` (`d55a67a`, merged from PR #10; vendored as `@credebl/credo-ts-openbao@0.2.0`) |
-| platform         | `feat/did-x509-import`                                                                |
-| studio           | `fix/x509-certificates-platform-enum` (follow-up to the merged `#1265`)               |
+| Component         | Branch                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| agent-controller  | `feat/openbao-kms`                                                                      |
+| credo-openbao-kms | `main` (`d55a67a`, merged from PR #10; vendored as `@sovio-id/credo-openbao-kms@0.2.0`) |
+| platform          | `feat/did-x509-import`                                                                  |
+| studio            | `fix/x509-certificates-platform-enum` (follow-up to the merged `#1265`)                 |
 
 Record the exact SHAs used for the run. Re-run this checklist after any rebase of those branches.
 
 Run under test (2026-11-07):
 
-| Component        | SHA                                                                                |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| agent-controller | `f740356990bc580dd3f5a776f2734274502c284a` (`feat/openbao-kms`)                    |
-| credo-ts-openbao | `d55a67a40ec0097be06b6ad3a120d8dd6c2aeff1` (`main`, vendored tarball `0.2.0`)      |
-| platform         | `90c167cf09bbbbb3f5296daa9e2e5eb38245e988` (`feat/did-x509-import`)                |
-| studio           | `605006a18a0ca4250ff1aff6de68647051663cd0` (`fix/x509-certificates-platform-enum`) |
+| Component         | SHA                                                                                |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| agent-controller  | `f740356990bc580dd3f5a776f2734274502c284a` (`feat/openbao-kms`)                    |
+| credo-openbao-kms | `d55a67a40ec0097be06b6ad3a120d8dd6c2aeff1` (`main`, vendored tarball `0.2.0`)      |
+| platform          | `90c167cf09bbbbb3f5296daa9e2e5eb38245e988` (`feat/did-x509-import`)                |
+| studio            | `605006a18a0ca4250ff1aff6de68647051663cd0` (`fix/x509-certificates-platform-enum`) |
 
 OpenBao `2.7.2`, PostgreSQL `16.15` storage in database `credebl_openbao`, schema `openbao`
 (`openbao_kv_store`), AppRole auth. Local e2e configuration is in
 `$TMPDIR/opencode/openbao-e2e/openbao-postgres.hcl`; production storage settings are in the plugin's
-[`docs/seal.md`](https://github.com/sovio-id/credo-ts-openbao/blob/main/docs/seal.md#12-postgresql-storage-notes).
+[`docs/seal.md`](https://github.com/sovio-id/credo-openbao-kms/blob/main/docs/seal.md#12-postgresql-storage-notes).
 
 ## 1. Preconditions
 
 - [ ] OpenBao is reachable and unsealed; PostgreSQL storage points at the `credebl_openbao` database, schema `openbao`.
 - [ ] Transit is enabled at the mount agent-controller uses (`OPENBAO_TRANSIT_MOUNT`, default `transit`).
 - [ ] An AppRole exists with the policy in section 2; `OPENBAO_ROLE_ID` and `OPENBAO_SECRET_ID_FILE` are available.
-- [ ] agent-controller is built from `feat/openbao-kms` with the vendored plugin tarball.
+- [ ] agent-controller is built from `feat/openbao-kms` with `@sovio-id/credo-openbao-kms@0.2.0` from npm.
 - [ ] platform and studio are built from their branches above.
 - [ ] Test certificates are available for each key family: Ed25519, P-256, P-384, P-521, RSA-2048, RSA-4096.
 - [ ] A baseline Askar-only run of the same flows has passed (see section 4) so regressions are distinguishable from

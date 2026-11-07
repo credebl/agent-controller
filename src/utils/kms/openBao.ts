@@ -6,7 +6,7 @@ import {
   OpenBaoKeyManagementService,
   StaticTokenAuth,
   type AuthProvider,
-} from '@credebl/credo-ts-openbao'
+} from '@sovio-id/credo-openbao-kms'
 import { inject, injectable, Kms as CredoKms, TypedArrayEncoder } from '@credo-ts/core'
 import { createPrivateKey, createPublicKey, type JsonWebKey } from 'node:crypto'
 

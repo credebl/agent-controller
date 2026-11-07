@@ -392,12 +392,6 @@
   resolved "https://registry.yarnpkg.com/@cbor-extract/cbor-extract-win32-x64/-/cbor-extract-win32-x64-2.2.3.tgz#f5dc71d1ab5849af54e31911b35fb7573d40e8a7"
   integrity sha512-fGFfq6F3l0GCoKOZeyjjm3q+NHO7jo8ILtQ93U3rYJOgG2BGLS/QmBdoFLNEsoWPjyxAS8svWhTyo73MTDawog==
 
-"@credebl/credo-ts-openbao@file:vendor/credo-ts-openbao/credebl-credo-ts-openbao-0.2.0.tgz":
-  version "0.2.0"
-  resolved "file:vendor/credo-ts-openbao/credebl-credo-ts-openbao-0.2.0.tgz#55d247b9ba708ae5b8b4f2f2b6345bc394e16afb"
-  dependencies:
-    "@noble/curves" "^2.4.0"
-
 "@credo-ts/anoncreds@0.7.4":
   version "0.7.4"
   resolved "https://registry.yarnpkg.com/@credo-ts/anoncreds/-/anoncreds-0.7.4.tgz#6a5d8195a2eb37bcc27ab58d9f959cdcc620864b"
@@ -2490,6 +2484,13 @@
   integrity sha512-V4BG07kuYSUkTCSBHG8G8TNhM+F19jXFWnQtzj+we8DrkpSBCee9Z3Ms8yiGer/dlmhe35/Xdgyo3/0rQKg7YA==
   dependencies:
     "@sinonjs/commons" "^3.0.0"
+
+"@sovio-id/credo-openbao-kms@0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@sovio-id/credo-openbao-kms/-/credo-openbao-kms-0.2.0.tgz#ed5f3403bb5edb63e9b0d210c5245378e8c39916"
+  integrity sha512-LJNLRjC/kYVxzKBiRPyOwIt8Xx3wlbF2r8vp8C8eIZTv021jonP946jILQPcviIUbrhU4OICWobDjssZDCGxNQ==
+  dependencies:
+    "@noble/curves" "^2.4.0"
 
 "@sphereon/kmp-mdoc-core@0.2.0-SNAPSHOT.26":
   version "0.2.0-SNAPSHOT.26"
