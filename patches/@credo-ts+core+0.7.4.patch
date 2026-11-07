@@ -62,6 +62,64 @@ index 3367607..716e2c8 100644
  DifPresentationExchangeService = __decorate([injectable(), __decorateMetadata("design:paramtypes", [typeof W3cCredentialService === "undefined" ? Object : W3cCredentialService])], DifPresentationExchangeService);
  //#endregion
  export { DifPresentationExchangeService };
+diff --git a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcOptions.d.mts b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcOptions.d.mts
+index 4f6db53..bdcf750 100644
+--- a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcOptions.d.mts
++++ b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcOptions.d.mts
+@@ -38,6 +38,11 @@ export interface SdJwtVcHolderJwkBinding {
+ export interface SdJwtVcIssuerDid {
+   method: 'did';
+   didUrl: string;
++  /**
++   * Optional certificate chain to carry in the `x5c` header next to the `kid`, leaf first. Used for did:x509,
++   * where the chain is what a verifier needs to resolve the DID.
++   */
++  x5c?: X509Certificate[];
+ }
+ export interface SdJwtVcIssuerX5c {
+   method: 'x5c';
+diff --git a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcService.mjs b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcService.mjs
+index 71f8efd..89cb8b8 100644
+--- a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcService.mjs
++++ b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/SdJwtVcService.mjs
+@@ -289,7 +289,8 @@ let SdJwtVcService = class SdJwtVcService {
+ 				alg: supportedSignatureAlgorithms[0],
+ 				publicJwk,
+ 				iss: parsedDid.did,
+-				kid: `#${parsedDid.fragment}`
++				kid: `#${parsedDid.fragment}`,
++				...issuer.x5c?.length ? { x5c: issuer.x5c } : {}
+ 			};
+ 		}
+ 		if (issuer.method === "x5c") {
+diff --git a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/utils.mjs b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/utils.mjs
+index 80d0fb3..54c6e78 100644
+--- a/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/utils.mjs
++++ b/node_modules/@credo-ts/core/build/modules/sd-jwt-vc/utils.mjs
+@@ -133,6 +133,23 @@ function parseHolderBindingFromCredential(payload) {
+ function parseIssuerFromCredential(header, payload) {
+ 	if (!payload || !header) throw new SdJwtVcError("SD-JWT is missing payload");
+ 	const iss = payload.iss;
++	if (header?.x5c && iss?.startsWith("did:") && header.kid) {
++		if (!Array.isArray(header.x5c)) throw new SdJwtVcError("Invalid x5c header in credential. Not an array.");
++		if (header.x5c.some((x5c) => typeof x5c !== "string")) throw new SdJwtVcError("Invalid x5c header in credential. Not an array of strings.");
++		const issuerKid = header.kid;
++		let didUrl;
++		if (issuerKid.startsWith("#")) didUrl = `${iss}${issuerKid}`;
++		else if (issuerKid.startsWith("did:")) {
++			const didFromKid = parseDid(issuerKid);
++			if (didFromKid.did !== iss) throw new SdJwtVcError(`kid in header is an absolute DID URL, but the did (${didFromKid.did}) does not match with the 'iss' did (${iss})`);
++			didUrl = issuerKid;
++		} else throw new SdJwtVcError("Invalid issuer kid for did. Only absolute or relative (starting with #) did urls are supported.");
++		return {
++			method: "did",
++			didUrl,
++			x5c: header.x5c.map((cert) => X509Certificate.fromEncodedCertificate(cert))
++		};
++	}
+ 	if (header?.x5c) {
+ 		if (!Array.isArray(header.x5c)) throw new SdJwtVcError("Invalid x5c header in credential. Not an array.");
+ 		if (header.x5c.length === 0) throw new SdJwtVcError("Invalid x5c header in credential. Empty array.");
 diff --git a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs b/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs
 index 5d00447..1ac877e 100644
 --- a/node_modules/@credo-ts/core/build/modules/vc/models/credential/W3cCredential.mjs

@@ -1,5 +1,5 @@
 import type { DisclosureFrame } from '../controllers/types'
-import type { SdJwtVcHolderBinding } from '@credo-ts/core'
+import type { AgentContext, SdJwtVcHolderBinding } from '@credo-ts/core'
 import type {
   OpenId4VcCredentialHolderBinding,
   OpenId4VcCredentialHolderDidBinding,
@@ -26,6 +26,7 @@ import {
 import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 import { container } from 'tsyringe'
 
+import { getStoredX509Chain } from '../controllers/x509/didX509.utils'
 import { SignerMethod } from '../enums/enum'
 
 import { validateAuthConfig } from './auth'
@@ -62,6 +63,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
     const credential = credentialPayload[0]
     let issuerDidVerificationMethod: string | undefined = ''
     let issuerx509certificate: string[] | undefined
+    let issuerDidX5c: X509Certificate[] | undefined
 
     if (credential.signerOptions.method === SignerMethod.Did) {
       if (credential.signerOptions.did) {
@@ -74,6 +76,15 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
 
         if (!issuerDidVerificationMethod) {
           throw new Error('DID must be provided when using Did as signer method')
+        }
+
+        if (credential.signerOptions.did.startsWith('did:x509:')) {
+          if (!isSdJwtFormat(requestedFormat)) {
+            throw new Error(
+              `did:x509 can only sign SD-JWT VC credentials, use the x5c signer method for ${requestedFormat}`,
+            )
+          }
+          issuerDidX5c = await getDidX509Certificates(agentContext, credential.signerOptions.did)
         }
       }
     } else if (credential.signerOptions.method === SignerMethod.X5c) {
@@ -116,6 +127,7 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
         holderBinding,
         issuerDidVerificationMethod,
         issuerx509certificate,
+        issuerDidX5c,
       )
     }
 
@@ -369,6 +381,7 @@ function handleSdJwtDcFormat(
   holderBinding: any,
   issuerDidVerificationMethod?: string,
   issuerx509certificate?: string[],
+  issuerDidX5c?: X509Certificate[],
 ) {
   const disclosureFramePayload =
     credential.disclosureFrame && Object.keys(credential.disclosureFrame).length > 0 ? credential.disclosureFrame : {}
@@ -400,6 +413,8 @@ function handleSdJwtDcFormat(
         ? {
             method: 'did',
             didUrl: issuerDidVerificationMethod,
+            // For did:x509 the chain goes in the x5c header next to the kid: it is what a verifier resolves the DID with
+            ...(issuerDidX5c && { x5c: issuerDidX5c }),
           }
         : {
             method: 'x5c',
@@ -409,6 +424,23 @@ function handleSdJwtDcFormat(
     })),
     type: 'credentials',
   } satisfies OpenId4VciSignSdJwtCredentials
+}
+
+function isSdJwtFormat(format: string) {
+  return format === OpenId4VciCredentialFormatProfile.SdJwtDc || format === OpenId4VciCredentialFormatProfile.SdJwtVc
+}
+
+/** The certificate chain stored with a did:x509 imported into the agent (leaf first), as Credo certificates. */
+async function getDidX509Certificates(agentContext: AgentContext, did: string): Promise<X509Certificate[]> {
+  const chain = await getStoredX509Chain(did, agentContext)
+  if (!chain) {
+    throw new Error(`No certificate chain is stored for ${did}, import it first with POST /dids/x509/import`)
+  }
+  return chain
+    .split(',')
+    .map((certificate) =>
+      X509Certificate.fromEncodedCertificate(Buffer.from(certificate, 'base64url').toString('base64')),
+    )
 }
 
 function handleW3cCredentialFormat(

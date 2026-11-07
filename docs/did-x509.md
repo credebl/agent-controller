@@ -2,7 +2,7 @@
 
 An issuer, verifier or holder that already has a certificate issued by a CA (and its private key) can import them into the agent and get a `did:x509` identifier. The DID is derived from the certificate chain, the leaf key is stored in the agent's key management system (KMS), and the agent can sign with it like with any other DID.
 
-This guide covers the import flow. Using a did:x509 as the signer in OpenID4VC issuance, holder presentations and the trust registry is planned in later phases and is not covered here.
+This guide covers the import flow. Using a did:x509 as the signer of SD-JWT VC credentials is covered below. Holder presentations, verification of did:x509 issuers you do not own, and the trust registry are planned and not covered yet.
 
 ## What is a did:x509
 
@@ -140,6 +140,45 @@ If `policies` is omitted, the DID is restricted to the common name of the leaf c
 
 Several policies are joined with `::`. Values are percent-encoded as the specification requires. Pick the narrowest policy that still covers the certificates you will rotate to: a DID with `subject:CN:...` keeps working after the leaf certificate is renewed, as long as the subject stays the same and the same root CA issues it. Import the renewed chain and key again under the same DID.
 
+## Issue SD-JWT VC credentials with a did:x509
+
+Use the imported DID as the signer of an OpenID4VCI credential offer. Only SD-JWT VC (`dc+sd-jwt` and `vc+sd-jwt`) is supported with a did:x509. For `mso_mdoc` keep using the `x5c` signer method, and W3C formats are not supported (the request fails with a clear error).
+
+```bash
+curl -X POST "$AGENT_URL/openid4vc/issuance-sessions/create-credential-offer" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "publicIssuerId": "my-issuer",
+    "credentials": [{
+      "credentialSupportedId": "IdentityCredential-sdjwt",
+      "format": "dc+sd-jwt",
+      "signerOptions": { "method": "did", "did": "did:x509:0:sha256:JAsS...::subject:CN:issuer.example.com" },
+      "payload": { "vct": "urn:acme:identity", "given_name": "Alice" },
+      "disclosureFrame": { "_sd": ["given_name"] }
+    }],
+    "preAuthorizedCodeFlowConfig": { "authorizationServerUrl": "https://agent.example.com/oid4vci/my-issuer" }
+  }'
+```
+
+The `credential_signing_alg_values_supported` of the credential configuration must include the algorithm of the imported key (`ES256`, `ES384`, `ES512`, `EdDSA` or `RS256`, see [Key types](#key-types-and-the-kms)).
+
+The issued credential looks like this:
+
+```json
+// header
+{ "typ": "dc+sd-jwt", "alg": "ES256", "kid": "#0", "x5c": ["<leaf>", "<issuing CA>", "<root CA>"] }
+// payload
+{ "iss": "did:x509:0:sha256:JAsS...::subject:CN:issuer.example.com", "vct": "urn:acme:identity", "cnf": { "jwk": { "...": "..." } }, "_sd": ["..."] }
+```
+
+- `iss` is the did:x509 and `kid` is the relative id of its verification method.
+- The **full chain is carried in `x5c`** (leaf first, root last, the root is needed because the DID is anchored in its fingerprint). A verifier that knows did:x509 resolves the DID with this chain. A verifier that does not can still validate the signature and the chain through `x5c`.
+- The chain comes from the one stored when the DID was imported, so the DID has to be imported into the agent that issues.
+
+### Credo patch
+
+Credo 0.7 can put either a `kid` (DID signer) or an `x5c` chain (x5c signer) in the header, not both, and its verifier picks the `x5c` branch as soon as the header has one, which then rejects an `iss` that is a DID. The `patches/@credo-ts+core+0.7.4.patch` patch adds an optional `x5c` to the DID issuer and makes the verifier use the DID when `iss` is a DID and a `kid` is present. Credo-based holders and verifiers that do not carry this change reject these credentials. The change is meant to go upstream.
+
 ## Errors
 
 | Status | Message                                                                                        | Cause                                                                                                                                                                                        |
@@ -160,7 +199,7 @@ Several policies are joined with `::`. Values are percent-encoded as the specifi
 ## Limitations and what is planned
 
 - Only DIDs imported into the agent resolve without the chain. Verifying a did:x509 owned by someone else needs the chain from the credential (`x5c`). Support for this in the OpenID4VC verifier and holder flows is planned.
-- Using the did:x509 as signer in issuance, as holder binding and as verifier request signer, and the trust registry integration, are planned.
+- Holder binding with a did:x509, the did:x509 as verifier request signer, and the trust registry integration are planned.
 - The resolver does not cache DID documents, every resolution validates the chain.
 - Keys can only be imported through the API for now. Keeping the key in an external KMS (OpenBao) is tracked in [#437](https://github.com/credebl/agent-controller/pull/437).
 - Requires `@didx509/core` 0.1.3 or newer: earlier versions reject chains whose issuing CA has `pathlen:0`.
