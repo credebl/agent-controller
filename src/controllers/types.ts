@@ -326,6 +326,11 @@ export interface DidCreate {
   role?: string
   endorserDid?: string
   didDocument?: DidDocument
+  /**
+   * @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Send the did:polygon key inside `encryptedKey`.
+   *
+   * Hex encoded secp256k1 private key for `did:polygon`.
+   */
   privatekey?: string
   /**
    * @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead.
@@ -341,7 +346,7 @@ export interface DidCreate {
   passphrase?: string
   /**
    * Private key material encrypted to a single-use import session (see `POST /dids/import/session`). This is the only
-   * accepted way to import an existing `did:key` / `did:web` key in production.
+   * accepted way to import an existing `did:key`, `did:web` or `did:polygon` key in production.
    */
   encryptedKey?: KeyImportEncryptedKey
   endpoint?: string

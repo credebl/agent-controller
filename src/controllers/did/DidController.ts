@@ -186,9 +186,10 @@ export class DidController extends Controller {
     privateKey?: string
     privateKeyJwk?: Record<string, unknown>
     passphrase?: string
+    privatekey?: string
   }): void {
     if (this.plaintextKeyImportAllowed()) return
-    if (options.privateKey || options.privateKeyJwk || options.passphrase) {
+    if (options.privateKey || options.privateKeyJwk || options.passphrase || options.privatekey) {
       throw new BadRequestError(
         'Plaintext private key import is disabled. Request a key import session from POST /dids/import/session and send the encryptedKey envelope instead.',
       )
@@ -203,11 +204,15 @@ export class DidController extends Controller {
     this.assertPlaintextKeyImportAllowed(didOptions)
 
     if (!didOptions.encryptedKey) return didOptions
-    if (didOptions.privateKey || didOptions.privateKeyJwk || didOptions.passphrase) {
+    if (didOptions.privateKey || didOptions.privateKeyJwk || didOptions.passphrase || didOptions.privatekey) {
       throw new BadRequestError('Provide either encryptedKey or plaintext key material, not both')
     }
-    if (didOptions.method !== DidMethod.Key && didOptions.method !== DidMethod.Web) {
-      throw new BadRequestError('encryptedKey is only supported for did:key and did:web')
+    if (
+      didOptions.method !== DidMethod.Key &&
+      didOptions.method !== DidMethod.Web &&
+      didOptions.method !== DidMethod.Polygon
+    ) {
+      throw new BadRequestError('encryptedKey is only supported for did:key, did:web and did:polygon')
     }
     if (!didOptions.encryptedKey.sessionId || typeof didOptions.encryptedKey.jwe !== 'string') {
       throw new BadRequestError('encryptedKey.sessionId and encryptedKey.jwe are required')
@@ -228,7 +233,37 @@ export class DidController extends Controller {
       throw error
     }
 
+    if (didOptions.method === DidMethod.Polygon) {
+      return { ...didOptions, privatekey: this.polygonPrivateKeyHex(material) }
+    }
+
     return { ...didOptions, ...material }
+  }
+
+  /**
+   * did:polygon signs with a raw secp256k1 key. The envelope carries it either as 64 hex characters in `privateKey`
+   * (the format the Polygon key pair endpoint returns) or as a secp256k1 private JWK.
+   */
+  private polygonPrivateKeyHex(material: KeyImportKeyMaterial): string {
+    if (material.passphrase) {
+      throw new BadRequestError('A passphrase is not supported for did:polygon keys')
+    }
+
+    let hex: string | undefined
+    if (material.privateKey !== undefined) {
+      hex = material.privateKey.trim().replace(/^0x/i, '')
+    } else {
+      const jwk = material.privateKeyJwk as { kty?: unknown; crv?: unknown; d?: unknown } | undefined
+      if (jwk?.kty !== 'EC' || jwk?.crv !== 'secp256k1' || typeof jwk?.d !== 'string') {
+        throw new BadRequestError('did:polygon requires a secp256k1 private key')
+      }
+      hex = Buffer.from(jwk.d, 'base64url').toString('hex')
+    }
+
+    if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+      throw new BadRequestError('Invalid private key or key not supported')
+    }
+    return hex.toLowerCase()
   }
 
   private async resolveX509KeyMaterial(
@@ -1012,7 +1047,7 @@ export class DidController extends Controller {
     if (networkName !== 'mainnet' && networkName !== 'testnet') {
       throw new BadRequestError('Invalid network type')
     }
-    if (!privatekey || typeof privatekey !== 'string' || !privatekey.trim() || privatekey.length !== 64) {
+    if (!privatekey || typeof privatekey !== 'string' || !/^[0-9a-fA-F]{64}$/.test(privatekey)) {
       throw new BadRequestError('Invalid private key or key not supported')
     }
 

@@ -3507,7 +3507,8 @@
 						"$ref": "#/components/schemas/DidDocument"
 					},
 					"privatekey": {
-						"type": "string"
+						"type": "string",
+						"deprecated": true
 					},
 					"privateKey": {
 						"type": "string",
@@ -3523,7 +3524,7 @@
 					},
 					"encryptedKey": {
 						"$ref": "#/components/schemas/KeyImportEncryptedKey",
-						"description": "Private key material encrypted to a single-use import session (see `POST /dids/import/session`). This is the only\naccepted way to import an existing `did:key` / `did:web` key in production."
+						"description": "Private key material encrypted to a single-use import session (see `POST /dids/import/session`). This is the only\naccepted way to import an existing `did:key`, `did:web` or `did:polygon` key in production."
 					},
 					"endpoint": {
 						"type": "string"

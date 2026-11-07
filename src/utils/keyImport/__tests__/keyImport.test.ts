@@ -48,6 +48,21 @@ describe('key import envelope', () => {
     ).toEqual({ privateKeyJwk: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y', d: 'd' }, passphrase: 'correct horse' })
   })
 
+  it('creates sessions for did:polygon keys', () => {
+    const session = createImportSession('polygon', 'tenant-1')
+    const payload = JSON.stringify({ privateKey: 'ab'.repeat(32) })
+
+    expect(session.protectedHeader.method).toBe('polygon')
+    expect(
+      consumeImportSession({
+        sessionId: session.sessionId,
+        jwe: envelopeFor(session, payload),
+        agentBinding: 'tenant-1',
+        method: 'polygon',
+      }),
+    ).toEqual({ privateKey: 'ab'.repeat(32) })
+  })
+
   it('binds the envelope to the DID method', () => {
     const session = createImportSession('key', 'tenant-1')
     const jwe = envelopeFor(session)
