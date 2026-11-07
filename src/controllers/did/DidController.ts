@@ -202,6 +202,16 @@ export class DidController extends Controller {
   private resolveImportKeyMaterial(agent: AgentType, didOptions: DidCreate): DidCreate {
     this.assertPlaintextKeyImportAllowed(didOptions)
 
+    // An existing did:key is imported by resolving its DID document, which would silently drop the private key. Reject
+    // the combination before an encrypted envelope consumes its single-use session.
+    if (
+      didOptions.method === DidMethod.Key &&
+      didOptions.did &&
+      (didOptions.encryptedKey || didOptions.privateKey || didOptions.privateKeyJwk)
+    ) {
+      throw new BadRequestError('Provide either did or key material to import for did:key, not both')
+    }
+
     if (!didOptions.encryptedKey) return didOptions
     if (didOptions.privateKey || didOptions.privateKeyJwk || didOptions.passphrase || didOptions.privatekey) {
       throw new BadRequestError('Provide either encryptedKey or plaintext key material, not both')
