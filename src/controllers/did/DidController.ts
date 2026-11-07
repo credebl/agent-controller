@@ -36,6 +36,8 @@ import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
 import { DidCreate, supportedKeyTypesDID } from '../types'
+import { didX509Service } from '../x509/didX509.service'
+import { DidX509ImportOptionsDto } from '../x509/x509.types'
 
 @Tags('Dids')
 @Route('/dids')
@@ -630,6 +632,32 @@ export class DidController extends Controller {
       didDocument: createDidResponse?.didState?.didDocument,
     }
     return didResponse
+  }
+
+  /**
+   * Creates a did:x509 from an existing CA issued certificate chain and its private key
+   * @body DidX509ImportOptionsDto
+   * @returns did, didDocument and the KMS key id
+   */
+  @Post('/x509/import')
+  public async importDidX509(@Request() request: Req, @Body() options: DidX509ImportOptionsDto) {
+    try {
+      return await didX509Service.importDidX509(request.agent, options)
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
+   * Returns the certificate chain stored with a did:x509 imported into this agent
+   */
+  @Get('/x509/chain/:did')
+  public async getDidX509Chain(@Request() request: Req, @Path('did') did: Did) {
+    try {
+      return await didX509Service.getChain(request.agent, did)
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
   }
 
   @Get('/')

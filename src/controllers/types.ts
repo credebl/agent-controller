@@ -519,6 +519,14 @@ export interface X509ImportCertificateOptionsDto {
 export const supportedKeyTypesDID: Record<DidMethod, readonly { kty: string; crv: string }[]> = {
   [DidMethod.Indy]: [{ kty: 'OKP', crv: 'Ed25519' }],
 
+  // RSA keys are supported as well but are not described by a curve
+  [DidMethod.X509]: [
+    { kty: 'OKP', crv: 'Ed25519' },
+    { kty: 'EC', crv: 'P-256' },
+    { kty: 'EC', crv: 'P-384' },
+    { kty: 'EC', crv: 'P-521' },
+  ],
+
   [DidMethod.Peer]: [
     { kty: 'OKP', crv: 'Ed25519' },
     { kty: 'OKP', crv: 'X25519' },

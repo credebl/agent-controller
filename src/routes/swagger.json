@@ -3440,6 +3440,149 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"DidX509ImportResponse": {
+				"properties": {
+					"did": {
+						"type": "string"
+					},
+					"didDocument": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"keyId": {
+						"type": "string",
+						"description": "Id of the leaf key in the agent's KMS"
+					},
+					"verificationMethodId": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"did",
+					"didDocument",
+					"keyId",
+					"verificationMethodId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidX509PolicyType": {
+				"type": "string",
+				"enum": [
+					"subject",
+					"san",
+					"eku",
+					"fulcio-issuer"
+				]
+			},
+			"Record_string.string_": {
+				"properties": {},
+				"additionalProperties": {
+					"type": "string"
+				},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"DidX509Policy": {
+				"description": "A policy narrows down which certificates of the chain may use the did:x509, see\nhttps://github.com/microsoft/did-x509/blob/main/specification.md#5-did-x509-policies",
+				"properties": {
+					"type": {
+						"$ref": "#/components/schemas/DidX509PolicyType",
+						"example": "subject"
+					},
+					"fields": {
+						"$ref": "#/components/schemas/Record_string.string_",
+						"description": "Only for `subject`: the attributes of the leaf certificate's subject the DID is restricted to.",
+						"example": {
+							"CN": "example.com",
+							"O": "Example Org"
+						}
+					},
+					"sanType": {
+						"type": "string",
+						"enum": [
+							"dns",
+							"email",
+							"uri"
+						],
+						"description": "Only for `san`: the type of the subject alternative name.",
+						"example": "dns"
+					},
+					"value": {
+						"type": "string",
+						"description": "For `san` the name, for `eku` the OID, for `fulcio-issuer` the issuer.",
+						"example": "example.com"
+					}
+				},
+				"required": [
+					"type"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidX509ImportOptionsDto": {
+				"properties": {
+					"certificateChain": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "Certificate chain, leaf first and root CA last. Every entry is either a PEM certificate / PEM bundle or a base64\nencoded DER certificate."
+					},
+					"privateKey": {
+						"type": "string",
+						"description": "Private key of the leaf certificate: PEM (PKCS#8, SEC1 or PKCS#1) or base64 DER (PKCS#8). EC (P-256, P-384,\nP-521), Ed25519 and RSA keys are supported."
+					},
+					"passphrase": {
+						"type": "string",
+						"description": "Passphrase of the private key if it is encrypted"
+					},
+					"policies": {
+						"items": {
+							"$ref": "#/components/schemas/DidX509Policy"
+						},
+						"type": "array",
+						"description": "Policies of the DID. Defaults to the common name of the leaf certificate (`subject:CN`) when omitted.",
+						"example": [
+							{
+								"type": "subject",
+								"fields": {
+									"CN": "example.com"
+								}
+							}
+						]
+					},
+					"did": {
+						"type": "string",
+						"description": "Import an existing did:x509 instead of deriving one from the chain. It is validated against the chain."
+					}
+				},
+				"required": [
+					"certificateChain",
+					"privateKey"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidX509ChainResponse": {
+				"properties": {
+					"did": {
+						"type": "string"
+					},
+					"x509chain": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array",
+						"description": "base64url encoded DER certificates, leaf first"
+					}
+				},
+				"required": [
+					"did",
+					"x509chain"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"DidRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
 			},
@@ -9755,6 +9898,85 @@
 						}
 					}
 				}
+			}
+		},
+		"/dids/x509/import": {
+			"post": {
+				"operationId": "ImportDidX509",
+				"responses": {
+					"200": {
+						"description": "did, didDocument and the KMS key id",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidX509ImportResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Creates a did:x509 from an existing CA issued certificate chain and its private key",
+				"tags": [
+					"Dids"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/DidX509ImportOptionsDto"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/dids/x509/chain/{did}": {
+			"get": {
+				"operationId": "GetDidX509Chain",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidX509ChainResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Returns the certificate chain stored with a did:x509 imported into this agent",
+				"tags": [
+					"Dids"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "did",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/Did"
+						}
+					}
+				]
 			}
 		},
 		"/dids": {

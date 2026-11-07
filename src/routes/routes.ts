@@ -1454,6 +1454,59 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidX509ImportResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "did": {"dataType":"string","required":true},
+            "didDocument": {"ref":"Record_string.unknown_","required":true},
+            "keyId": {"dataType":"string","required":true},
+            "verificationMethodId": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidX509PolicyType": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["subject"]},{"dataType":"enum","enums":["san"]},{"dataType":"enum","enums":["eku"]},{"dataType":"enum","enums":["fulcio-issuer"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Record_string.string_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"string"},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidX509Policy": {
+        "dataType": "refObject",
+        "properties": {
+            "type": {"ref":"DidX509PolicyType","required":true},
+            "fields": {"ref":"Record_string.string_"},
+            "sanType": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["dns"]},{"dataType":"enum","enums":["email"]},{"dataType":"enum","enums":["uri"]}]},
+            "value": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidX509ImportOptionsDto": {
+        "dataType": "refObject",
+        "properties": {
+            "certificateChain": {"dataType":"array","array":{"dataType":"string"},"required":true},
+            "privateKey": {"dataType":"string","required":true},
+            "passphrase": {"dataType":"string"},
+            "policies": {"dataType":"array","array":{"dataType":"refObject","ref":"DidX509Policy"}},
+            "did": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidX509ChainResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "did": {"dataType":"string","required":true},
+            "x509chain": {"dataType":"array","array":{"dataType":"string"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "DidRecord": {
         "dataType": "refAlias",
         "type": {"ref":"Record_string.unknown_","validators":{}},
@@ -4792,6 +4845,80 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'writeDid',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsDidController_importDidX509: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                options: {"in":"body","name":"options","required":true,"ref":"DidX509ImportOptionsDto"},
+        };
+        app.post('/dids/x509/import',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(DidController)),
+            ...(fetchMiddlewares<RequestHandler>(DidController.prototype.importDidX509)),
+
+            async function DidController_importDidX509(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsDidController_importDidX509, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<DidController>(DidController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'importDidX509',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsDidController_getDidX509Chain: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                did: {"in":"path","name":"did","required":true,"ref":"Did"},
+        };
+        app.get('/dids/x509/chain/:did',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(DidController)),
+            ...(fetchMiddlewares<RequestHandler>(DidController.prototype.getDidX509Chain)),
+
+            async function DidController_getDidX509Chain(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsDidController_getDidX509Chain, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<DidController>(DidController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getDidX509Chain',
                 controller,
                 response,
                 next,

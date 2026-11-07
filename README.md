@@ -225,6 +225,10 @@ The agent can be configured in three ways:
 2. **JSON config file**: When providing a lot of configuration options, pass a JSON file with `--config`. All properties should use camelCase for the key names. See [samples/cliConfig.json](samples/cliConfig.json) for a complete example.
 3. **Environment variables**: All properties are prefixed with `AFJ_REST` and use UPPER_SNAKE_CASE (e.g. `AFJ_REST_WALLET_KEY=my-secret-key ./bin/afj-rest.js start ...`).
 
+## Guides
+
+- [did:x509: import a CA issued certificate chain as a DID](docs/did-x509.md)
+
 ## Development
 
 ### Starting Your Own Server
