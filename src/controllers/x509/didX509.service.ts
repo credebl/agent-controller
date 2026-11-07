@@ -6,8 +6,8 @@ import { DidRepository, Kms, TypedArrayEncoder } from '@credo-ts/core'
 import { createPublicKey, type KeyObject } from 'node:crypto'
 
 import { BadRequestError } from '../../errors'
-import { NODE_KMS_BACKEND } from '../../utils/kms/nodeKms'
-import { OPENBAO_KMS_BACKEND, openBaoBackendForJwk } from '../../utils/kms/openBao'
+import { selectKmsBackendForJwk } from '../../utils/kms/backend'
+import { OPENBAO_KMS_BACKEND } from '../../utils/kms/openBao'
 
 import {
   assertKeyMatchesCertificate,
@@ -145,7 +145,8 @@ class DidX509Service {
       createPublicKey(privateKey).export({ format: 'jwk' }) as Kms.KmsJwkPublicAsymmetric,
     )
     const keyId = TypedArrayEncoder.toBase64Url(publicJwk.getJwkThumbprint())
-    const backend = openBaoBackendForJwk(jwk) ?? (this.needsNodeKms(jwk) ? NODE_KMS_BACKEND : undefined)
+    const selection = selectKmsBackendForJwk(jwk)
+    const backend = selection.backend
 
     try {
       const imported = await agent.kms.importKey({
@@ -161,10 +162,6 @@ class DidX509Service {
       agent.config.logger.debug('[importDidX509] key already exists in the KMS, reusing it', { keyId: existingKeyId })
       return existingKeyId
     }
-  }
-
-  private needsNodeKms(jwk: { kty: string; crv?: string }): boolean {
-    return jwk.kty === 'RSA' || (jwk.kty === 'EC' && jwk.crv === 'P-521')
   }
 
   private commonNameOf(leaf: ReturnType<typeof parseCertificateChain>[number]): Record<string, string> {
