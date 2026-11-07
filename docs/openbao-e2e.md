@@ -1,11 +1,21 @@
 # OpenBao KMS end-to-end checklist
 
-Branch-scoped verification for the optional OpenBao Transit backend. **Do not merge to `main` or retarget the PRs until
-this checklist passes across agent-controller, platform, and studio.**
+Verification for the optional OpenBao Transit backend across agent-controller, platform, and studio. The gate was
+signed off on 2026-11-07 after the service-layer e2e and studio build/contract checks below; the full Keycloak +
+api-gateway HTTP/UI flow remains outstanding (see the blockers in section 13).
 
 Configuration and rollback semantics are in [`openbao.md`](./openbao.md). Seal, storage, disaster recovery, and the
 rotation prohibitions are in the plugin's
 [`docs/seal.md`](https://github.com/sovio-id/credo-ts-openbao/blob/main/docs/seal.md).
+
+## Merge record
+
+| Component        | PR                                                      | Merged `main` commit                                                                     |
+| ---------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| agent-controller | #473, #474, #475, #476 (retargeted and merged in order) | `ec46825` (`Merge pull request #476 from credebl/feat/openbao-kms`)                      |
+| platform         | #1823                                                   | `94ce4da35` (`Merge pull request #1823 from credebl/feat/did-x509-import`)               |
+| studio           | #1344 (follow-up to the already merged #1265)           | `447e9479` (`Merge pull request #1344 from credebl/fix/x509-certificates-platform-enum`) |
+| credo-ts-openbao | sovio-id/credo-ts-openbao#10                            | `d55a67a` (vendored in agent-controller; npm publication pending)                        |
 
 ## Branches under test
 
