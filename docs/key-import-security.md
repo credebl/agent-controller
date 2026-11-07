@@ -49,7 +49,7 @@ organization's DID list contains the new DID.
 { "method": "key" }
 ```
 
-`method` is `key`, `web` or `x509`. The response is:
+`method` is `key`, `web`, `x509` or `polygon`. The response is:
 
 ```json
 {
@@ -97,6 +97,15 @@ The payload is exactly one key representation plus an optional PEM passphrase:
 ```
 
 Sending both `privateKey` and `privateKeyJwk` is rejected.
+
+For `did:polygon` the payload carries the secp256k1 key either as 64 hex characters (the format returned by the
+Polygon key pair endpoint, an optional `0x` prefix is accepted) or as a secp256k1 private JWK. A passphrase is not
+supported. The legacy plaintext `privatekey` field of the create DID request is rejected unless
+`ALLOW_PLAINTEXT_KEY_IMPORT=true`, like the other plaintext fields.
+
+```json
+{ "privateKey": "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d" }
+```
 
 The agent verifies that the authenticated header matches the stored session:
 
