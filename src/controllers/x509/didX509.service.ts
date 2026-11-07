@@ -1,11 +1,13 @@
 import type { DidX509ChainResponse, DidX509ImportOptionsDto, DidX509ImportResponse } from './x509.types'
 import type { AgentType } from '../../types'
 
+import { openBaoKeyId, OPENBAO_KEY_ID_PREFIX } from '@credebl/credo-ts-openbao'
 import { DidRepository, Kms, TypedArrayEncoder } from '@credo-ts/core'
-import { createPublicKey } from 'node:crypto'
+import { createPublicKey, type KeyObject } from 'node:crypto'
 
 import { BadRequestError } from '../../errors'
 import { NODE_KMS_BACKEND } from '../../utils/kms/nodeKms'
+import { OPENBAO_KMS_BACKEND, openBaoBackendForJwk } from '../../utils/kms/openBao'
 
 import {
   assertKeyMatchesCertificate,
@@ -52,6 +54,28 @@ class DidX509Service {
     const verificationMethodId = didDocument.verificationMethod?.[0]?.id
     if (!verificationMethodId) throw new BadRequestError('The resolved did:x509 document has no verification method')
 
+    const didRepository = agent.context.resolve(DidRepository)
+    const didRecord = (await didRepository.getCreatedDids(agent.context, { did }))[0]
+
+    // Re-importing must not rebind an existing DID to a new key. That would break an already issued credential if the
+    // key lives in a different backend (for example an Askar-backed DID after OpenBao is enabled).
+    if (didRecord?.keys?.length) {
+      const key = didRecord.keys[0]
+      // The stored binding is reused, so make sure it still holds the certificate's key before returning it.
+      await this.assertStoredKeyMatches(agent, key.kmsKeyId, privateKey)
+      didRecord.metadata.set(X509_CHAIN_METADATA_KEY, { chain: x509chain })
+      await didRepository.update(agent.context, didRecord)
+
+      return {
+        did,
+        didDocument: (didRecord.didDocument ?? didDocument).toJSON() as Record<string, unknown>,
+        keyId: key.kmsKeyId,
+        verificationMethodId: key.didDocumentRelativeKeyId.startsWith('#')
+          ? `${did}${key.didDocumentRelativeKeyId}`
+          : key.didDocumentRelativeKeyId,
+      }
+    }
+
     const kmsKeyId = await this.importKey(agent, privateKey)
 
     await agent.dids.import({
@@ -68,11 +92,10 @@ class DidX509Service {
       ],
     })
 
-    const didRepository = agent.context.resolve(DidRepository)
-    const record = await didRepository.getCreatedDids(agent.context, { did })
-    if (record[0]) {
-      record[0].metadata.set(X509_CHAIN_METADATA_KEY, { chain: x509chain })
-      await didRepository.update(agent.context, record[0])
+    const record = (await didRepository.getCreatedDids(agent.context, { did }))[0]
+    if (record) {
+      record.metadata.set(X509_CHAIN_METADATA_KEY, { chain: x509chain })
+      await didRepository.update(agent.context, record)
     }
 
     return { did, didDocument: didDocument.toJSON() as Record<string, unknown>, keyId: kmsKeyId, verificationMethodId }
@@ -85,8 +108,36 @@ class DidX509Service {
   }
 
   /**
+   * Confirms that an already bound key still corresponds to the imported certificate. The binding is reused, so a
+   * stale or foreign key id must be rejected instead of being returned to the caller as a usable signing key.
+   */
+  private async assertStoredKeyMatches(agent: AgentType, keyId: string, privateKey: KeyObject): Promise<void> {
+    let storedPublicKey: Kms.KmsJwkPublicAsymmetric
+    try {
+      // OpenBao caches public keys. Clear it first so a key deleted out of band is actually reported as unreadable
+      // instead of being served from the cache as a usable binding.
+      if (keyId.startsWith(OPENBAO_KEY_ID_PREFIX)) agent.modules.openBao.clearPublicKeyCache()
+      storedPublicKey = (await agent.kms.getPublicKey({ keyId })) as Kms.KmsJwkPublicAsymmetric
+    } catch {
+      throw new BadRequestError(`The existing DID is bound to KMS key ${keyId}, which cannot be read`)
+    }
+
+    const expectedThumbprint = Kms.PublicJwk.fromPublicJwk(
+      createPublicKey(privateKey).export({ format: 'jwk' }) as Kms.KmsJwkPublicAsymmetric,
+    ).getJwkThumbprint()
+    const storedThumbprint = Kms.PublicJwk.fromPublicJwk(storedPublicKey).getJwkThumbprint()
+
+    if (!Buffer.from(expectedThumbprint).equals(Buffer.from(storedThumbprint))) {
+      throw new BadRequestError(
+        `The existing DID is bound to KMS key ${keyId}, which does not match the private key of the first (leaf) certificate in certificateChain`,
+      )
+    }
+  }
+
+  /**
    * Imports the key into the KMS. The key id is the JWK thumbprint so importing the same key twice is idempotent.
-   * Askar handles Ed25519 and the P-256 / P-384 EC keys. RSA and P-521 (Askar has no ES512 signing) go to the Node KMS.
+   * OpenBao handles Ed25519, P-256/P-384/P-521 and RSA when it is enabled. Otherwise Askar handles Ed25519 and the
+   * P-256 / P-384 EC keys, and RSA and P-521 (Askar has no ES512 signing) go to the Node KMS.
    */
   private async importKey(agent: AgentType, privateKey: ReturnType<typeof parsePrivateKey>): Promise<string> {
     const jwk = privateKeyToJwk(privateKey)
@@ -94,17 +145,22 @@ class DidX509Service {
       createPublicKey(privateKey).export({ format: 'jwk' }) as Kms.KmsJwkPublicAsymmetric,
     )
     const keyId = TypedArrayEncoder.toBase64Url(publicJwk.getJwkThumbprint())
+    const backend = openBaoBackendForJwk(jwk) ?? (this.needsNodeKms(jwk) ? NODE_KMS_BACKEND : undefined)
 
     try {
-      await agent.kms.importKey({
+      const imported = await agent.kms.importKey({
         privateJwk: { ...jwk, kid: keyId } as Kms.KmsJwkPrivate,
-        ...(this.needsNodeKms(jwk) ? { backend: NODE_KMS_BACKEND } : {}),
+        ...(backend ? { backend } : {}),
       })
+      // OpenBao namespaces key ids, so the caller must bind the id that was actually stored, not the thumbprint.
+      return imported.keyId
     } catch (error) {
       if (!(error instanceof Kms.KeyManagementKeyExistsError)) throw error
-      agent.config.logger.debug('[importDidX509] key already exists in the KMS, reusing it', { keyId })
+      // The key was imported before. Its id is the thumbprint, prefixed when it lives in OpenBao.
+      const existingKeyId = backend === OPENBAO_KMS_BACKEND ? openBaoKeyId(keyId) : keyId
+      agent.config.logger.debug('[importDidX509] key already exists in the KMS, reusing it', { keyId: existingKeyId })
+      return existingKeyId
     }
-    return keyId
   }
 
   private needsNodeKms(jwk: { kty: string; crv?: string }): boolean {

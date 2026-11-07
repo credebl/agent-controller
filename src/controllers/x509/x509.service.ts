@@ -17,6 +17,7 @@ import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
 import { keyAlgorithmToCurve } from '../../utils/constant'
 import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } from '../../utils/helpers'
+import { openBaoBackendForCreate, openBaoBackendForJwk } from '../../utils/kms/openBao'
 
 import { pemToRawPrivateKey } from './crypto-util'
 import { type X509CreateCertificateOptionsDto } from './x509.types'
@@ -74,44 +75,65 @@ class x509Service {
     return { publicCertificateBase64: selfSignedx509certificateBase64 }
   }
 
-  public async createCertificate(agentReq: Req, options: X509CreateCertificateOptionsDto) {
-    const agent = agentReq.agent
-
-    let authorityKeyID, subjectPublicKeyID, authorityKeyKmsId
-
-    if (options.authorityKey && options?.authorityKey?.seed) {
+  private async importOrCreateAuthorityKey(agent: Agent, options: X509CreateCertificateOptionsDto) {
+    if (options.authorityKey?.seed) {
       const { privateJwk } = transformSeedToPrivateJwk({
         type: getTypeFromCurve(options.authorityKey.keyType ?? 'P-256'),
-        seed: TypedArrayEncoder.fromUtf8String(options.authorityKey!.seed!),
+        seed: TypedArrayEncoder.fromUtf8String(options.authorityKey.seed),
       })
 
-      const { publicJwk } = await agent.kms.importKey({ privateJwk })
-      authorityKeyID = publicJwk
-    } else {
-      const { publicJwk, keyId } = await agent.kms.createKey({
-        type: getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256'),
+      const backend = openBaoBackendForJwk(privateJwk)
+      const { publicJwk } = await agent.kms.importKey({
+        privateJwk,
+        ...(backend ? { backend } : {}),
       })
-      authorityKeyID = publicJwk
-      authorityKeyKmsId = keyId
+      return { authorityKeyID: publicJwk }
     }
 
-    if (options.subjectPublicKey) {
-      if (options?.subjectPublicKey?.seed) {
-        const importedKey = await agentReq.agent.kms.importKey({
-          privateJwk: transformSeedToPrivateJwk({
-            seed: TypedArrayEncoder.fromUtf8String(options.subjectPublicKey.seed),
-            type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256'),
-          }).privateJwk,
-        })
+    const type = getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256')
+    const backend = openBaoBackendForCreate(type)
+    const { publicJwk, keyId } = await agent.kms.createKey({
+      type,
+      ...(backend ? { backend } : {}),
+    })
+    return { authorityKeyID: publicJwk, authorityKeyKmsId: keyId }
+  }
 
-        subjectPublicKeyID = importedKey.publicJwk
-      } else {
-        const { publicJwk } = await agent.kms.createKey({
-          type: getTypeFromCurve(options.subjectPublicKey?.keyType ?? 'P-256'),
-        })
-        subjectPublicKeyID = publicJwk
-      }
+  private async resolveSubjectPublicKey(
+    agent: Agent,
+    subjectPublicKey: X509CreateCertificateOptionsDto['subjectPublicKey'],
+  ) {
+    if (!subjectPublicKey) return undefined
+
+    if (subjectPublicKey.seed) {
+      const privateJwk = transformSeedToPrivateJwk({
+        seed: TypedArrayEncoder.fromUtf8String(subjectPublicKey.seed),
+        type: getTypeFromCurve(subjectPublicKey.keyType ?? 'P-256'),
+      }).privateJwk
+
+      const backend = openBaoBackendForJwk(privateJwk)
+      const importedKey = await agent.kms.importKey({
+        privateJwk,
+        ...(backend ? { backend } : {}),
+      })
+      return importedKey.publicJwk
     }
+
+    const type = getTypeFromCurve(subjectPublicKey.keyType ?? 'P-256')
+    const backend = openBaoBackendForCreate(type)
+    const { publicJwk } = await agent.kms.createKey({
+      type,
+      ...(backend ? { backend } : {}),
+    })
+    return publicJwk
+  }
+
+  public async createCertificate(agentReq: Req, options: X509CreateCertificateOptionsDto) {
+    const agent = agentReq.agent as Agent
+
+    const { authorityKeyID, authorityKeyKmsId } = await this.importOrCreateAuthorityKey(agent, options)
+    const subjectPublicKeyID = await this.resolveSubjectPublicKey(agent, options.subjectPublicKey)
+
     const certificate = await agent.x509.createCertificate({
       authorityKey: Kms.PublicJwk.fromPublicJwk(authorityKeyID),
       subjectPublicKey: subjectPublicKeyID ? Kms.PublicJwk.fromPublicJwk(subjectPublicKeyID) : undefined,
@@ -147,8 +169,10 @@ class x509Service {
         privateKey,
       })
 
+      const backend = openBaoBackendForJwk(privateJwk)
       key = await agent.kms.importKey({
         privateJwk,
+        ...(backend ? { backend } : {}),
       })
       if (
         parsedCertificate.publicJwk.publicKey.kty !== keyTypeInfo.kty ||
@@ -221,11 +245,15 @@ export async function createKey(agent: Agent, keyType: KeyAlgorithm) {
 
     const normalizedCurve = keyAlgorithmToCurve[keyType]
     if (!normalizedCurve) throw new Error('Unspported key type for method importKey')
+    const privateJwk = transformSeedToPrivateJwk({
+      seed: TypedArrayEncoder.fromUtf8String(seed),
+      type: getTypeFromCurve(normalizedCurve),
+    }).privateJwk
+
+    const backend = openBaoBackendForJwk(privateJwk)
     const importedKey = await agent.kms.importKey({
-      privateJwk: transformSeedToPrivateJwk({
-        seed: TypedArrayEncoder.fromUtf8String(seed),
-        type: getTypeFromCurve(normalizedCurve),
-      }).privateJwk,
+      privateJwk,
+      ...(backend ? { backend } : {}),
     })
 
     return importedKey

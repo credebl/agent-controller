@@ -6068,7 +6068,9 @@
 							"application/json": {
 								"schema": {
 									"properties": {
-										"keyId": {},
+										"keyId": {
+											"type": "string"
+										},
 										"publicCertificateBase64": {
 											"type": "string"
 										}
