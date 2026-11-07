@@ -14,18 +14,18 @@ rotation prohibitions are in the plugin's
 | agent-controller | `feat/openbao-kms`                                                                    |
 | credo-ts-openbao | `main` (`d55a67a`, merged from PR #10; vendored as `@credebl/credo-ts-openbao@0.2.0`) |
 | platform         | `feat/did-x509-import`                                                                |
-| studio           | `feat/create-x509-certificates`                                                       |
+| studio           | `fix/x509-certificates-platform-enum` (follow-up to the merged `#1265`)               |
 
 Record the exact SHAs used for the run. Re-run this checklist after any rebase of those branches.
 
 Run under test (2026-11-07):
 
-| Component        | SHA                                                                             |
-| ---------------- | ------------------------------------------------------------------------------- |
-| agent-controller | `f740356990bc580dd3f5a776f2734274502c284a` (`feat/openbao-kms`)                 |
-| credo-ts-openbao | `d55a67a40ec0097be06b6ad3a120d8dd6c2aeff1` (`main`, vendored tarball `0.2.0`)   |
-| platform         | `90c167cf09bbbbb3f5296daa9e2e5eb38245e988` (`feat/did-x509-import`)             |
-| studio           | `6abb5534a397de7d9c209458ab6aef01e2cae380` (`feat/create-x509-certificates`)    |
+| Component        | SHA                                                                                |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| agent-controller | `f740356990bc580dd3f5a776f2734274502c284a` (`feat/openbao-kms`)                    |
+| credo-ts-openbao | `d55a67a40ec0097be06b6ad3a120d8dd6c2aeff1` (`main`, vendored tarball `0.2.0`)      |
+| platform         | `90c167cf09bbbbb3f5296daa9e2e5eb38245e988` (`feat/did-x509-import`)                |
+| studio           | `605006a18a0ca4250ff1aff6de68647051663cd0` (`fix/x509-certificates-platform-enum`) |
 
 OpenBao `2.7.2`, PostgreSQL `16.15` storage in database `credebl_openbao`, schema `openbao`
 (`openbao_kv_store`), AppRole auth. Local e2e configuration is in
@@ -300,19 +300,19 @@ treated as an event and never replied to.
 This exercises the platform service layer and the studio build/contract. A full platform HTTP/UI flow (Keycloak,
 api-gateway, browser) was not available in this environment; see the blockers below.
 
-| Area                                   | Result | Evidence                                                                                                                                        |
-| -------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `import-did-x509` over NATS            | pass   | `did` and `org_dids.id a58956b9-7802-4dd7-ad61-ffba9b2df8be`; `keyId ob_rnMYkvg9LNltR2Gfkx2nA3hqQTZ_8xUxjG680kID4UQ`                            |
-| `import-did-x509` re-import            | pass   | same `org_dids.id`, same DID, same `keyId`; zero duplicate rows and zero new Transit keys                                                       |
-| `get-did-x509-chain` over NATS         | pass   | `{ did, x509chain: [leaf, root] }`                                                                                                              |
-| `create-x509-certificate` P-256        | pass   | record `e88bb3f0-9a41-458e-b5ec-d87d37b3cca6`, `keyId ob_db421c17-...`, status `Active`, one matching Transit key, self-signed cert verifies   |
-| `create-x509-certificate` Ed25519      | pass   | record `a99e0260-63bc-4637-9e5f-a1dd00e310a0`, `keyId ob_170b3e90-...`, status `Active`, one matching Transit key, self-signed cert verifies   |
-| `get-all-certificates` / get one       | pass   | returns the created and imported records with the same `ob_` key ids                                                                            |
-| `import-x509-certificate` (base64 DER) | pass   | record `2e2e6855-...`, `keyId ob_22d76889-...`, status `Pending activation` because its validity overlaps an active record                     |
-| `import-x509-certificate` (PEM key)    | pass   | no `keyType` supplied; platform derived `Ed25519` from the certificate, `keyId ob_a3062ae9-...`, `isImported: true`                             |
-| Transit key count                      | pass   | tenant scope `ac_6ba806f9a2bcab26_*` grew only by the key ids returned by the create/import calls                                               |
-| Studio build and lint                  | pass   | `next build`, `next lint`; `/x509-certificate` route built                                                                                      |
-| Studio-to-platform contract            | pass   | routes `/x509/:orgId`, `/x509/:orgId/import`, `/x509/:orgId/activate/:id` match the platform controller; key-type and key-format fixes below     |
+| Area                                   | Result | Evidence                                                                                                                                     |
+| -------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `import-did-x509` over NATS            | pass   | `did` and `org_dids.id a58956b9-7802-4dd7-ad61-ffba9b2df8be`; `keyId ob_rnMYkvg9LNltR2Gfkx2nA3hqQTZ_8xUxjG680kID4UQ`                         |
+| `import-did-x509` re-import            | pass   | same `org_dids.id`, same DID, same `keyId`; zero duplicate rows and zero new Transit keys                                                    |
+| `get-did-x509-chain` over NATS         | pass   | `{ did, x509chain: [leaf, root] }`                                                                                                           |
+| `create-x509-certificate` P-256        | pass   | record `e88bb3f0-9a41-458e-b5ec-d87d37b3cca6`, `keyId ob_db421c17-...`, status `Active`, one matching Transit key, self-signed cert verifies |
+| `create-x509-certificate` Ed25519      | pass   | record `a99e0260-63bc-4637-9e5f-a1dd00e310a0`, `keyId ob_170b3e90-...`, status `Active`, one matching Transit key, self-signed cert verifies |
+| `get-all-certificates` / get one       | pass   | returns the created and imported records with the same `ob_` key ids                                                                         |
+| `import-x509-certificate` (base64 DER) | pass   | record `2e2e6855-...`, `keyId ob_22d76889-...`, status `Pending activation` because its validity overlaps an active record                   |
+| `import-x509-certificate` (PEM key)    | pass   | no `keyType` supplied; platform derived `Ed25519` from the certificate, `keyId ob_a3062ae9-...`, `isImported: true`                          |
+| Transit key count                      | pass   | tenant scope `ac_6ba806f9a2bcab26_*` grew only by the key ids returned by the create/import calls                                            |
+| Studio build and lint                  | pass   | `next build`; `/x509-certificate` route built; `eslint` passes on the changed files                                                          |
+| Studio-to-platform contract            | pass   | routes `/x509/:orgId`, `/x509/:orgId/import`, `/x509/:orgId/activate/:id` match the platform controller; key-type and key-format fixes below |
 
 ### Contract fixes found by this run
 
@@ -324,6 +324,10 @@ api-gateway, browser) was not available in this environment; see the blockers be
   omit it or use a different spelling.
 - agent-controller certificate import now accepts a PEM private key in addition to base64 DER PKCS#8.
 - Platform import records now persist `isImported: true`; previously the column kept its `false` default.
+
+Studio PR #1265 was already squash-merged into `main` before these fixes, so the studio changes ship separately in
+`fix/x509-certificates-platform-enum` (PR #1344). `main` now runs Next 16, where `next lint` no longer exists; lint
+coverage for that PR is `eslint` on the changed files.
 
 ### Blockers and remaining gate
 
