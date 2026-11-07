@@ -1,8 +1,8 @@
 import type { DidX509ChainResponse, DidX509ImportOptionsDto, DidX509ImportResponse } from './x509.types'
 import type { AgentType } from '../../types'
 
-import { openBaoKeyId, OPENBAO_KEY_ID_PREFIX } from '@sovio-id/credo-openbao-kms'
 import { DidRepository, Kms, TypedArrayEncoder } from '@credo-ts/core'
+import { openBaoKeyId, OPENBAO_KEY_ID_PREFIX } from '@sovio-id/credo-openbao-kms'
 import { createPublicKey, type KeyObject } from 'node:crypto'
 
 import { BadRequestError } from '../../errors'
