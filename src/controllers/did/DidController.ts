@@ -137,7 +137,7 @@ export class DidController extends Controller {
         throw new BadRequestError('Method is required')
       }
 
-      const didOptions = await this.resolveImportKeyMaterial(request.agent, createDidOptions)
+      const didOptions = this.resolveImportKeyMaterial(request.agent, createDidOptions)
 
       let result
       switch (didOptions.method) {
@@ -199,7 +199,7 @@ export class DidController extends Controller {
    * Replaces `encryptedKey` with the decrypted key material. The session is bound to this agent and DID method, is
    * single use and expires quickly, so the ciphertext can safely transit the platform.
    */
-  private async resolveImportKeyMaterial(agent: AgentType, didOptions: DidCreate): Promise<DidCreate> {
+  private resolveImportKeyMaterial(agent: AgentType, didOptions: DidCreate): DidCreate {
     this.assertPlaintextKeyImportAllowed(didOptions)
 
     if (!didOptions.encryptedKey) return didOptions
@@ -265,10 +265,7 @@ export class DidController extends Controller {
     return hex.toLowerCase()
   }
 
-  private async resolveX509KeyMaterial(
-    agent: AgentType,
-    options: DidX509ImportOptionsDto,
-  ): Promise<DidX509ImportOptionsDto> {
+  private resolveX509KeyMaterial(agent: AgentType, options: DidX509ImportOptionsDto): DidX509ImportOptionsDto {
     this.assertPlaintextKeyImportAllowed(options)
 
     if (!options.encryptedKey) {
@@ -623,11 +620,14 @@ export class DidController extends Controller {
       throw new BadRequestError('Provide either privateKey or privateKeyJwk, not both')
     }
 
-    const privateKey = didOptions.privateKeyJwk
-      ? parsePrivateKeyJwk(didOptions.privateKeyJwk)
-      : didOptions.privateKey?.trim().startsWith('{')
-        ? parsePrivateKeyJwk(didOptions.privateKey)
-        : parsePrivateKey(didOptions.privateKey as string, didOptions.passphrase)
+    let privateKey
+    if (didOptions.privateKeyJwk) {
+      privateKey = parsePrivateKeyJwk(didOptions.privateKeyJwk)
+    } else if (didOptions.privateKey?.trim().startsWith('{')) {
+      privateKey = parsePrivateKeyJwk(didOptions.privateKey)
+    } else {
+      privateKey = parsePrivateKey(didOptions.privateKey as string, didOptions.passphrase)
+    }
 
     return privateKeyToJwk(privateKey) as Kms.KmsJwkPrivate
   }
@@ -964,11 +964,12 @@ export class DidController extends Controller {
       }).privateJwk
     }
 
-    const backend = hasImportedKey
-      ? this.importedKeyBackend('web', privateJwk)
-      : openBaoBackendForDidMethod('web') && openBaoBackendForJwk(privateJwk)
-        ? OPENBAO_KMS_BACKEND
-        : undefined
+    let backend: string | undefined
+    if (hasImportedKey) {
+      backend = this.importedKeyBackend('web', privateJwk)
+    } else if (openBaoBackendForDidMethod('web') && openBaoBackendForJwk(privateJwk)) {
+      backend = OPENBAO_KMS_BACKEND
+    }
     const key = await this.importKey(agent, privateJwk, backend)
 
     if (privateJwk.kty === 'OKP' && privateJwk.crv === 'Ed25519') {
@@ -1073,7 +1074,7 @@ export class DidController extends Controller {
   @Post('/x509/import')
   public async importDidX509(@Request() request: Req, @Body() options: DidX509ImportOptionsDto) {
     try {
-      const resolvedOptions = await this.resolveX509KeyMaterial(request.agent, options)
+      const resolvedOptions = this.resolveX509KeyMaterial(request.agent, options)
       return await didX509Service.importDidX509(request.agent, resolvedOptions)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
