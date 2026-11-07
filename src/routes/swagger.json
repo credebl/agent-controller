@@ -9950,6 +9950,118 @@
 				]
 			}
 		},
+		"/dids/{did}/resolve": {
+			"get": {
+				"operationId": "ResolveDid",
+				"responses": {
+					"200": {
+						"description": "DidResolutionResult",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"didDocument": {
+											"$ref": "#/components/schemas/Record_string.any_"
+										},
+										"didDocumentMetadata": {
+											"$ref": "#/components/schemas/DIDDocumentMetadata"
+										},
+										"didResolutionMetadata": {
+											"$ref": "#/components/schemas/DidResolutionMetadata"
+										}
+									},
+									"required": [
+										"didDocument",
+										"didDocumentMetadata",
+										"didResolutionMetadata"
+									],
+									"type": "object"
+								},
+								"examples": {
+									"Example 1": {
+										"value": {
+											"didDocument": {
+												"@context": [
+													"https://w3id.org/did/v1",
+													"https://w3id.org/security/suites/ed25519-2018/v1",
+													"https://w3id.org/security/suites/x25519-2019/v1"
+												],
+												"id": "did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL",
+												"verificationMethod": [
+													{
+														"id": "did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL#z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL",
+														"type": "Ed25519VerificationKey2018",
+														"controller": "did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL",
+														"publicKeyBase58": "6fioC1zcDPyPEL19pXRS2E4iJ46zH7xP6uSgAaPdwDrx"
+													}
+												],
+												"authentication": [
+													"did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL#z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL"
+												],
+												"assertionMethod": [
+													"did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL#z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL"
+												],
+												"capabilityInvocation": [
+													"did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL#z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL"
+												],
+												"capabilityDelegation": [
+													"did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL#z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL"
+												],
+												"keyAgreement": [
+													{
+														"id": "did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL#z6LSrdqo4M24WRDJj1h2hXxgtDTyzjjKCiyapYVgrhwZAySn",
+														"type": "X25519KeyAgreementKey2019",
+														"controller": "did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL",
+														"publicKeyBase58": "FxfdY3DCQxVZddKGAtSjZdFW9bCCW7oRwZn1NFJ2Tbg2"
+													}
+												]
+											},
+											"didDocumentMetadata": {},
+											"didResolutionMetadata": {
+												"contentType": "application/did+ld+json"
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"description": "Resolves a DID without storing anything in the agent wallet. `GET /dids/{did}` also imports the DID with\n`overwrite: true`, so it writes; this is the read-only variant used to check what a DID currently resolves to.",
+				"tags": [
+					"Dids"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Decentralized Identifier",
+						"in": "path",
+						"name": "did",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/Did"
+						}
+					},
+					{
+						"description": "Resolve a DID this agent created from the agent's own record (default). Pass `false` to\nresolve it over the network instead, for example to check that a did:web document is actually hosted.",
+						"in": "query",
+						"name": "useLocalRecord",
+						"required": false,
+						"schema": {
+							"default": true,
+							"type": "boolean"
+						}
+					}
+				]
+			}
+		},
 		"/dids/import/session": {
 			"post": {
 				"operationId": "CreateKeyImportSession",

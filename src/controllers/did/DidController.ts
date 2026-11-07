@@ -26,14 +26,14 @@ import { Key, KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import { openBaoKeyId } from '@sovio-id/credo-openbao-kms'
 import axios from 'axios'
 import { Request as Req } from 'express'
-import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
+import { Body, Controller, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 import { container } from 'tsyringe'
 
 import { RestMultiTenantAgentModules } from '../../cliAgent'
 import { DidMethod, KeyAlgorithmCurve, Network, Role, SCOPES } from '../../enums'
 import ErrorHandlingService from '../../errorHandlingService'
-import { BadRequestError, InternalServerError } from '../../errors'
+import { BadRequestError, InternalServerError, NotFoundError } from '../../errors'
 import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
@@ -88,6 +88,37 @@ export class DidController extends Controller {
       }
 
       return { ...resolveResult, didDocument: resolveResult.didDocument.toJSON() }
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
+   * Resolves a DID without storing anything in the agent wallet. `GET /dids/{did}` also imports the DID with
+   * `overwrite: true`, so it writes; this is the read-only variant used to check what a DID currently resolves to.
+   * @param did Decentralized Identifier
+   * @param useLocalRecord Resolve a DID this agent created from the agent's own record (default). Pass `false` to
+   * resolve it over the network instead, for example to check that a did:web document is actually hosted.
+   * @returns DidResolutionResult
+   */
+  @Example<DidResolutionResultProps>(DidRecordExample)
+  @Get('/:did/resolve')
+  public async resolveDid(
+    @Request() request: Req,
+    @Path('did') did: Did,
+    @Query('useLocalRecord') useLocalRecord = true,
+  ) {
+    try {
+      const { didDocument, didDocumentMetadata, didResolutionMetadata } = await request.agent.dids.resolve(did, {
+        useLocalCreatedDidRecord: useLocalRecord,
+      })
+      if (!didDocument) {
+        // Credo reports an unresolvable DID in the metadata instead of throwing.
+        const reason = didResolutionMetadata?.message ?? didResolutionMetadata?.error ?? 'unknown reason'
+        throw new NotFoundError(`Unable to resolve ${did}: ${reason}`)
+      }
+
+      return { didResolutionMetadata, didDocumentMetadata, didDocument: didDocument.toJSON() }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
