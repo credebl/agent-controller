@@ -96,11 +96,14 @@ function pruneExpired(now: number): void {
  * Creates a session for a single DID method and agent. The agent binding stops an envelope from being replayed
  * against another tenant, and the method binding stops it from being used for a different DID type.
  */
-export function createImportSession(
+export async function createImportSession(
   method: KeyImportMethod,
   agentBinding: string,
   now = Date.now(),
-): KeyImportSessionDescriptor {
+): Promise<KeyImportSessionDescriptor> {
+  // Generate the key first: other sessions can be created while it runs, so the cap is applied after it.
+  const { publicJwk, privateKey } = await createKeyImportKeyPair()
+
   pruneExpired(now)
 
   // Bound the number of live sessions so unauthenticated session creation cannot exhaust memory.
@@ -112,7 +115,6 @@ export function createImportSession(
 
   const sessionId = randomBytes(32).toString('base64url')
   const expiresAt = now + sessionTtlMs()
-  const { publicJwk, privateKey } = createKeyImportKeyPair()
 
   const descriptor: KeyImportSessionDescriptor = {
     sessionId,

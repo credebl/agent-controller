@@ -5,7 +5,7 @@ import {
   createCipheriv,
   createDecipheriv,
   createPublicKey,
-  generateKeyPairSync,
+  generateKeyPair,
   privateDecrypt,
   publicEncrypt,
   randomBytes,
@@ -59,12 +59,20 @@ function base64UrlEncode(value: Buffer): string {
 
 /**
  * Generates the per-session key pair. The public key is handed to the client, the private key stays in this process.
+ * RSA 3072 generation can take hundreds of milliseconds, so it runs on the libuv thread pool instead of blocking the
+ * event loop for every tenant.
  */
-export function createKeyImportKeyPair(): { publicJwk: JsonWebKey; privateKey: KeyObject } {
-  const { publicKey, privateKey } = generateKeyPairSync('rsa', {
-    modulusLength: SESSION_KEY_MODULUS_LENGTH,
-    publicExponent: 0x10001,
-  })
+export async function createKeyImportKeyPair(): Promise<{ publicJwk: JsonWebKey; privateKey: KeyObject }> {
+  const { publicKey, privateKey } = await new Promise<{ publicKey: KeyObject; privateKey: KeyObject }>(
+    (resolve, reject) => {
+      generateKeyPair(
+        'rsa',
+        { modulusLength: SESSION_KEY_MODULUS_LENGTH, publicExponent: 0x10001 },
+        (error, generatedPublicKey, generatedPrivateKey) =>
+          error ? reject(error) : resolve({ publicKey: generatedPublicKey, privateKey: generatedPrivateKey }),
+      )
+    },
+  )
 
   return { publicJwk: publicKey.export({ format: 'jwk' }) as JsonWebKey, privateKey }
 }

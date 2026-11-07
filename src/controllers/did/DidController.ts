@@ -26,7 +26,6 @@ import {
 import { Key, KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import axios from 'axios'
 import { Request as Req } from 'express'
-import { createPrivateKey, createPublicKey } from 'node:crypto'
 import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 import { container } from 'tsyringe'
@@ -110,7 +109,7 @@ export class DidController extends Controller {
         throw new BadRequestError(`method must be one of ${KEY_IMPORT_METHODS.join(', ')}`)
       }
 
-      const descriptor = createImportSession(options.method, agentBindingFor(request.agent))
+      const descriptor = await createImportSession(options.method, agentBindingFor(request.agent))
       // Import material must never be cached by a browser, proxy or CDN.
       this.setHeader('Cache-Control', 'no-store')
       this.setHeader('Pragma', 'no-cache')
@@ -298,9 +297,7 @@ export class DidController extends Controller {
     const privateKey =
       material.privateKey ??
       (material.privateKeyJwk
-        ? createPrivateKey({ key: material.privateKeyJwk, format: 'jwk' })
-            .export({ type: 'pkcs8', format: 'pem' })
-            .toString()
+        ? parsePrivateKeyJwk(material.privateKeyJwk).export({ type: 'pkcs8', format: 'pem' }).toString()
         : undefined)
     if (!privateKey) throw new BadRequestError('The decrypted key payload does not contain a private key')
 
