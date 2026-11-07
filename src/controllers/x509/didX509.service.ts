@@ -27,6 +27,8 @@ class DidX509Service {
    * the chain is kept with the DID so it can be resolved again later without being passed along.
    */
   public async importDidX509(agent: AgentType, options: DidX509ImportOptionsDto): Promise<DidX509ImportResponse> {
+    if (!options.privateKey) throw new BadRequestError('privateKey or encryptedKey is required')
+
     const chain = parseCertificateChain(options.certificateChain)
     const leaf = chain[0]
 

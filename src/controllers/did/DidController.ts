@@ -26,7 +26,7 @@ import {
 import { Key, KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import axios from 'axios'
 import { Request as Req } from 'express'
-import { createPublicKey } from 'node:crypto'
+import { createPrivateKey, createPublicKey } from 'node:crypto'
 import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
 import { injectable } from 'tsyringe'
 import { container } from 'tsyringe'
@@ -38,6 +38,17 @@ import { BadRequestError, InternalServerError } from '../../errors'
 import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
+import { KeyImportEnvelopeError } from '../../utils/keyImport/jwe'
+import {
+  agentBindingFor,
+  consumeImportSession,
+  createImportSession,
+  isKeyImportMethod,
+  KEY_IMPORT_METHODS,
+  KeyImportSessionError,
+  type KeyImportKeyMaterial,
+  type KeyImportMethod,
+} from '../../utils/keyImport/session'
 import { needsNodeKms, NODE_KMS_BACKEND, selectKmsBackendForJwk } from '../../utils/kms/backend'
 import {
   OPENBAO_KMS_BACKEND,
@@ -47,7 +58,7 @@ import {
   openBaoKeyIdForPrivateJwk,
 } from '../../utils/kms/openBao'
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
-import { DidCreate, supportedKeyTypesDID } from '../types'
+import { DidCreate, KeyImportSessionRequest, KeyImportSessionResponse, supportedKeyTypesDID } from '../types'
 import { didX509Service } from '../x509/didX509.service'
 import { parsePrivateKey, parsePrivateKeyJwk, privateKeyToJwk } from '../x509/didX509.utils'
 import { DidX509ImportOptionsDto } from '../x509/x509.types'
@@ -84,6 +95,34 @@ export class DidController extends Controller {
   }
 
   /**
+   * Creates a single-use key import session and returns the public key the client encrypts the private key to.
+   * The private key material never travels in plaintext through the API gateway, NATS, the agent service or logs.
+   * @body KeyImportSessionRequest
+   * @returns KeyImportSessionResponse
+   */
+  @Post('/import/session')
+  public async createKeyImportSession(
+    @Request() request: Req,
+    @Body() options: KeyImportSessionRequest,
+  ): Promise<KeyImportSessionResponse> {
+    try {
+      if (!isKeyImportMethod(options?.method)) {
+        throw new BadRequestError(`method must be one of ${KEY_IMPORT_METHODS.join(', ')}`)
+      }
+
+      const descriptor = createImportSession(options.method, agentBindingFor(request.agent))
+      // Import material must never be cached by a browser, proxy or CDN.
+      this.setHeader('Cache-Control', 'no-store')
+      this.setHeader('Pragma', 'no-cache')
+      this.agent.config.logger.info(`Created a key import session for method:${options.method}`)
+
+      return descriptor
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
    * Did nym registration
    * @body DidCreateOptions
    * @returns DidResolutionResult
@@ -99,30 +138,32 @@ export class DidController extends Controller {
         throw new BadRequestError('Method is required')
       }
 
+      const didOptions = await this.resolveImportKeyMaterial(request.agent, createDidOptions)
+
       let result
-      switch (createDidOptions.method) {
+      switch (didOptions.method) {
         case DidMethod.Indy:
-          result = await this.handleIndy(request.agent, createDidOptions)
+          result = await this.handleIndy(request.agent, didOptions)
           break
 
         case DidMethod.Key:
-          result = await this.handleKey(request.agent, createDidOptions)
+          result = await this.handleKey(request.agent, didOptions)
           break
 
         case DidMethod.Web:
-          result = await this.handleWeb(request.agent, createDidOptions)
+          result = await this.handleWeb(request.agent, didOptions)
           break
 
         case DidMethod.Polygon:
-          result = await this.handlePolygon(request.agent, createDidOptions)
+          result = await this.handlePolygon(request.agent, didOptions)
           break
 
         case DidMethod.Peer:
-          result = await this.handleDidPeer(request.agent, createDidOptions)
+          result = await this.handleDidPeer(request.agent, didOptions)
           break
 
         default:
-          throw new BadRequestError(`Invalid method: ${createDidOptions.method}`)
+          throw new BadRequestError(`Invalid method: ${didOptions.method}`)
       }
 
       didRes = { ...result }
@@ -131,6 +172,104 @@ export class DidController extends Controller {
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
+  }
+
+  private plaintextKeyImportAllowed(): boolean {
+    return ['1', 'true', 'yes', 'on'].includes((process.env.ALLOW_PLAINTEXT_KEY_IMPORT ?? '').trim().toLowerCase())
+  }
+
+  /**
+   * Plaintext key import is a migration only escape hatch. The production API only accepts `encryptedKey`, so a key
+   * cannot be read from request bodies, validation errors, gateway logs or the NATS payload.
+   */
+  private assertPlaintextKeyImportAllowed(options: {
+    privateKey?: string
+    privateKeyJwk?: Record<string, unknown>
+    passphrase?: string
+  }): void {
+    if (this.plaintextKeyImportAllowed()) return
+    if (options.privateKey || options.privateKeyJwk || options.passphrase) {
+      throw new BadRequestError(
+        'Plaintext private key import is disabled. Request a key import session from POST /dids/import/session and send the encryptedKey envelope instead.',
+      )
+    }
+  }
+
+  /**
+   * Replaces `encryptedKey` with the decrypted key material. The session is bound to this agent and DID method, is
+   * single use and expires quickly, so the ciphertext can safely transit the platform.
+   */
+  private async resolveImportKeyMaterial(agent: AgentType, didOptions: DidCreate): Promise<DidCreate> {
+    this.assertPlaintextKeyImportAllowed(didOptions)
+
+    if (!didOptions.encryptedKey) return didOptions
+    if (didOptions.privateKey || didOptions.privateKeyJwk || didOptions.passphrase) {
+      throw new BadRequestError('Provide either encryptedKey or plaintext key material, not both')
+    }
+    if (didOptions.method !== DidMethod.Key && didOptions.method !== DidMethod.Web) {
+      throw new BadRequestError('encryptedKey is only supported for did:key and did:web')
+    }
+    if (!didOptions.encryptedKey.sessionId || typeof didOptions.encryptedKey.jwe !== 'string') {
+      throw new BadRequestError('encryptedKey.sessionId and encryptedKey.jwe are required')
+    }
+
+    let material: KeyImportKeyMaterial
+    try {
+      material = consumeImportSession({
+        sessionId: didOptions.encryptedKey.sessionId,
+        jwe: didOptions.encryptedKey.jwe,
+        agentBinding: agentBindingFor(agent),
+        method: didOptions.method as KeyImportMethod,
+      })
+    } catch (error) {
+      if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
+
+    return { ...didOptions, ...material }
+  }
+
+  private async resolveX509KeyMaterial(
+    agent: AgentType,
+    options: DidX509ImportOptionsDto,
+  ): Promise<DidX509ImportOptionsDto> {
+    this.assertPlaintextKeyImportAllowed(options)
+
+    if (!options.encryptedKey) {
+      if (!options.privateKey) throw new BadRequestError('privateKey or encryptedKey is required')
+      return options
+    }
+    if (options.privateKey || options.passphrase) {
+      throw new BadRequestError('Provide either encryptedKey or plaintext key material, not both')
+    }
+
+    let material: KeyImportKeyMaterial
+    try {
+      material = consumeImportSession({
+        sessionId: options.encryptedKey.sessionId,
+        jwe: options.encryptedKey.jwe,
+        agentBinding: agentBindingFor(agent),
+        method: 'x509',
+      })
+    } catch (error) {
+      if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
+
+    const privateKey =
+      material.privateKey ??
+      (material.privateKeyJwk
+        ? createPrivateKey({ key: material.privateKeyJwk, format: 'jwk' })
+            .export({ type: 'pkcs8', format: 'pem' })
+            .toString()
+        : undefined)
+    if (!privateKey) throw new BadRequestError('The decrypted key payload does not contain a private key')
+
+    return { ...options, privateKey, ...(material.passphrase ? { passphrase: material.passphrase } : {}) }
   }
 
   private async handleDidPeer(agent: AgentType, createDidOptions: DidCreate) {
@@ -902,7 +1041,8 @@ export class DidController extends Controller {
   @Post('/x509/import')
   public async importDidX509(@Request() request: Req, @Body() options: DidX509ImportOptionsDto) {
     try {
-      return await didX509Service.importDidX509(request.agent, options)
+      const resolvedOptions = await this.resolveX509KeyMaterial(request.agent, options)
+      return await didX509Service.importDidX509(request.agent, resolvedOptions)
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }

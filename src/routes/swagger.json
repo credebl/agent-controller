@@ -3375,6 +3375,62 @@
 				"type": "string",
 				"example": "did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL"
 			},
+			"KeyImportSessionResponse": {
+				"properties": {
+					"sessionId": {
+						"type": "string"
+					},
+					"kid": {
+						"type": "string"
+					},
+					"method": {
+						"type": "string"
+					},
+					"expiresAt": {
+						"type": "string",
+						"description": "ISO 8601 expiry of the session."
+					},
+					"alg": {
+						"type": "string"
+					},
+					"enc": {
+						"type": "string"
+					},
+					"publicKeyJwk": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"description": "Public key the client encrypts the private key material to."
+					},
+					"protectedHeader": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"description": "Protected header the client must use for the JWE, it binds the envelope to this session."
+					}
+				},
+				"required": [
+					"sessionId",
+					"kid",
+					"method",
+					"expiresAt",
+					"alg",
+					"enc",
+					"publicKeyJwk",
+					"protectedHeader"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"KeyImportSessionRequest": {
+				"properties": {
+					"method": {
+						"type": "string",
+						"description": "DID method the key will be imported for."
+					}
+				},
+				"required": [
+					"method"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"KeyAlgorithm": {
 				"enum": [
 					"a128gcm",
@@ -3394,6 +3450,25 @@
 					"p384"
 				],
 				"type": "string"
+			},
+			"KeyImportEncryptedKey": {
+				"description": "An encrypted private key envelope bound to a single use import session.",
+				"properties": {
+					"sessionId": {
+						"type": "string",
+						"description": "Id returned by `POST /dids/import/session`."
+					},
+					"jwe": {
+						"type": "string",
+						"description": "Compact JWE containing the private key material."
+					}
+				},
+				"required": [
+					"sessionId",
+					"jwe"
+				],
+				"type": "object",
+				"additionalProperties": false
 			},
 			"Ed25519VerificationMethodType": {
 				"type": "string",
@@ -3436,15 +3511,19 @@
 					},
 					"privateKey": {
 						"type": "string",
-						"description": "Existing private key to import for `did:key` and `did:web`: PEM (PKCS#8, SEC1 or PKCS#1, optionally encrypted)\nor base64 DER (PKCS#8). `privateKeyJwk` is the JWK equivalent. When either is supplied, `keyType` and `seed` are\nignored and the key material determines the DID."
+						"deprecated": true
 					},
 					"privateKeyJwk": {
 						"$ref": "#/components/schemas/Record_string.unknown_",
-						"description": "Existing private JWK to import for `did:key` and `did:web`."
+						"deprecated": true
 					},
 					"passphrase": {
 						"type": "string",
-						"description": "Passphrase of an encrypted PEM `privateKey`."
+						"deprecated": true
+					},
+					"encryptedKey": {
+						"$ref": "#/components/schemas/KeyImportEncryptedKey",
+						"description": "Private key material encrypted to a single-use import session (see `POST /dids/import/session`). This is the only\naccepted way to import an existing `did:key` / `did:web` key in production."
 					},
 					"endpoint": {
 						"type": "string"
@@ -3550,11 +3629,15 @@
 					},
 					"privateKey": {
 						"type": "string",
-						"description": "Private key of the leaf certificate: PEM (PKCS#8, SEC1 or PKCS#1) or base64 DER (PKCS#8). EC (P-256, P-384,\nP-521), Ed25519 and RSA keys are supported."
+						"deprecated": true
 					},
 					"passphrase": {
 						"type": "string",
-						"description": "Passphrase of the private key if it is encrypted"
+						"deprecated": true
+					},
+					"encryptedKey": {
+						"$ref": "#/components/schemas/KeyImportEncryptedKey",
+						"description": "Leaf private key encrypted to a single-use import session (see `POST /dids/import/session` with method `x509`)."
 					},
 					"policies": {
 						"items": {
@@ -3577,8 +3660,7 @@
 					}
 				},
 				"required": [
-					"certificateChain",
-					"privateKey"
+					"certificateChain"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -9865,6 +9947,46 @@
 						}
 					}
 				]
+			}
+		},
+		"/dids/import/session": {
+			"post": {
+				"operationId": "CreateKeyImportSession",
+				"responses": {
+					"200": {
+						"description": "KeyImportSessionResponse",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/KeyImportSessionResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Creates a single-use key import session and returns the public key the client encrypts the private key to.\nThe private key material never travels in plaintext through the API gateway, NATS, the agent service or logs.",
+				"tags": [
+					"Dids"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/KeyImportSessionRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/dids/write": {
