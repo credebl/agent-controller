@@ -7,11 +7,12 @@ import {
   createImportSession,
   KeyImportSessionError,
   resetImportSessions,
+  type KeyImportSessionDescriptor,
 } from '../session'
 
 const MATERIAL = JSON.stringify({ privateKey: '-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----' })
 
-function envelopeFor(session: ReturnType<typeof createImportSession>, plaintext = MATERIAL): string {
+function envelopeFor(session: KeyImportSessionDescriptor, plaintext = MATERIAL): string {
   return encryptKeyImportEnvelope(session.publicKeyJwk as JsonWebKey, Buffer.from(plaintext), session.protectedHeader)
 }
 
