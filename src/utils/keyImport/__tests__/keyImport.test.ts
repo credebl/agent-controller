@@ -21,8 +21,14 @@ describe('key import envelope', () => {
   it('decrypts material for the agent and method that created the session', () => {
     const session = createImportSession('key', 'tenant-1')
 
-    expect(consumeImportSession({ sessionId: session.sessionId, jwe: envelopeFor(session), agentBinding: 'tenant-1', method: 'key' }))
-      .toEqual({ privateKey: '-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----' })
+    expect(
+      consumeImportSession({
+        sessionId: session.sessionId,
+        jwe: envelopeFor(session),
+        agentBinding: 'tenant-1',
+        method: 'key',
+      }),
+    ).toEqual({ privateKey: '-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----' })
   })
 
   it('accepts a private JWK and an optional passphrase', () => {
@@ -33,7 +39,12 @@ describe('key import envelope', () => {
     })
 
     expect(
-      consumeImportSession({ sessionId: session.sessionId, jwe: envelopeFor(session, payload), agentBinding: 'tenant-1', method: 'web' }),
+      consumeImportSession({
+        sessionId: session.sessionId,
+        jwe: envelopeFor(session, payload),
+        agentBinding: 'tenant-1',
+        method: 'web',
+      }),
     ).toEqual({ privateKeyJwk: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y', d: 'd' }, passphrase: 'correct horse' })
   })
 
@@ -87,7 +98,12 @@ describe('key import envelope', () => {
     segments[0] = Buffer.from(JSON.stringify({ ...header, method: 'web' }), 'utf8').toString('base64url')
 
     expect(() =>
-      consumeImportSession({ sessionId: session.sessionId, jwe: segments.join('.'), agentBinding: 'tenant-1', method: 'key' }),
+      consumeImportSession({
+        sessionId: session.sessionId,
+        jwe: segments.join('.'),
+        agentBinding: 'tenant-1',
+        method: 'key',
+      }),
     ).toThrow(KeyImportEnvelopeError)
   })
 
@@ -96,7 +112,12 @@ describe('key import envelope', () => {
     const payload = JSON.stringify({ privateKey: 'pem', privateKeyJwk: { kty: 'OKP' } })
 
     expect(() =>
-      consumeImportSession({ sessionId: session.sessionId, jwe: envelopeFor(session, payload), agentBinding: 'tenant-1', method: 'key' }),
+      consumeImportSession({
+        sessionId: session.sessionId,
+        jwe: envelopeFor(session, payload),
+        agentBinding: 'tenant-1',
+        method: 'key',
+      }),
     ).toThrow(KeyImportSessionError)
   })
 

@@ -380,7 +380,6 @@ export interface KeyImportSessionResponse {
   protectedHeader: Record<string, unknown>
 }
 
-
 export type Ed25519VerificationMethodType = 'Ed25519VerificationKey2018' | 'Ed25519VerificationKey2020'
 
 export interface CreateTenantOptions {

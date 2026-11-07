@@ -73,11 +73,7 @@ export function createKeyImportKeyPair(): { publicJwk: JsonWebKey; privateKey: K
  * Encrypts key material as a compact JWE. Exported for the CLI/reference client and unit tests; the REST agent only
  * decrypts envelopes.
  */
-export function encryptKeyImportEnvelope(
-  publicJwk: JsonWebKey,
-  plaintext: Buffer,
-  header: KeyImportJweHeader,
-): string {
+export function encryptKeyImportEnvelope(publicJwk: JsonWebKey, plaintext: Buffer, header: KeyImportJweHeader): string {
   if (plaintext.length === 0) throw new KeyImportEnvelopeError('The key payload is empty')
   if (plaintext.length > MAX_KEY_IMPORT_PLAINTEXT_LENGTH) {
     throw new KeyImportEnvelopeError('The key payload is too large')

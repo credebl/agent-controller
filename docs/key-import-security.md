@@ -84,9 +84,9 @@ The envelope is standard JWE compact serialization:
 BASE64URL(protected header) . BASE64URL(encrypted CEK) . BASE64URL(iv) . BASE64URL(ciphertext) . BASE64URL(tag)
 ```
 
-* Key management: `RSA-OAEP-256` to the session's RSA-3072 public key.
-* Content encryption: `A256GCM` with a fresh 256-bit CEK and a fresh 96-bit IV per envelope.
-* The protected header is used as the JWE AAD, so it is authenticated by the GCM tag.
+- Key management: `RSA-OAEP-256` to the session's RSA-3072 public key.
+- Content encryption: `A256GCM` with a fresh 256-bit CEK and a fresh 96-bit IV per envelope.
+- The protected header is used as the JWE AAD, so it is authenticated by the GCM tag.
 
 The payload is exactly one key representation plus an optional PEM passphrase:
 
@@ -100,9 +100,9 @@ Sending both `privateKey` and `privateKeyJwk` is rejected.
 
 The agent verifies that the authenticated header matches the stored session:
 
-* `sid` and `kid` equal the session id,
-* `method` equals the DID method of the create request,
-* `exp` equals the session expiry,
+- `sid` and `kid` equal the session id,
+- `method` equals the DID method of the create request,
+- `exp` equals the session expiry,
 
 and that the session belongs to the same agent identity (tenant correlation id, or the dedicated agent) that
 created it. The session is consumed before the key is handed to the KMS, so a captured envelope cannot be
@@ -119,12 +119,9 @@ five failed attempts the session is destroyed.
 `studio/src/utils/keyImport.ts` implements the envelope with WebCrypto:
 
 ```ts
-const session = await createDidImportSession(orgId, 'key');
-const encryptedKey = await encryptKeyMaterialForImport(
-  session,
-  parseKeyMaterial(pemOrJwk, passphrase),
-);
-await createDid(orgId, { method: 'key', encryptedKey });
+const session = await createDidImportSession(orgId, 'key')
+const encryptedKey = await encryptKeyMaterialForImport(session, parseKeyMaterial(pemOrJwk, passphrase))
+await createDid(orgId, { method: 'key', encryptedKey })
 ```
 
 ### Node / CLI
@@ -165,11 +162,11 @@ curl -s -X POST "http://127.0.0.1:5050/orgs/$ORG_ID/agents/did" \
 The agent selects the same backend for an imported key as it would for a generated key, and reports the actual
 backend as `kmsBackend` in the response so the platform can persist it per DID:
 
-| Key | Backend |
-| --- | --- |
-| RSA, EC P-521 | Node KMS (Askar cannot hold/sign them) |
-| Ed25519, EC P-256/P-384, secp256k1 | Askar by default |
-| Ed25519, RSA, EC P-256/P-384/P-521 when OpenBao is enabled and the DID method opt-in flag is set | OpenBao Transit |
+| Key                                                                                              | Backend                                |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| RSA, EC P-521                                                                                    | Node KMS (Askar cannot hold/sign them) |
+| Ed25519, EC P-256/P-384, secp256k1                                                               | Askar by default                       |
+| Ed25519, RSA, EC P-256/P-384/P-521 when OpenBao is enabled and the DID method opt-in flag is set | OpenBao Transit                        |
 
 OpenBao is the root of trust when enabled. Imported keys use Transit's BYOK API, so the OpenBao server never
 receives the private key in plaintext either:
@@ -214,35 +211,35 @@ Recommended migration path:
 
 Compatibility options for clients that cannot use the envelope:
 
-* **Same-host trusted client**: run the client on the agent host and call `POST /dids/write` with the plaintext
+- **Same-host trusted client**: run the client on the agent host and call `POST /dids/write` with the plaintext
   fields while the migration flag is enabled, then turn the flag off.
-* **Proxy-side wrapping**: perform the same two calls from a small sidecar next to the client. The sidecar holds
+- **Proxy-side wrapping**: perform the same two calls from a small sidecar next to the client. The sidecar holds
   the key, requests the session, wraps the key and forwards only the envelope.
-* **Out-of-band import**: for OpenBao, import the key with `bao write transit/keys/<name>/import …` and register
+- **Out-of-band import**: for OpenBao, import the key with `bao write transit/keys/<name>/import …` and register
   the DID with the existing `keyId`. This keeps the key out of CREDEBL entirely but does not work for Askar.
 
 ## Logging and error handling
 
-* Gateway validation is configured with `validationError: { target: false, value: false }`, so class-validator
+- Gateway validation is configured with `validationError: { target: false, value: false }`, so class-validator
   never echoes the rejected value.
-* The agent controller's tsoa `ValidateError` handler logs field names and returns field names plus messages, never
+- The agent controller's tsoa `ValidateError` handler logs field names and returns field names plus messages, never
   `fields[].value`.
-* Agent service and common HTTP clients serialize errors through a recursive `redactForLog` that removes
+- Agent service and common HTTP clients serialize errors through a recursive `redactForLog` that removes
   `privateKey`, `privateKeyJwk`, `privatekey`, `passphrase`, `encryptedKey`, `jwe`, request `data`, `headers`,
   `authorization` and nested validation `value` fields.
-* The import session response is served with `Cache-Control: no-store` and `Pragma: no-cache`.
+- The import session response is served with `Cache-Control: no-store` and `Pragma: no-cache`.
 
 ## Limits and failure modes
 
-| Control | Default |
-| --- | --- |
-| Session TTL | 5 minutes (`KEY_IMPORT_SESSION_TTL_MS`) |
-| Session reuse | single use |
-| Failed decrypt attempts | 5, then the session is deleted |
-| Envelope length | 200 000 characters |
-| Decrypted payload | 50 000 bytes |
-| Live sessions per process | 1 000 |
-| Session creation rate | 30 per minute (`KEY_IMPORT_RATE_LIMIT`) |
+| Control                   | Default                                 |
+| ------------------------- | --------------------------------------- |
+| Session TTL               | 5 minutes (`KEY_IMPORT_SESSION_TTL_MS`) |
+| Session reuse             | single use                              |
+| Failed decrypt attempts   | 5, then the session is deleted          |
+| Envelope length           | 200 000 characters                      |
+| Decrypted payload         | 50 000 bytes                            |
+| Live sessions per process | 1 000                                   |
+| Session creation rate     | 30 per minute (`KEY_IMPORT_RATE_LIMIT`) |
 
 Sessions live in process memory. A load-balanced agent must route the session creation and the create DID call
 for one import to the same instance (sticky affinity), or the client will receive "session is invalid or has
