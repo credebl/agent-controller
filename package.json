@@ -36,6 +36,8 @@
     "test": "jest",
     "postinstall": "patch-package",
     "lint": "eslint --config eslint.config.mjs .",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
     "validate": "yarn lint && yarn check-types && yarn check-format"
   },
   "dependencies": {
@@ -94,6 +96,8 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "0.7.0",
+    "@changesets/cli": "2.31.1",
     "@peculiar/x509": "^2.0.0",
     "@types/body-parser": "^1.19.5",
     "@types/cors": "^2.8.18",

@@ -303,3 +303,31 @@ So in this case when a connection event is triggered, it will be sent to: http:/
 The payload of the webhook contains the serialized record related to the topic of the event. For the `connections` topic this will be a `ConnectionRecord`, for the `credentials` topic it will be a `CredentialRecord`, and so on.
 
 For the WebSocket clients, the events are sent as JSON stringified objects
+
+## Release notes and versioning
+
+Release notes are collected with [Changesets](https://github.com/changesets/changesets) while the work is done, instead of being reconstructed at release time. The version of the `agent-controller` package is the same number as the `vX.Y.Z` release tag.
+
+### When to add a changeset
+
+Add one to every pull request that changes behaviour a user of the API or a deployer can notice: features, fixes, API changes, configuration changes, and dependency updates that matter at runtime. Pull requests that only touch documentation, samples, CI or tests pass the **Changeset check** without one. A change that is neither and still needs no release note (a pure refactor, for example) takes an empty changeset: `yarn changeset --empty`.
+
+### How to add a changeset
+
+```bash
+yarn changeset
+```
+
+The prompt asks for the bump type and a summary. Write the summary for the people reading the release notes: what changed and what a user or deployer has to do about it. Commit the generated `.changeset/*.md` file with your pull request.
+
+| Bump    | Use it for                                                                                     |
+| ------- | ---------------------------------------------------------------------------------------------- |
+| `patch` | Bug fixes, security updates and internal changes with no visible effect                        |
+| `minor` | New features and new, backwards-compatible endpoints or options                                |
+| `major` | Breaking changes to the REST API, webhooks, configuration or stored data that need a migration |
+
+### How a release is cut
+
+1. Changesets merged into `main` are collected by the **Version Packages** workflow into a pull request named `chore: version packages`. It bumps the version in `package.json` and prepends the entries to `CHANGELOG.md`.
+2. A maintainer reviews that pull request and merges it when the release is ready.
+3. A maintainer then pushes the `vX.Y.Z` tag for the merge commit. The tag starts the existing **Continuous Delivery** workflow, which builds and pushes the Docker image. The Changesets workflows never publish or tag anything.
