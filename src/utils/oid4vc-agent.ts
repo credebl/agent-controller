@@ -349,9 +349,13 @@ function handleMsoMdocFormat(
     throw new Error(`'doctype' not found in credential configuration,`)
   }
 
-  const parsedCertificate = X509Service.parseCertificate(agentContext, {
-    encodedCertificate: issuerx509certificate[0],
-  })
+  // The document signer certificate comes first and signs with the given key. Any intermediate and root certificates
+  // that follow go into the credential too, so a holder can build the chain up to a certificate it trusts instead of
+  // needing the document signer's direct issuer in its trust list.
+  const parsedChain = issuerx509certificate.map((encodedCertificate) =>
+    X509Service.parseCertificate(agentContext, { encodedCertificate }),
+  )
+  const parsedCertificate = parsedChain[0]
 
   parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
   const updatedNamespaces = processIsoImages(credential.payload.namespaces)
@@ -360,7 +364,7 @@ function handleMsoMdocFormat(
     type: 'credentials',
     format: ClaimFormat.MsoMdoc,
     credentials: holderBinding.keys.map((holderBindingDetails: any) => ({
-      issuerCertificate: parsedCertificate as any,
+      issuerCertificate: (parsedChain.length > 1 ? parsedChain : parsedCertificate) as any,
       holderKey: holderBindingDetails.jwk,
       ...credential.payload,
       validityInfo: buildMdocValidityInfo(credential.payload.validityInfo),
