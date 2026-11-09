@@ -32,6 +32,7 @@ import { SignerMethod } from '../enums/enum'
 import { validateAuthConfig } from './auth'
 import { checkX509Certificates, processIsoImages } from './helpers'
 import { TsLogger } from './logger'
+import { buildMdocValidityInfo } from './mdocValidity'
 import { bindW3cCredentialSubject } from './w3cCredentialSubject'
 
 const logger = new TsLogger(LogLevel.Info)
@@ -362,11 +363,7 @@ function handleMsoMdocFormat(
       issuerCertificate: parsedCertificate as any,
       holderKey: holderBindingDetails.jwk,
       ...credential.payload,
-      validityInfo: {
-        signed: credential.payload.validityInfo.signed ? new Date(credential.payload.validityInfo.signed) : new Date(),
-        validFrom: new Date(credential.payload.validityInfo.validFrom),
-        validUntil: new Date(credential.payload.validityInfo.validUntil),
-      },
+      validityInfo: buildMdocValidityInfo(credential.payload.validityInfo),
       docType: credentialConfiguration.doctype,
     })),
   } satisfies OpenId4VciSignMdocCredentials
