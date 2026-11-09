@@ -1,3 +1,5 @@
+import type { JsonObject } from '@credo-ts/core'
+
 import {
   JsonTransformer,
   Mdoc,
@@ -13,6 +15,7 @@ import { injectable } from 'tsyringe'
 
 import { SignerMethod } from '../../../enums'
 import { assertDcqlLdpVcTypeValuesExpanded } from '../../../utils/dcql'
+import { verifyBitstringStatus } from '../../../utils/bitstringStatusVerifier'
 import {
   CreateAuthorizationRequest,
   OpenId4VCDCQLVerificationSessionRecord,
@@ -238,6 +241,61 @@ export class VerificationSessionsService {
       throw new Error('OID4VC verifier module not initialized')
     }
     const result = (await verifier.verifyAuthorizationResponse({ ...verifydcqlProofRquest })) as any
-    return result
+    const revocation = await this.buildRevocationMetadata(agentReq, result)
+    return { ...result, revocation }
+  }
+
+  private async buildRevocationMetadata(agentReq: Req, result: any) {
+    const presentations = [
+      ...Object.values(result?.presentationExchange?.presentations ?? {}),
+      ...Object.values(result?.dcql?.presentations ?? {}),
+    ].flat() as any[]
+
+    const results = await Promise.all(
+      presentations.map(async (presentation, presentationIndex) => {
+        const credentials = this.extractPresentationCredentials(presentation)
+        const credentialResults = await Promise.all(
+          credentials.map(async (credential, credentialIndex) => ({
+            credentialIndex,
+            ...(await verifyBitstringStatus(agentReq.agent.context, credential)),
+          })),
+        )
+        return { presentationIndex, credentials: credentialResults }
+      }),
+    )
+
+    const credentials = results.flatMap((presentation) => presentation.credentials)
+    return {
+      checked: credentials.some((credential) => credential.checked),
+      revoked: credentials.some((credential) => credential.revoked),
+      verified: credentials.every((credential) => credential.verified),
+      presentations: results,
+    }
+  }
+
+  private extractPresentationCredentials(presentation: any): Array<JsonObject | string> {
+    const raw =
+      presentation?.verifiableCredential ??
+      presentation?.presentation?.verifiableCredential ??
+      presentation?.toJson?.()?.verifiableCredential
+
+    const credentials = Array.isArray(raw) ? raw : raw ? [raw] : []
+    return credentials
+      .map((credential: any) => {
+        if (typeof credential === 'string') {
+          return credential
+        }
+        if (typeof credential?.serializedJwt === 'string') {
+          return credential.serializedJwt
+        }
+        if (typeof credential?.encoded === 'string') {
+          return credential.encoded
+        }
+        if (typeof credential?.toJson === 'function') {
+          return credential.toJson() as JsonObject
+        }
+        return credential && typeof credential === 'object' ? (credential as JsonObject) : undefined
+      })
+      .filter((credential: JsonObject | string | undefined): credential is JsonObject | string => Boolean(credential))
   }
 }

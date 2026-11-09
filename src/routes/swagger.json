@@ -3973,55 +3973,6 @@
 				],
 				"type": "object"
 			},
-			"Partial_W3cCredentialValidations_": {
-				"properties": {},
-				"type": "object",
-				"description": "Make all properties in T optional"
-			},
-			"Error": {
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"message": {
-						"type": "string"
-					},
-					"stack": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"name",
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"W3cVerifyResult_W3cCredentialValidations_": {
-				"properties": {
-					"isValid": {
-						"type": "boolean",
-						"description": "Whether the verification as a whole is valid. This means that\nall validations inside the validations object should have passed."
-					},
-					"validations": {
-						"$ref": "#/components/schemas/Partial_W3cCredentialValidations_",
-						"description": "Validations that have been performed"
-					},
-					"error": {
-						"$ref": "#/components/schemas/Error",
-						"description": "Error that was caught during verification not related to\nany of the specific validations that are performed"
-					}
-				},
-				"required": [
-					"isValid",
-					"validations"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"W3cVerifyCredentialResult": {
-				"$ref": "#/components/schemas/W3cVerifyResult_W3cCredentialValidations_"
-			},
 			"AnonCredsW3cCredentialProofOptions": {
 				"properties": {
 					"type": {
@@ -5449,6 +5400,27 @@
 				},
 				"type": "object",
 				"description": "Get format data return value. Each key holds a mapping of credential format key to format data."
+			},
+			"RevokeBitstringCredentialOptions": {
+				"properties": {
+					"listId": {
+						"type": "string"
+					},
+					"index": {
+						"type": "number",
+						"format": "double"
+					},
+					"issuerDid": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"listId",
+					"index",
+					"issuerDid"
+				],
+				"type": "object",
+				"additionalProperties": false
 			},
 			"DidCommProofExchangeRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
@@ -10249,9 +10221,7 @@
 						"description": "Ok",
 						"content": {
 							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/W3cVerifyCredentialResult"
-								}
+								"schema": {}
 							}
 						}
 					}
@@ -11310,6 +11280,62 @@
 						}
 					}
 				]
+			}
+		},
+		"/didcomm/credentials/revoke": {
+			"post": {
+				"operationId": "RevokeBitstringCredential",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"index": {
+											"type": "number",
+											"format": "double"
+										},
+										"listId": {
+											"type": "string"
+										},
+										"revoked": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"index",
+										"listId",
+										"revoked"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RevokeBitstringCredentialOptions"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/didcomm/proofs": {
