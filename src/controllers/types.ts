@@ -367,7 +367,7 @@ export interface KeyImportEncryptedKey {
 }
 
 export interface KeyImportSessionRequest {
-  /** DID method the key will be imported for. */
+  /** Import method the key is for: a DID method (`key`, `web`, `x509`, `polygon`) or `x509-certificate`. */
   method: string
 }
 
@@ -556,10 +556,18 @@ export interface X509ImportCertificateOptionsDto {
     */
   certificate: string
 
-  /*
-   Private key in base64 string format
+  /**
+   * @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead.
+   *
+   * Private key: PEM or base64 DER
    */
   privateKey?: string
+
+  /**
+   * Private key encrypted to a single-use import session (see `POST /dids/import/session` with method
+   * `x509-certificate`). The decrypted payload is `{ "privateKey": "<PEM or base64 DER>" }`.
+   */
+  encryptedKey?: KeyImportEncryptedKey
 
   // FIXME: Check type
   keyType: any

@@ -352,13 +352,37 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"KeyImportEncryptedKey": {
+				"description": "An encrypted private key envelope bound to a single use import session.",
+				"properties": {
+					"sessionId": {
+						"type": "string",
+						"description": "Id returned by `POST /dids/import/session`."
+					},
+					"jwe": {
+						"type": "string",
+						"description": "Compact JWE containing the private key material."
+					}
+				},
+				"required": [
+					"sessionId",
+					"jwe"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"X509ImportCertificateOptionsDto": {
 				"properties": {
 					"certificate": {
 						"type": "string"
 					},
 					"privateKey": {
-						"type": "string"
+						"type": "string",
+						"deprecated": true
+					},
+					"encryptedKey": {
+						"$ref": "#/components/schemas/KeyImportEncryptedKey",
+						"description": "Private key encrypted to a single-use import session (see `POST /dids/import/session` with method\n`x509-certificate`). The decrypted payload is `{ \"privateKey\": \"<PEM or base64 DER>\" }`."
 					},
 					"keyType": {}
 				},
@@ -3422,7 +3446,7 @@
 				"properties": {
 					"method": {
 						"type": "string",
-						"description": "DID method the key will be imported for."
+						"description": "Import method the key is for: a DID method (`key`, `web`, `x509`, `polygon`) or `x509-certificate`."
 					}
 				},
 				"required": [
@@ -3450,25 +3474,6 @@
 					"p384"
 				],
 				"type": "string"
-			},
-			"KeyImportEncryptedKey": {
-				"description": "An encrypted private key envelope bound to a single use import session.",
-				"properties": {
-					"sessionId": {
-						"type": "string",
-						"description": "Id returned by `POST /dids/import/session`."
-					},
-					"jwe": {
-						"type": "string",
-						"description": "Compact JWE containing the private key material."
-					}
-				},
-				"required": [
-					"sessionId",
-					"jwe"
-				],
-				"type": "object",
-				"additionalProperties": false
 			},
 			"Ed25519VerificationMethodType": {
 				"type": "string",

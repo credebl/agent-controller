@@ -38,6 +38,7 @@ import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
 import { KeyImportEnvelopeError } from '../../utils/keyImport/jwe'
+import { assertPlaintextKeyImportAllowed } from '../../utils/keyImport/plaintextGate'
 import {
   agentBindingFor,
   consumeImportSession,
@@ -204,34 +205,12 @@ export class DidController extends Controller {
     }
   }
 
-  private plaintextKeyImportAllowed(): boolean {
-    return ['1', 'true', 'yes', 'on'].includes((process.env.ALLOW_PLAINTEXT_KEY_IMPORT ?? '').trim().toLowerCase())
-  }
-
-  /**
-   * Plaintext key import is a migration only escape hatch. The production API only accepts `encryptedKey`, so a key
-   * cannot be read from request bodies, validation errors, gateway logs or the NATS payload.
-   */
-  private assertPlaintextKeyImportAllowed(options: {
-    privateKey?: string
-    privateKeyJwk?: Record<string, unknown>
-    passphrase?: string
-    privatekey?: string
-  }): void {
-    if (this.plaintextKeyImportAllowed()) return
-    if (options.privateKey || options.privateKeyJwk || options.passphrase || options.privatekey) {
-      throw new BadRequestError(
-        'Plaintext private key import is disabled. Request a key import session from POST /dids/import/session and send the encryptedKey envelope instead.',
-      )
-    }
-  }
-
   /**
    * Replaces `encryptedKey` with the decrypted key material. The session is bound to this agent and DID method, is
    * single use and expires quickly, so the ciphertext can safely transit the platform.
    */
   private resolveImportKeyMaterial(agent: AgentType, didOptions: DidCreate): DidCreate {
-    this.assertPlaintextKeyImportAllowed(didOptions)
+    assertPlaintextKeyImportAllowed(didOptions)
 
     // An existing did:key is imported by resolving its DID document, which would silently drop the private key. Reject
     // the combination before an encrypted envelope consumes its single-use session.
@@ -307,7 +286,7 @@ export class DidController extends Controller {
   }
 
   private resolveX509KeyMaterial(agent: AgentType, options: DidX509ImportOptionsDto): DidX509ImportOptionsDto {
-    this.assertPlaintextKeyImportAllowed(options)
+    assertPlaintextKeyImportAllowed(options)
 
     if (!options.encryptedKey) {
       if (!options.privateKey) throw new BadRequestError('privateKey or encryptedKey is required')

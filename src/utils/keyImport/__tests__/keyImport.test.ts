@@ -155,3 +155,53 @@ describe('key import envelope', () => {
     expect(agentBindingFor({})).toBe('dedicated')
   })
 })
+
+describe('x509-certificate key import', () => {
+  beforeEach(() => resetImportSessions())
+
+  it('creates a session for the x509-certificate method', async () => {
+    const session = await createImportSession('x509-certificate', 'tenant-1')
+
+    expect(session.method).toBe('x509-certificate')
+    expect(session.protectedHeader.method).toBe('x509-certificate')
+  })
+
+  it('decrypts the private key for the certificate import', async () => {
+    const session = await createImportSession('x509-certificate', 'tenant-1')
+
+    expect(
+      consumeImportSession({
+        sessionId: session.sessionId,
+        jwe: envelopeFor(session),
+        agentBinding: 'tenant-1',
+        method: 'x509-certificate',
+      }),
+    ).toEqual({ privateKey: '-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----' })
+  })
+
+  it.each(['x509', 'key'] as const)('rejects a session created for %s', async (method) => {
+    const session = await createImportSession(method, 'tenant-1')
+
+    expect(() =>
+      consumeImportSession({
+        sessionId: session.sessionId,
+        jwe: envelopeFor(session),
+        agentBinding: 'tenant-1',
+        method: 'x509-certificate',
+      }),
+    ).toThrow(KeyImportSessionError)
+  })
+
+  it('rejects an x509-certificate session for the DID methods', async () => {
+    const session = await createImportSession('x509-certificate', 'tenant-1')
+
+    expect(() =>
+      consumeImportSession({
+        sessionId: session.sessionId,
+        jwe: envelopeFor(session),
+        agentBinding: 'tenant-1',
+        method: 'x509',
+      }),
+    ).toThrow(KeyImportSessionError)
+  })
+})

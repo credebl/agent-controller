@@ -199,11 +199,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "KeyImportEncryptedKey": {
+        "dataType": "refObject",
+        "properties": {
+            "sessionId": {"dataType":"string","required":true},
+            "jwe": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "X509ImportCertificateOptionsDto": {
         "dataType": "refObject",
         "properties": {
             "certificate": {"dataType":"string","required":true},
             "privateKey": {"dataType":"string"},
+            "encryptedKey": {"ref":"KeyImportEncryptedKey"},
             "keyType": {"dataType":"any","required":true},
         },
         "additionalProperties": false,
@@ -1456,15 +1466,6 @@ const models: TsoaRoute.Models = {
     "KeyAlgorithm": {
         "dataType": "refEnum",
         "enums": ["a128gcm","a256gcm","a128cbchs256","a256cbchs512","a128kw","a256kw","bls12381g1","bls12381g2","c20p","xc20p","ed25519","x25519","k256","p256","p384"],
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "KeyImportEncryptedKey": {
-        "dataType": "refObject",
-        "properties": {
-            "sessionId": {"dataType":"string","required":true},
-            "jwe": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Ed25519VerificationMethodType": {
