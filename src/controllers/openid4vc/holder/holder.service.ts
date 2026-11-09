@@ -43,6 +43,7 @@ import {
   assertW3cCredentialsBoundToHolderDid,
   getCredentialBindingResolver,
 } from './credentialBindingResolver'
+import { withReadableErrors } from './holderErrors'
 type FilterValue = string | string[] | undefined
 
 export class HolderService {
@@ -304,10 +305,17 @@ export class HolderService {
   }
 
   public async resolveCredentialOffer(agentReq: Req, body: ResolveCredentialOfferBody) {
-    return (await agentReq.agent.modules.openid4vc.holder.resolveCredentialOffer(body.credentialOfferUri)) as any
+    return withReadableErrors(
+      async () =>
+        (await agentReq.agent.modules.openid4vc.holder.resolveCredentialOffer(body.credentialOfferUri)) as any,
+    )
   }
 
   public async requestAuthorizationForCredential(agentReq: Req, body: AuthorizeRequestCredentialOffer) {
+    return withReadableErrors(() => this.authorizeCredentialRequest(agentReq, body))
+  }
+
+  private async authorizeCredentialRequest(agentReq: Req, body: AuthorizeRequestCredentialOffer) {
     const resolvedCredentialOffer = await agentReq.agent.modules.openid4vc.holder.resolveCredentialOffer(
       body.credentialOfferUri,
     )
@@ -341,6 +349,10 @@ export class HolderService {
   }
 
   public async requestCredential(agentReq: Req, body: RequestCredentialBody) {
+    return withReadableErrors(() => this.requestAndStoreFromOffer(agentReq, body))
+  }
+
+  private async requestAndStoreFromOffer(agentReq: Req, body: RequestCredentialBody) {
     const resolvedCredentialOffer = await agentReq.agent.modules.openid4vc.holder.resolveCredentialOffer(
       body.credentialOfferUri,
     )
