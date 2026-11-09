@@ -50,6 +50,7 @@ import {
   type KeyImportMethod,
 } from '../../utils/keyImport/session'
 import { needsNodeKms, NODE_KMS_BACKEND, selectKmsBackendForJwk } from '../../utils/kms/backend'
+import { describeDidKms } from '../../utils/kms/didKms'
 import {
   OPENBAO_KMS_BACKEND,
   openBaoBackendForCreate,
@@ -91,6 +92,36 @@ export class DidController extends Controller {
       return { ...resolveResult, didDocument: resolveResult.didDocument.toJSON() }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
+   * Reports which KMS backend (Askar, Node or OpenBao) stores the keys of a DID this agent created or imported.
+   * Read-only. A DID the agent holds no keys for returns `kmsBackend: null` and no keys.
+   * @param did Decentralized Identifier
+   */
+  @Get('/:did/kms')
+  public async getDidKms(@Request() request: Req, @Path('did') did: Did) {
+    try {
+      return { did, ...(await describeDidKms(request.agent, did)) }
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /** Indy results nest the DID in `didState`, every other method returns it at the top level. */
+  private didOf(result: { did?: string; didState?: { did?: string } } | undefined): string | undefined {
+    return result?.did ?? result?.didState?.did
+  }
+
+  /** The key storage details added to a created DID. They never fail the request that created the DID. */
+  private async describeKmsOf(agent: AgentType, did?: string) {
+    if (!did) return {}
+    try {
+      return await describeDidKms(agent, did)
+    } catch (error) {
+      agent.config.logger.warn(`Unable to read the KMS backend of ${did}`, { error })
+      return {}
     }
   }
 
@@ -197,7 +228,7 @@ export class DidController extends Controller {
           throw new BadRequestError(`Invalid method: ${didOptions.method}`)
       }
 
-      didRes = { ...result }
+      didRes = { ...result, ...(await this.describeKmsOf(request.agent, this.didOf(result))) }
 
       return didRes
     } catch (error) {
@@ -1095,7 +1126,8 @@ export class DidController extends Controller {
   public async importDidX509(@Request() request: Req, @Body() options: DidX509ImportOptionsDto) {
     try {
       const resolvedOptions = this.resolveX509KeyMaterial(request.agent, options)
-      return await didX509Service.importDidX509(request.agent, resolvedOptions)
+      const imported = await didX509Service.importDidX509(request.agent, resolvedOptions)
+      return { ...imported, ...(await this.describeKmsOf(request.agent, imported.did)) }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }

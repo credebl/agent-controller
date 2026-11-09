@@ -3399,6 +3399,39 @@
 				"type": "string",
 				"example": "did:key:z6Mkk7yqnGF3YwTrLpqrW6PGsKci7dNqh1CjnvMbzrMerSeL"
 			},
+			"DidKmsBackend": {
+				"anyOf": [
+					{
+						"$ref": "#/components/schemas/KmsBackendName"
+					},
+					{
+						"type": "string",
+						"enum": [
+							"mixed"
+						]
+					}
+				]
+			},
+			"DidKeyKms": {
+				"properties": {
+					"didDocumentRelativeKeyId": {
+						"type": "string"
+					},
+					"kmsKeyId": {
+						"type": "string"
+					},
+					"kmsBackend": {
+						"$ref": "#/components/schemas/KmsBackendName"
+					}
+				},
+				"required": [
+					"didDocumentRelativeKeyId",
+					"kmsKeyId",
+					"kmsBackend"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"KeyImportSessionResponse": {
 				"properties": {
 					"sessionId": {
@@ -3541,31 +3574,6 @@
 				},
 				"required": [
 					"method"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"DidX509ImportResponse": {
-				"properties": {
-					"did": {
-						"type": "string"
-					},
-					"didDocument": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
-					},
-					"keyId": {
-						"type": "string",
-						"description": "Id of the leaf key in the agent's KMS"
-					},
-					"verificationMethodId": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"did",
-					"didDocument",
-					"keyId",
-					"verificationMethodId"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -9955,6 +9963,65 @@
 				]
 			}
 		},
+		"/dids/{did}/kms": {
+			"get": {
+				"operationId": "GetDidKms",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"did": {
+											"type": "string"
+										},
+										"keys": {
+											"items": {
+												"$ref": "#/components/schemas/DidKeyKms"
+											},
+											"type": "array"
+										},
+										"kmsBackend": {
+											"$ref": "#/components/schemas/DidKmsBackend"
+										}
+									},
+									"required": [
+										"did",
+										"keys",
+										"kmsBackend"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Reports which KMS backend (Askar, Node or OpenBao) stores the keys of a DID this agent created or imported.\nRead-only. A DID the agent holds no keys for returns `kmsBackend: null` and no keys.",
+				"tags": [
+					"Dids"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"description": "Decentralized Identifier",
+						"in": "path",
+						"name": "did",
+						"required": true,
+						"schema": {
+							"$ref": "#/components/schemas/Did"
+						}
+					}
+				]
+			}
+		},
 		"/dids/{did}/resolve": {
 			"get": {
 				"operationId": "ResolveDid",
@@ -10179,7 +10246,27 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/DidX509ImportResponse"
+									"properties": {
+										"verificationMethodId": {
+											"type": "string"
+										},
+										"keyId": {
+											"type": "string"
+										},
+										"didDocument": {
+											"$ref": "#/components/schemas/Record_string.unknown_"
+										},
+										"did": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"verificationMethodId",
+										"keyId",
+										"didDocument",
+										"did"
+									],
+									"type": "object"
 								}
 							}
 						}
