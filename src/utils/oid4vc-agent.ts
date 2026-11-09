@@ -386,13 +386,15 @@ function handleSdJwtDcFormat(
 ) {
   const disclosureFramePayload =
     credential.disclosureFrame && Object.keys(credential.disclosureFrame).length > 0 ? credential.disclosureFrame : {}
-  //Taking leaf certifcate from chain as issuer certificate, if not provided explicitly taking AGENT_HTTP_URL as issuer
-  let parsedCertificate: any
+  // The first certificate is the issuer's own and signs with the given key. Any intermediate and root certificates that
+  // follow go into the credential too, so a holder can build the chain up to a certificate it trusts instead of needing
+  // the issuer's direct issuer in its trust list.
+  let parsedChain: any[] | undefined
   if (!issuerDidVerificationMethod && issuerx509certificate && issuerx509certificate.length > 0) {
-    parsedCertificate = X509Service.parseCertificate(agentContext, {
-      encodedCertificate: issuerx509certificate[0],
-    })
-    parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
+    parsedChain = issuerx509certificate.map((encodedCertificate) =>
+      X509Service.parseCertificate(agentContext, { encodedCertificate }),
+    )
+    parsedChain[0].publicJwk.keyId = credential.signerOptions.keyId
   } else if (!issuerDidVerificationMethod) {
     throw new Error(`issuerx509certificate is not provided for credential ${credentialConfigurationId}`)
   }
@@ -419,7 +421,7 @@ function handleSdJwtDcFormat(
           }
         : {
             method: 'x5c',
-            x5c: [parsedCertificate],
+            x5c: parsedChain,
           },
       disclosureFrame: disclosureFramePayload,
     })),
