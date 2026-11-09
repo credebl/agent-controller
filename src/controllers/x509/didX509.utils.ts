@@ -125,3 +125,36 @@ export function privateKeyToJwk(privateKey: KeyObject): JsonWebKey & { kty: stri
   if (!jwk.d && !jwk.kty) throw new BadRequestError('Unable to export the private key as JWK')
   return jwk
 }
+
+/**
+ * Reads a private JWK as exported by wallets and other tooling, given either as an object or as a JSON string.
+ * Public keys and symmetric (`oct`) keys are rejected: a DID needs an asymmetric private key it can sign with.
+ */
+export function parsePrivateKeyJwk(input: string | JsonWebKey | Record<string, unknown>): KeyObject {
+  let jwk: JsonWebKey & { kty?: string; d?: string }
+  if (typeof input === 'string') {
+    try {
+      jwk = JSON.parse(input) as JsonWebKey & { kty?: string; d?: string }
+    } catch (error) {
+      throw new BadRequestError(`Unable to read privateKeyJwk: ${(error as Error).message}`)
+    }
+  } else {
+    jwk = input as JsonWebKey & { kty?: string; d?: string }
+  }
+
+  if (!jwk || typeof jwk !== 'object' || Array.isArray(jwk) || !jwk.kty) {
+    throw new BadRequestError('Unable to read privateKeyJwk: expected a JWK object with a kty parameter')
+  }
+  if (jwk.kty === 'oct') {
+    throw new BadRequestError('Unable to read privateKeyJwk: symmetric (oct) keys are not supported')
+  }
+  if (!jwk.d) {
+    throw new BadRequestError('Unable to read privateKeyJwk: expected a private JWK with a d parameter')
+  }
+
+  try {
+    return createPrivateKey({ key: jwk, format: 'jwk' })
+  } catch (error) {
+    throw new BadRequestError(`Unable to read privateKeyJwk: ${(error as Error).message}`)
+  }
+}

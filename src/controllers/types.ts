@@ -326,7 +326,29 @@ export interface DidCreate {
   role?: string
   endorserDid?: string
   didDocument?: DidDocument
+  /**
+   * @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Send the did:polygon key inside `encryptedKey`.
+   *
+   * Hex encoded secp256k1 private key for `did:polygon`.
+   */
   privatekey?: string
+  /**
+   * @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead.
+   *
+   * Existing private key to import for `did:key` and `did:web`: PEM (PKCS#8, SEC1 or PKCS#1, optionally encrypted)
+   * or base64 DER (PKCS#8). `privateKeyJwk` is the JWK equivalent. When either is supplied, `keyType` and `seed` are
+   * ignored and the key material determines the DID.
+   */
+  privateKey?: string
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead. */
+  privateKeyJwk?: Record<string, unknown>
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Send the passphrase inside `encryptedKey`. */
+  passphrase?: string
+  /**
+   * Private key material encrypted to a single-use import session (see `POST /dids/import/session`). This is the only
+   * accepted way to import an existing `did:key`, `did:web` or `did:polygon` key in production.
+   */
+  encryptedKey?: KeyImportEncryptedKey
   endpoint?: string
   /**
    * Verification method type of the Ed25519 key in a new `did:web` document. Defaults to
@@ -334,6 +356,33 @@ export interface DidCreate {
    * JSON-LD credentials and presentations with `Ed25519Signature2020`.
    */
   verificationMethodType?: Ed25519VerificationMethodType
+}
+
+/** An encrypted private key envelope bound to a single use import session. */
+export interface KeyImportEncryptedKey {
+  /** Id returned by `POST /dids/import/session`. */
+  sessionId: string
+  /** Compact JWE containing the private key material. */
+  jwe: string
+}
+
+export interface KeyImportSessionRequest {
+  /** DID method the key will be imported for. */
+  method: string
+}
+
+export interface KeyImportSessionResponse {
+  sessionId: string
+  kid: string
+  method: string
+  /** ISO 8601 expiry of the session. */
+  expiresAt: string
+  alg: string
+  enc: string
+  /** Public key the client encrypts the private key material to. */
+  publicKeyJwk: Record<string, unknown>
+  /** Protected header the client must use for the JWE, it binds the envelope to this session. */
+  protectedHeader: Record<string, unknown>
 }
 
 export type Ed25519VerificationMethodType = 'Ed25519VerificationKey2018' | 'Ed25519VerificationKey2020'

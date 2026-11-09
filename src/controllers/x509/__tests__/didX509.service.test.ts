@@ -9,7 +9,7 @@ import { generateKeyPairSync, webcrypto } from 'node:crypto'
 import { didX509Service } from '../didX509.service'
 
 // The plug-in ships as ESM; only the key-id helper is used by the service.
-jest.mock('@credebl/credo-ts-openbao', () => ({
+jest.mock('@sovio-id/credo-openbao-kms', () => ({
   OPENBAO_KEY_ID_PREFIX: 'ob_',
   openBaoKeyId: (keyId: string) => (keyId.startsWith('ob_') ? keyId : `ob_${keyId}`),
 }))
