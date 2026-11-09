@@ -62,6 +62,8 @@ import { didX509Service } from '../x509/didX509.service'
 import { parsePrivateKey, parsePrivateKeyJwk, privateKeyToJwk } from '../x509/didX509.utils'
 import { DidX509ImportOptionsDto } from '../x509/x509.types'
 
+import { assertValidDidWebDomain } from './didWebDomain'
+
 @Tags('Dids')
 @Route('/dids')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
@@ -952,6 +954,7 @@ export class DidController extends Controller {
     if (!didOptions.domain) {
       throw new BadRequestError('For create did:web, domain is required')
     }
+    assertValidDidWebDomain(didOptions.domain)
 
     const hasImportedKey = this.hasImportedPrivateKey(didOptions)
     if (!hasImportedKey && !didOptions.seed) {
