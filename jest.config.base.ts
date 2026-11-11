@@ -7,6 +7,9 @@ const config: Config.InitialOptions = {
   coverageDirectory: '<rootDir>/coverage/',
   verbose: true,
   testMatch: ['**/?(*.)+(spec|test).[tj]s?(x)'],
+  // Live integration tests need a running agent and OpenBao. They are opt-in via `yarn test:integration` and must
+  // never run in CI or in the default unit test run.
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/e2e/'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true }],
   },
