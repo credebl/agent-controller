@@ -2,6 +2,7 @@ jest.mock('@credo-ts/core', () => require('./didWebTestMocks').credoCoreMock())
 
 import type { DidDocument, VerificationMethod } from '@credo-ts/core'
 
+import { DidDocument as CredoDidDocument } from '@credo-ts/core'
 import { generateKeyPairSync } from 'node:crypto'
 
 import { BadRequestError } from '../../../errors'
@@ -105,6 +106,20 @@ describe('parseDidWebDocument', () => {
     expect(() => parseDidWebDocument(authorityDocument, 'did:web:other.example.com')).toThrow(
       'does not match did "did:web:other.example.com"',
     )
+  })
+
+  it('reports a document the DID parser rejects', () => {
+    const spy = jest.spyOn(CredoDidDocument, 'fromJSON').mockImplementation(() => {
+      throw new Error('broken document')
+    })
+
+    try {
+      expect(() => parseDidWebDocument({ id: DID }, DID)).toThrow(
+        'didDocument is not a valid DID document: broken document',
+      )
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 
