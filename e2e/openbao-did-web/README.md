@@ -60,7 +60,9 @@ The suite reads these variables (defaults match the fixtures above):
 | `OPENBAO_INTEGRATION_API_KEY`       | `local-integration-api-key-16` | Agent API key used to get a JWT             |
 
 Both agents must run with `OPENBAO_DID_WEB_ENABLED=true`. The `did:key` check additionally needs
-`OPENBAO_DID_KEY_ENABLED=true` (both are set in `fixtures/agent.env.example`).
+`OPENBAO_DID_KEY_ENABLED=true` (both are set in `fixtures/agent.env.example`). The fixture also raises
+`KEY_IMPORT_RATE_LIMIT` to `200`, because the suite requests many single-use import sessions and repeated local runs can
+exhaust the default limit of 30 per minute.
 
 ## What is covered
 
@@ -75,6 +77,17 @@ Both agents must run with `OPENBAO_DID_WEB_ENABLED=true`. The `did:key` check ad
 - Invalid or missing domains are rejected before the single-use session is consumed, and the same envelope then works
   for a valid domain.
 - A consumed envelope cannot be replayed.
+- `POST /dids/web/import` stores an authority's document verbatim, binds a key to its custom verification method and
+  signs through OpenBao; re-importing the same document and key is idempotent.
+- A relative verification method id is accepted and reported as an absolute id.
+- Several keys are imported in one request while a public-only `keyAgreement` method stays in the document.
+- An unknown verification method id, a mismatched private key, a mismatched document id and an invalid DID are rejected
+  before their sessions are consumed, and the same envelope then succeeds after correction.
+- Rebinding an existing DID needs `replace:true`; the rejected request leaves its session usable.
+- Two key entries cannot share one import session, and neither key is imported when the request is rejected.
+- Plaintext key material is refused while the migration flag is disabled.
+- A supplied document that cannot be resolved is refused without `allowUnresolvedDocument`, and the same envelope then
+  works with the flag.
 - `did:key` opt-in also creates its key in OpenBao.
 
 `didWeb.tenant.integration.test.ts` (multi-tenant agent):
@@ -84,3 +97,6 @@ Both agents must run with `OPENBAO_DID_WEB_ENABLED=true`. The `did:key` check ad
 - Tenant B cannot sign with tenant A's DID or key.
 - The same key material imported by both tenants maps to two Transit keys in different scopes with the same public
   key. Tenants are deleted afterwards, which also purges their OpenBao scopes.
+- Tenant A imports an authority's `did:web` document and signs through the tenant-scoped OpenBao key.
+- Tenant B cannot sign with tenant A's imported authority DID, and importing the same authority key material in tenant
+  B creates a separate scoped Transit key that still verifies against the authority's published key.

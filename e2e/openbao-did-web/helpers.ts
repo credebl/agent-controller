@@ -1,5 +1,7 @@
 import type { JsonWebKey } from 'node:crypto'
 
+import { createPrivateKey, createPublicKey } from 'node:crypto'
+
 import { encryptKeyImportEnvelope } from '../../src/utils/keyImport/jwe'
 
 /**
@@ -201,22 +203,151 @@ export async function importDidWebFromEncryptedKey(
     replace?: boolean
   },
 ): Promise<AgentCallResult<DidWebImportResult & ErrorResult> & { session: ImportSession; jwe: string }> {
-  const session = await createImportSession(agentUrl, token, 'web')
-  const jwe = encryptKeyImportEnvelope(
-    session.publicKeyJwk,
-    Buffer.from(JSON.stringify({ privateKeyJwk: options.privateJwk })),
-    session.protectedHeader,
-  )
-  const result = await agentCall<DidWebImportResult & ErrorResult>(agentUrl, token, 'POST', '/dids/web/import', {
+  const envelope = await encryptDidWebImportKey(agentUrl, token, options.verificationMethodId, options.privateJwk)
+  const result = await importDidWebWithEnvelopes(agentUrl, token, {
     did: options.did,
     didDocument: options.didDocument,
     ...(options.allowUnresolvedDocument === undefined
       ? {}
       : { allowUnresolvedDocument: options.allowUnresolvedDocument }),
     ...(options.replace === undefined ? {} : { replace: options.replace }),
-    keys: [{ verificationMethodId: options.verificationMethodId, encryptedKey: { sessionId: session.sessionId, jwe } }],
+    keys: [envelope],
   })
-  return { ...result, session, jwe }
+  return { ...result, session: envelope.session, jwe: envelope.jwe }
+}
+
+export interface DidWebImportEnvelope {
+  verificationMethodId: string
+  session: ImportSession
+  jwe: string
+}
+
+/** Requests an import session and encrypts one private key to it, ready to submit with the DID document. */
+export async function encryptDidWebImportKey(
+  agentUrl: string,
+  token: string,
+  verificationMethodId: string,
+  privateJwk: JsonWebKey,
+): Promise<DidWebImportEnvelope> {
+  const session = await createImportSession(agentUrl, token, 'web')
+  return { verificationMethodId, session, jwe: encryptKeyForSession(session, privateJwk) }
+}
+
+/**
+ * Encrypts a private key to an already requested session. A rejected import does not consume its session, so a test can
+ * rebuild the envelope with different key material and retry without asking for a new session.
+ */
+export function encryptKeyForSession(session: ImportSession, privateJwk: JsonWebKey): string {
+  return encryptKeyImportEnvelope(
+    session.publicKeyJwk,
+    Buffer.from(JSON.stringify({ privateKeyJwk: privateJwk })),
+    session.protectedHeader,
+  )
+}
+
+/** Posts a did:web import with already encrypted envelopes, so a test can retry one after a rejected request. */
+export function importDidWebWithEnvelopes(
+  agentUrl: string,
+  token: string,
+  options: {
+    did: string
+    didDocument: Record<string, unknown>
+    keys: DidWebImportEnvelope[]
+    allowUnresolvedDocument?: boolean
+    replace?: boolean
+  },
+): Promise<AgentCallResult<DidWebImportResult & ErrorResult>> {
+  return agentCall<DidWebImportResult & ErrorResult>(agentUrl, token, 'POST', '/dids/web/import', {
+    did: options.did,
+    didDocument: options.didDocument,
+    ...(options.allowUnresolvedDocument === undefined
+      ? {}
+      : { allowUnresolvedDocument: options.allowUnresolvedDocument }),
+    ...(options.replace === undefined ? {} : { replace: options.replace }),
+    keys: options.keys.map(({ verificationMethodId, session, jwe }) => ({
+      verificationMethodId,
+      encryptedKey: { sessionId: session.sessionId, jwe },
+    })),
+  })
+}
+
+/** Imports several keys in one request. Each one gets its own single-use session. */
+export async function importDidWebWithKeys(
+  agentUrl: string,
+  token: string,
+  options: {
+    did: string
+    didDocument: Record<string, unknown>
+    keys: Array<{ verificationMethodId: string; privateJwk: JsonWebKey }>
+    allowUnresolvedDocument?: boolean
+    replace?: boolean
+  },
+): Promise<AgentCallResult<DidWebImportResult & ErrorResult> & { keys: DidWebImportEnvelope[] }> {
+  const keys = await Promise.all(
+    options.keys.map(({ verificationMethodId, privateJwk }) =>
+      encryptDidWebImportKey(agentUrl, token, verificationMethodId, privateJwk),
+    ),
+  )
+  const result = await importDidWebWithEnvelopes(agentUrl, token, {
+    did: options.did,
+    didDocument: options.didDocument,
+    ...(options.allowUnresolvedDocument === undefined
+      ? {}
+      : { allowUnresolvedDocument: options.allowUnresolvedDocument }),
+    ...(options.replace === undefined ? {} : { replace: options.replace }),
+    keys,
+  })
+  return { ...result, keys }
+}
+
+/** The public half of a private JWK, in the shape a DID document publishes. */
+export function publicJwkOf(privateJwk: JsonWebKey): JsonWebKey {
+  return createPublicKey(createPrivateKey({ key: privateJwk, format: 'jwk' })).export({
+    format: 'jwk',
+  }) as JsonWebKey
+}
+
+/** `publicKeyMultibase` for an Ed25519 key: base58btc (`z`) over the `0xed01` multicodec prefix and the raw key. */
+export function ed25519PublicKeyMultibase(privateJwk: JsonWebKey): string {
+  const raw = Buffer.from(publicJwkOf(privateJwk).x as string, 'base64url')
+  return `z${base58Encode(Buffer.concat([Buffer.from([0xed, 0x01]), raw]))}`
+}
+
+/** The raw Ed25519 public key in base58, which is what `publicKeyBase58` carries in a generated DID document. */
+export function ed25519PublicKeyBase58(privateJwk: JsonWebKey): string {
+  return base58Encode(Buffer.from(publicJwkOf(privateJwk).x as string, 'base64url'))
+}
+
+/**
+ * A minimal authority document with one Ed25519 verification method and a DIDComm service. Authorities normally
+ * publish Ed25519 keys as `publicKeyMultibase`; `JsonWebKey2020` documents are covered by the multi-key test.
+ */
+export function ed25519AuthorityDocument(
+  did: string,
+  privateJwk: JsonWebKey,
+  verificationMethodId = `${did}#authority-signing-key`,
+): Record<string, unknown> {
+  return {
+    '@context': ['https://www.w3.org/ns/did/v1', 'https://w3id.org/security/suites/ed25519-2020/v1'],
+    id: did,
+    verificationMethod: [
+      {
+        id: verificationMethodId,
+        type: 'Ed25519VerificationKey2020',
+        controller: did,
+        publicKeyMultibase: ed25519PublicKeyMultibase(privateJwk),
+      },
+    ],
+    authentication: [verificationMethodId],
+    assertionMethod: [verificationMethodId],
+    service: [
+      {
+        id: `${did}#didcomm`,
+        type: 'DIDCommMessaging',
+        serviceEndpoint: 'https://authority.example.com/didcomm',
+      },
+    ],
+  }
 }
 
 export async function createTenant(agentUrl: string, baseToken: string, label: string): Promise<TenantCredentials> {
