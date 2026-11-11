@@ -44,6 +44,14 @@ const ecKey = generateKeyPairSync('ec', { namedCurve: 'P-256' }).privateKey.expo
   y: string
   d: string
 }
+const p521Key = generateKeyPairSync('ec', { namedCurve: 'P-521' }).privateKey.export({ format: 'jwk' }) as {
+  kty: string
+  crv: string
+  x: string
+  y: string
+  d: string
+}
+const x25519PrivateKey = generateKeyPairSync('x25519').privateKey.export({ format: 'jwk' })
 
 const x25519Key = generateKeyPairSync('x25519').publicKey.export({ format: 'jwk' })
 
@@ -55,6 +63,8 @@ function publicJwkOf(privateJwk: Record<string, unknown>): Record<string, unknow
 const signingPublicJwk = publicJwkOf(signingKey)
 const otherSigningPublicJwk = publicJwkOf(otherSigningKey)
 const ecPublicJwk = publicJwkOf(ecKey)
+const p521PublicJwk = publicJwkOf(p521Key)
+const x25519PublicJwk = publicJwkOf(x25519PrivateKey)
 
 /** The DID document a government authority would host for its did:web. */
 function authorityDocument(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -196,6 +206,99 @@ describe('DidController.importDidWeb', () => {
     expect(fixture.kmsImportKey).toHaveBeenCalledWith({
       privateJwk: expect.objectContaining({ kty: 'OKP', crv: 'Ed25519', d: signingKey.d }),
     })
+    // allowUnresolvedDocument:true imports the supplied copy without contacting the authority.
+    expect(fixture.didsResolve).not.toHaveBeenCalled()
+  })
+
+  it('imports a supplied document that matches the published one', async () => {
+    const fixture = createAgent()
+    fixture.didsResolve.mockResolvedValue({ didDocument: mockDocument(authorityDocument()) })
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+      did: DID,
+      didDocument: authorityDocument(),
+      keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+    })
+
+    expect(fixture.didsResolve).toHaveBeenCalledWith(DID, { useLocalCreatedDidRecord: false })
+    expect(result.keys[0].verificationMethodId).toBe(`${DID}#authority-signing-key`)
+  })
+
+  it('rejects a supplied document that belongs to a different DID', async () => {
+    const fixture = createAgent()
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument({ id: 'did:web:other.example.com' }),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+      }),
+    ).rejects.toThrow(`does not match did "${DID}"`)
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+  })
+
+  it('rejects a supplied document that is not a JSON object', async () => {
+    const fixture = createAgent()
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: 'not a document' as never,
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+      }),
+    ).rejects.toThrow('didDocument must be a JSON object')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+  })
+
+  it('rejects a document with a dangling verification method reference', async () => {
+    const fixture = createAgent()
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument({ authentication: ['#missing-key'] }),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+      }),
+    ).rejects.toThrow('didDocument has an invalid verification method reference')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+  })
+
+  it('binds a key to a relative verification method id', async () => {
+    const fixture = createAgent()
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+      did: DID,
+      didDocument: authorityDocument({
+        verificationMethod: [
+          {
+            id: '#authority-signing-key',
+            type: 'Ed25519VerificationKey2020',
+            controller: DID,
+            publicKeyJwk: signingPublicJwk,
+          },
+        ],
+        authentication: ['#authority-signing-key'],
+        assertionMethod: ['#authority-signing-key'],
+      }),
+      allowUnresolvedDocument: true,
+      keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+    })
+
+    // The document keeps the relative id it was published with, and the key is bound to it.
+    expect(result.keys[0].verificationMethodId).toBe('#authority-signing-key')
+    expect(fixture.didsImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keys: [{ didDocumentRelativeKeyId: '#authority-signing-key', kmsKeyId: 'kms-key-1' }],
+      }),
+    )
   })
 
   it('accepts an absolute verification method id', async () => {
@@ -505,6 +608,291 @@ describe('DidController.importDidWeb', () => {
         keys: [],
       }),
     ).rejects.toThrow('keys must contain at least one verification method key')
+  })
+
+  it('requires an empty request body to name a did:web', async () => {
+    const fixture = createAgent()
+
+    await expect(controller.importDidWeb({ agent: fixture.agent } as never, undefined as never)).rejects.toThrow(
+      'did must be a did:web identifier',
+    )
+  })
+
+  it('requires a verificationMethodId for every key', async () => {
+    const fixture = createAgent()
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ encryptedKey: key } as never],
+      }),
+    ).rejects.toThrow('keys[].verificationMethodId is required')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+  })
+
+  it('rejects two key entries for the same verification method', async () => {
+    const fixture = createAgent()
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [
+          { verificationMethodId: '#authority-signing-key', encryptedKey: { sessionId: 'one', jwe: 'jwe' } },
+          { verificationMethodId: `${DID}#authority-signing-key`, encryptedKey: { sessionId: 'two', jwe: 'jwe' } },
+        ],
+      }),
+    ).rejects.toThrow('keys contains more than one entry for verification method')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+  })
+
+  it('requires encrypted or plaintext key material for each key', async () => {
+    const fixture = createAgent()
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key' }],
+      }),
+    ).rejects.toThrow('needs an encryptedKey or plaintext private key')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+  })
+
+  it('rejects a key that contains both encrypted and plaintext material', async () => {
+    const fixture = createAgent()
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [
+          {
+            verificationMethodId: '#authority-signing-key',
+            encryptedKey: { sessionId: 'one', jwe: 'jwe' },
+            privateKeyJwk: signingKey,
+          },
+        ],
+      }),
+    ).rejects.toThrow('Provide either encryptedKey or plaintext key material per key, not both')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+  })
+
+  it('requires both sessionId and jwe in an encryptedKey', async () => {
+    const fixture = createAgent()
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: { sessionId: '', jwe: 'jwe' } }],
+      }),
+    ).rejects.toThrow('encryptedKey.sessionId and encryptedKey.jwe are required')
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: { sessionId: 'one' } as never }],
+      }),
+    ).rejects.toThrow('encryptedKey.sessionId and encryptedKey.jwe are required')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+  })
+
+  it('rejects plaintext key material while the migration flag is disabled', async () => {
+    const fixture = createAgent()
+    const previous = process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+    delete process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+
+    try {
+      await expect(
+        controller.importDidWeb({ agent: fixture.agent } as never, {
+          did: DID,
+          didDocument: authorityDocument(),
+          allowUnresolvedDocument: true,
+          keys: [{ verificationMethodId: '#authority-signing-key', privateKeyJwk: signingKey }],
+        }),
+      ).rejects.toThrow('Plaintext private key import is disabled')
+      expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+    } finally {
+      if (previous === undefined) delete process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+      else process.env.ALLOW_PLAINTEXT_KEY_IMPORT = previous
+    }
+  })
+
+  it('imports plaintext key material when the migration flag is enabled', async () => {
+    const fixture = createAgent()
+    const previous = process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+    process.env.ALLOW_PLAINTEXT_KEY_IMPORT = 'true'
+
+    try {
+      const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', privateKeyJwk: signingKey }],
+      })
+
+      expect(result.keys).toEqual([
+        { verificationMethodId: `${DID}#authority-signing-key`, keyId: 'kms-key-1', backend: 'askar' },
+      ])
+      expect(fixture.didsImport).toHaveBeenCalled()
+    } finally {
+      if (previous === undefined) delete process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+      else process.env.ALLOW_PLAINTEXT_KEY_IMPORT = previous
+    }
+  })
+
+  it('rejects a key type that cannot sign, even when the document publishes it', async () => {
+    const fixture = createAgent()
+    const didDocument = authorityDocument({
+      verificationMethod: [
+        {
+          id: `${DID}#key-agreement-key`,
+          type: 'X25519KeyAgreementKey2020',
+          controller: DID,
+          publicKeyJwk: x25519PublicJwk,
+        },
+      ],
+      authentication: [],
+      assertionMethod: [],
+      keyAgreement: [`${DID}#key-agreement-key`],
+    })
+    const { session, encryptedKey: key } = await encryptedKey(x25519PrivateKey)
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument,
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#key-agreement-key', encryptedKey: key }],
+      }),
+    ).rejects.toThrow('did:web does not support a OKP X25519 private key')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+    // The key type check happens before any session is consumed.
+    expect(() =>
+      consumeImportSession({
+        sessionId: session.sessionId,
+        jwe: key.jwe,
+        agentBinding: 'tenant-1',
+        method: 'web',
+      }),
+    ).not.toThrow()
+  })
+
+  it('routes an EC P-521 key to the Node KMS because Askar cannot hold it', async () => {
+    const fixture = createAgent()
+    const didDocument = authorityDocument({
+      verificationMethod: [
+        {
+          id: `${DID}#assertion-key`,
+          type: 'JsonWebKey2020',
+          controller: DID,
+          publicKeyJwk: p521PublicJwk,
+        },
+      ],
+      authentication: [],
+      assertionMethod: [`${DID}#assertion-key`],
+    })
+    const { encryptedKey: key } = await encryptedKey(p521Key)
+
+    const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+      did: DID,
+      didDocument,
+      allowUnresolvedDocument: true,
+      keys: [{ verificationMethodId: '#assertion-key', encryptedKey: key }],
+    })
+
+    expect(result.keys).toEqual([{ verificationMethodId: `${DID}#assertion-key`, keyId: 'kms-key-1', backend: 'node' }])
+    expect(fixture.kmsImportKey).toHaveBeenCalledWith(
+      expect.objectContaining({ backend: 'node', privateJwk: expect.objectContaining({ crv: 'P-521' }) }),
+    )
+  })
+
+  it('repairs a keyless record that GET /dids/:did stored for the same DID', async () => {
+    const fixture = createAgent()
+    // `GET /dids/:did` imports a resolved document with overwrite and no keys, leaving an unusable record behind.
+    fixture.records.push({ didDocument: mockDocument(authorityDocument()), keys: [] })
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+      did: DID,
+      didDocument: authorityDocument(),
+      allowUnresolvedDocument: true,
+      keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+    })
+
+    expect(result.keys).toHaveLength(1)
+    expect(fixture.kmsImportKey).toHaveBeenCalled()
+    expect(fixture.didsImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overwrite: true,
+        keys: [{ didDocumentRelativeKeyId: '#authority-signing-key', kmsKeyId: 'kms-key-1' }],
+      }),
+    )
+  })
+
+  it('refuses to rebind when the stored key is no longer in the KMS', async () => {
+    const fixture = createAgent()
+    preload(fixture, authorityDocument(), [
+      { verificationMethodId: `${DID}#authority-signing-key`, privateJwk: signingKey },
+    ])
+    fixture.keyStore.delete('preloaded-key-0')
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+      }),
+    ).rejects.toThrow('Pass replace:true to rebind it')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+    expect(fixture.didsImport).not.toHaveBeenCalled()
+  })
+
+  it('rejects an import session created for another DID method', async () => {
+    const fixture = createAgent()
+    const session = await createImportSession('key', 'tenant-1')
+    const jwe = encryptKeyImportEnvelope(
+      session.publicKeyJwk as JsonWebKey,
+      Buffer.from(JSON.stringify({ privateKeyJwk: signingKey })),
+      session.protectedHeader,
+    )
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: { sessionId: session.sessionId, jwe } }],
+      }),
+    ).rejects.toThrow('The key import session is invalid or has expired')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+  })
+
+  it('rejects an import session created for another agent', async () => {
+    const fixture = createAgent()
+    const { encryptedKey: key } = await encryptedKey(signingKey, 'tenant-2')
+
+    await expect(
+      controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+      }),
+    ).rejects.toThrow('The key import session is invalid or has expired')
+    expect(fixture.kmsImportKey).not.toHaveBeenCalled()
   })
 })
 
