@@ -1,0 +1,22 @@
+{
+  "label": "OpenBao did:web integration (dedicated)",
+  "walletId": "openbao-integration-dedicated",
+  "walletKey": "openbao-integration-dedicated",
+  "walletType": "postgres",
+  "walletUrl": "localhost:5432",
+  "walletAccount": "postgres",
+  "walletPassword": "postgres",
+  "walletAdminAccount": "postgres",
+  "walletAdminPassword": "postgres",
+  "walletScheme": "ProfilePerWallet",
+  "indyLedger": [],
+  "endpoint": ["http://localhost:4102"],
+  "autoAcceptConnections": true,
+  "autoAcceptCredentials": "always",
+  "autoAcceptProofs": "contentApproved",
+  "logLevel": 2,
+  "inboundTransport": [{ "transport": "http", "port": 4102 }],
+  "outboundTransport": ["http"],
+  "adminPort": 4101,
+  "tenancy": false
+}
