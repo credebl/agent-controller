@@ -62,7 +62,7 @@ import { didX509Service } from '../x509/didX509.service'
 import { parsePrivateKey, parsePrivateKeyJwk, privateKeyToJwk } from '../x509/didX509.utils'
 import { DidX509ImportOptionsDto } from '../x509/x509.types'
 
-import { assertValidDidWebDomain } from './didWebDomain'
+import { assertValidDidWebDomain, encodeDidWebDomain } from './didWebDomain'
 
 @Tags('Dids')
 @Route('/dids')
@@ -245,9 +245,9 @@ export class DidController extends Controller {
       throw new BadRequestError('Provide either did or key material to import for did:key, not both')
     }
 
-    // An invalid did:web domain is rejected before an encrypted envelope consumes its single-use session, so the
-    // caller can correct the domain and retry with the same envelope.
-    if (didOptions.method === DidMethod.Web && didOptions.domain) {
+    // A missing or invalid did:web domain is rejected before an encrypted envelope consumes its single-use session,
+    // so the caller can correct the domain and retry with the same envelope.
+    if (didOptions.method === DidMethod.Web) {
       assertValidDidWebDomain(didOptions.domain)
     }
 
@@ -957,9 +957,6 @@ export class DidController extends Controller {
   }
 
   private validateDidWebOptions(didOptions: DidCreate): string {
-    if (!didOptions.domain) {
-      throw new BadRequestError('For create did:web, domain is required')
-    }
     assertValidDidWebDomain(didOptions.domain)
 
     const hasImportedKey = this.hasImportedPrivateKey(didOptions)
@@ -1063,7 +1060,8 @@ export class DidController extends Controller {
     const verificationMethodType = this.validateDidWebOptions(didOptions)
 
     const domain = didOptions.domain as string
-    const did = `did:${didOptions.method}:${domain}`
+    // `~` is percent-encoded so the identifier conforms to the DID Core method-specific-id syntax.
+    const did = `did:${didOptions.method}:${encodeDidWebDomain(domain)}`
     const keyId = `${did}#key-1`
 
     const { key, didDocument } = await this.createWebDidDocument(agent, didOptions, did, keyId, verificationMethodType)

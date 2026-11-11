@@ -1,8 +1,9 @@
 import { BadRequestError } from '../../errors'
 
 const HOST_LABEL = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/i
-// A host whose labels are all numeric is an IPv4 address, which did:web excludes.
-const IPV4_HOST = /^(\d{1,3}\.){3}\d{1,3}$/
+// URL parsing treats a host whose last label is an IPv4 number (decimal or `0x`-prefixed hex) as an IPv4 address
+// and then fails on the other labels: `https://foo.123/` is not a valid URL, and did:web excludes IP addresses.
+const IPV4_NUMBER = /^(0[xX][0-9a-fA-F]*|[0-9]+)$/
 // Unreserved URI characters; a `:` separates path segments and `%3A` encodes a port.
 const PATH_SEGMENT = /^[A-Za-z0-9._~-]+$/
 // DNS limits from RFC 1035: 253 presentation characters for a host, 63 for a label. Ports above 65535 cannot appear
@@ -12,19 +13,24 @@ const MAX_LABEL_LENGTH = 63
 const MAX_PORT = 65535
 
 /**
- * Checks the part of a did:web identifier after `did:web:`, for example `example.com` or
- * `ayanworks.github.io:iec:0522012345`: a host, an optional `%3A`-encoded port, then path segments separated by `:`.
+ * Checks the `domain` of a did:web create request: a host name, an optional `%3A`-encoded port, then path segments
+ * separated by `:`, for example `example.com` or `ayanworks.github.io:iec:0522012345`. The domain is required.
  */
-export const assertValidDidWebDomain = (domain: string): void => {
+export const assertValidDidWebDomain = (domain: string | undefined): void => {
+  if (!domain) {
+    throw new BadRequestError('For create did:web, domain is required')
+  }
+
   const [hostPart, ...segments] = domain.split(':')
   const [host, port, ...extra] = hostPart.split('%3A')
+  const labels = host.split('.')
 
   const validHost =
     host.length <= MAX_HOST_LENGTH &&
-    !IPV4_HOST.test(host) &&
     (host === 'localhost' ||
       (host.includes('.') &&
-        host.split('.').every((label) => label.length <= MAX_LABEL_LENGTH && HOST_LABEL.test(label))))
+        labels.every((label) => label.length <= MAX_LABEL_LENGTH && HOST_LABEL.test(label)) &&
+        !IPV4_NUMBER.test(labels[labels.length - 1])))
   const validPort = port === undefined || (/^\d{1,5}$/.test(port) && Number(port) <= MAX_PORT)
 
   if (!validHost || !validPort || extra.length > 0) {
@@ -42,3 +48,11 @@ export const assertValidDidWebDomain = (domain: string): void => {
     )
   }
 }
+
+/**
+ * Encodes a validated domain into the part of the identifier after `did:web:`. DID Core allows only letters, digits,
+ * `.`, `-`, `_` and percent-encoded octets there, so `~` becomes `%7E`: the domain `example.com:~` produces
+ * `did:web:example.com:%7E`, whose document URL URL-parses back to the `~` folder. A host cannot contain `~`, so
+ * only path segments are affected.
+ */
+export const encodeDidWebDomain = (domain: string): string => domain.replace(/~/g, '%7E')
