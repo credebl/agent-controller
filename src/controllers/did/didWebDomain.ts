@@ -3,7 +3,7 @@ import { BadRequestError } from '../../errors'
 const HOST_LABEL = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/i
 // URL parsing treats a host whose last label is an IPv4 number (decimal or `0x`-prefixed hex) as an IPv4 address
 // and then fails on the other labels: `https://foo.123/` is not a valid URL, and did:web excludes IP addresses.
-const IPV4_NUMBER = /^(0[xX][0-9a-fA-F]*|[0-9]+)$/
+const IPV4_NUMBER = /^(0[xX][\da-fA-F]*|\d+)$/
 // Unreserved URI characters; a `:` separates path segments and `%3A` encodes a port.
 const PATH_SEGMENT = /^[A-Za-z0-9._~-]+$/
 // DNS limits from RFC 1035: 253 presentation characters for a host, 63 for a label. Ports above 65535 cannot appear

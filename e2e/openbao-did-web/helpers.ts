@@ -121,7 +121,7 @@ export async function openBaoGet<T>(config: LiveConfig, path: string): Promise<T
 
 export async function transitKeys(config: LiveConfig): Promise<string[]> {
   const listed = await openBaoGet<TransitKeyListResponse>(config, 'transit/keys?list=true')
-  return [...(listed?.data?.keys ?? [])].sort()
+  return [...(listed?.data?.keys ?? [])].sort((left, right) => left.localeCompare(right))
 }
 
 export function transitKey(config: LiveConfig, name: string): Promise<TransitKeyResponse | null> {
