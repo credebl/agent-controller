@@ -1,6 +1,6 @@
 import type { JsonWebKey } from 'node:crypto'
 
-import { createPublicKey, generateKeyPairSync, verify as verifySignature } from 'node:crypto'
+import { createPrivateKey, createPublicKey, generateKeyPairSync, verify as verifySignature } from 'node:crypto'
 
 import {
   SIGN_RAW_DATA_PATH,
@@ -8,6 +8,7 @@ import {
   base58Encode,
   createDidFromEncryptedKey,
   getAgentToken,
+  importDidWebFromEncryptedKey,
   liveConfig,
   liveIntegrationEnabled,
   transitKey,
@@ -170,6 +171,101 @@ describeLive('did:web encrypted key import (dedicated agent + OpenBao)', () => {
       created.jwe,
     )
     expect(replay.status).toBe(400)
+  })
+
+  it('imports an externally issued did:web document and binds its custom verification method', async () => {
+    // A unique method-specific path keeps repeated local runs from colliding with an earlier import.
+    const authorityDid = `did:web:authority.example.com:it:${Date.now()}`
+    const authorityJwk = generateKeyPairSync('ed25519').privateKey.export({ format: 'jwk' })
+    const authorityPublicJwk = createPublicKey(createPrivateKey({ key: authorityJwk, format: 'jwk' })).export({
+      format: 'jwk',
+    })
+
+    const didDocument = {
+      '@context': ['https://www.w3.org/ns/did/v1', 'https://w3id.org/security/suites/ed25519-2020/v1'],
+      id: authorityDid,
+      verificationMethod: [
+        {
+          id: `${authorityDid}#authority-signing-key`,
+          type: 'Ed25519VerificationKey2020',
+          controller: authorityDid,
+          publicKeyJwk: authorityPublicJwk,
+        },
+      ],
+      authentication: [`${authorityDid}#authority-signing-key`],
+      assertionMethod: [`${authorityDid}#authority-signing-key`],
+      service: [
+        {
+          id: `${authorityDid}#didcomm`,
+          type: 'DIDCommMessaging',
+          serviceEndpoint: 'https://authority.example.com/didcomm',
+        },
+      ],
+    }
+
+    const before = await transitKeys(config)
+    const imported = await importDidWebFromEncryptedKey(config.dedicatedAgentUrl, token, {
+      did: authorityDid,
+      didDocument,
+      verificationMethodId: `${authorityDid}#authority-signing-key`,
+      privateJwk: authorityJwk,
+      allowUnresolvedDocument: true,
+    })
+
+    expect(imported.status).toBe(200)
+    expect(imported.body.did).toBe(authorityDid)
+    // The authority's custom fragment, contexts and service survive instead of a regenerated `#key-1` document.
+    expect(imported.body.didDocument).toMatchObject({
+      id: authorityDid,
+      verificationMethod: [{ id: `${authorityDid}#authority-signing-key` }],
+      authentication: [`${authorityDid}#authority-signing-key`],
+      service: didDocument.service,
+    })
+    expect(imported.body.keys).toEqual([
+      { verificationMethodId: `${authorityDid}#authority-signing-key`, keyId: expect.any(String), backend: 'openbao' },
+    ])
+    expect(await transitKeys(config)).toHaveLength(before.length + 1)
+
+    // The imported document resolves from the local record without touching the network.
+    const resolved = await agentCall<{ didDocument?: { id?: string; authentication?: unknown[] } }>(
+      config.dedicatedAgentUrl,
+      token,
+      'GET',
+      `/dids/${encodeURIComponent(authorityDid)}/resolve`,
+    )
+    expect(resolved.status).toBe(200)
+    expect(resolved.body.didDocument).toMatchObject({
+      id: authorityDid,
+      authentication: [`${authorityDid}#authority-signing-key`],
+    })
+
+    // Signing uses the key bound to the authority's verification method id.
+    const data = Buffer.from('authority issued did:web payload')
+    const signature = await agentCall<string>(config.dedicatedAgentUrl, token, 'POST', SIGN_RAW_DATA_PATH, {
+      data: data.toString('base64'),
+      did: authorityDid,
+      keyType: 'Ed25519',
+    })
+    expect(signature.status).toBe(200)
+    expect(
+      verifySignature(
+        null,
+        data,
+        createPublicKey({ key: authorityPublicJwk as JsonWebKey, format: 'jwk' }),
+        Buffer.from(signature.body, 'base64'),
+      ),
+    ).toBe(true)
+
+    // Re-importing the same document and key is idempotent and does not add another Transit key.
+    const again = await importDidWebFromEncryptedKey(config.dedicatedAgentUrl, token, {
+      did: authorityDid,
+      didDocument,
+      verificationMethodId: `${authorityDid}#authority-signing-key`,
+      privateJwk: authorityJwk,
+      allowUnresolvedDocument: true,
+    })
+    expect(again.status).toBe(200)
+    expect(await transitKeys(config)).toHaveLength(before.length + 1)
   })
 
   it('creates did:key in OpenBao when did:key import is enabled', async () => {

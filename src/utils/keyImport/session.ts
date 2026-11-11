@@ -200,17 +200,20 @@ function parseKeyMaterial(plaintext: Buffer): KeyImportKeyMaterial {
   }
 }
 
-/**
- * Validates and consumes an envelope. The session is marked used before the key is imported, so two concurrent
- * requests cannot both import the same material.
- */
-export function consumeImportSession(options: {
+interface ImportSessionEnvelope {
   sessionId: string
   jwe: string
-  agentBinding: string
-  method: KeyImportMethod
-  now?: number
-}): KeyImportKeyMaterial {
+}
+
+/**
+ * Validates and decrypts an envelope. `consume` decides whether the session is burned: a request that must validate
+ * several keys (for example an imported did:web document with more than one verification method) inspects them first
+ * and only consumes once every key has passed validation.
+ */
+function readImportSession(
+  options: ImportSessionEnvelope & { agentBinding: string; method: KeyImportMethod; now?: number },
+  consume: boolean,
+): KeyImportKeyMaterial {
   const now = options.now ?? Date.now()
   const session = sessions.get(options.sessionId)
   if (!session) throw new KeyImportSessionError()
@@ -237,10 +240,73 @@ export function consumeImportSession(options: {
     throw new KeyImportSessionError()
   }
 
-  session.used = true
-  sessions.delete(options.sessionId)
+  if (consume) {
+    session.used = true
+    sessions.delete(options.sessionId)
+  }
 
   return parseKeyMaterial(decrypted.plaintext)
+}
+
+/**
+ * Validates and consumes an envelope. The session is marked used before the key is imported, so two concurrent
+ * requests cannot both import the same material.
+ */
+export function consumeImportSession(
+  options: ImportSessionEnvelope & {
+    agentBinding: string
+    method: KeyImportMethod
+    now?: number
+  },
+): KeyImportKeyMaterial {
+  return readImportSession(options, true)
+}
+
+/**
+ * Validates and decrypts an envelope without consuming the session. Used by the did:web import endpoint to check a
+ * document/key binding before any of its single-use sessions are burned, so a rejected request can be retried with the
+ * same envelopes.
+ */
+export function inspectImportSession(
+  options: ImportSessionEnvelope & {
+    agentBinding: string
+    method: KeyImportMethod
+    now?: number
+  },
+): KeyImportKeyMaterial {
+  return readImportSession(options, false)
+}
+
+/**
+ * Validates every envelope and only then consumes all of them. A request with several keys is therefore all or
+ * nothing: one invalid envelope leaves every session usable.
+ */
+export function consumeImportSessions(options: {
+  entries: ImportSessionEnvelope[]
+  agentBinding: string
+  method: KeyImportMethod
+  now?: number
+}): KeyImportKeyMaterial[] {
+  if (new Set(options.entries.map(({ sessionId }) => sessionId)).size !== options.entries.length) {
+    throw new KeyImportSessionError('Each key needs its own import session')
+  }
+
+  const materials = options.entries.map((entry) =>
+    readImportSession(
+      { ...entry, agentBinding: options.agentBinding, method: options.method, now: options.now },
+      false,
+    ),
+  )
+
+  for (const { sessionId } of options.entries) {
+    const session = sessions.get(sessionId)
+    if (session) {
+      session.used = true
+      sessions.delete(sessionId)
+    }
+  }
+
+  return materials
 }
 
 /** Exposed for tests. */

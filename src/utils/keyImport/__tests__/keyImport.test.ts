@@ -4,7 +4,9 @@ import { encryptKeyImportEnvelope, KeyImportEnvelopeError, MAX_KEY_IMPORT_JWE_LE
 import {
   agentBindingFor,
   consumeImportSession,
+  consumeImportSessions,
   createImportSession,
+  inspectImportSession,
   KeyImportSessionError,
   resetImportSessions,
   type KeyImportSessionDescriptor,
@@ -153,5 +155,79 @@ describe('key import envelope', () => {
   it('derives the agent binding from a tenant agent context', () => {
     expect(agentBindingFor({ context: { contextCorrelationId: 'tenant-abc' } })).toBe('tenant-abc')
     expect(agentBindingFor({})).toBe('dedicated')
+  })
+
+  it('inspects an envelope without consuming its session', async () => {
+    const session = await createImportSession('web', 'tenant-1')
+    const jwe = envelopeFor(session)
+
+    expect(
+      inspectImportSession({ sessionId: session.sessionId, jwe, agentBinding: 'tenant-1', method: 'web' }),
+    ).toEqual({ privateKey: '-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----' })
+    // The session is still usable, so the caller can submit the same envelope again.
+    expect(
+      consumeImportSession({ sessionId: session.sessionId, jwe, agentBinding: 'tenant-1', method: 'web' }),
+    ).toEqual({ privateKey: '-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----' })
+  })
+
+  it('consumes several sessions only after every envelope passed validation', async () => {
+    const first = await createImportSession('web', 'tenant-1')
+    const second = await createImportSession('web', 'tenant-1')
+    const firstJwe = envelopeFor(first)
+    const secondJwe = envelopeFor(second)
+
+    const materials = consumeImportSessions({
+      entries: [
+        { sessionId: first.sessionId, jwe: firstJwe },
+        { sessionId: second.sessionId, jwe: secondJwe },
+      ],
+      agentBinding: 'tenant-1',
+      method: 'web',
+    })
+
+    expect(materials).toHaveLength(2)
+    expect(() =>
+      consumeImportSession({ sessionId: first.sessionId, jwe: firstJwe, agentBinding: 'tenant-1', method: 'web' }),
+    ).toThrow(KeyImportSessionError)
+    expect(() =>
+      consumeImportSession({ sessionId: second.sessionId, jwe: secondJwe, agentBinding: 'tenant-1', method: 'web' }),
+    ).toThrow(KeyImportSessionError)
+  })
+
+  it('leaves every session usable when one envelope in a batch is invalid', async () => {
+    const first = await createImportSession('web', 'tenant-1')
+    const second = await createImportSession('web', 'tenant-1')
+    const firstJwe = envelopeFor(first)
+
+    expect(() =>
+      consumeImportSessions({
+        entries: [
+          { sessionId: first.sessionId, jwe: firstJwe },
+          { sessionId: second.sessionId, jwe: 'not-a-jwe' },
+        ],
+        agentBinding: 'tenant-1',
+        method: 'web',
+      }),
+    ).toThrow()
+
+    expect(
+      consumeImportSession({ sessionId: first.sessionId, jwe: firstJwe, agentBinding: 'tenant-1', method: 'web' }),
+    ).toBeDefined()
+  })
+
+  it('rejects a batch that reuses one session for two keys', async () => {
+    const session = await createImportSession('web', 'tenant-1')
+    const jwe = envelopeFor(session)
+
+    expect(() =>
+      consumeImportSessions({
+        entries: [
+          { sessionId: session.sessionId, jwe },
+          { sessionId: session.sessionId, jwe },
+        ],
+        agentBinding: 'tenant-1',
+        method: 'web',
+      }),
+    ).toThrow('Each key needs its own import session')
   })
 })

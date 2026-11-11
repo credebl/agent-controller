@@ -385,6 +385,76 @@ export interface KeyImportSessionResponse {
   protectedHeader: Record<string, unknown>
 }
 
+/** One private key of an imported did:web document, bound to the verification method the authority published it for. */
+export interface DidWebImportKey {
+  /**
+   * Id of a verification method in `didDocument`. It can be absolute (`did:web:example.com#key-1`) or relative
+   * (`#key-1`) to the imported DID.
+   * @example "did:web:gov-agency.example.com#authority-signing-key"
+   */
+  verificationMethodId: string
+
+  /**
+   * Private key material encrypted to a single-use import session (see `POST /dids/import/session` with method `web`).
+   * Each key needs its own session.
+   */
+  encryptedKey?: KeyImportEncryptedKey
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead. */
+  privateKey?: string
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead. */
+  privateKeyJwk?: Record<string, unknown>
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Send the passphrase inside `encryptedKey`. */
+  passphrase?: string
+}
+
+/**
+ * Imports a `did:web` identity created and hosted by an external authority (for example a government agency). Unlike
+ * `POST /dids/write`, the supplied DID document is stored verbatim instead of being regenerated from a domain.
+ */
+export interface DidWebImportOptions {
+  /**
+   * The authority's DID.
+   * @example "did:web:gov-agency.example.com"
+   */
+  did: string
+
+  /**
+   * The DID document as published by the authority. When omitted it is resolved over the network instead.
+   */
+  didDocument?: Record<string, unknown>
+
+  /** Private keys to import. Verification methods without a key stay in the document as public-only entries. */
+  keys: DidWebImportKey[]
+
+  /**
+   * Import the supplied `didDocument` even when it cannot be resolved over the network (air-gapped or private
+   * deployments). Without this flag a supplied document is compared with the published document and rejected on a
+   * mismatch.
+   */
+  allowUnresolvedDocument?: boolean
+
+  /**
+   * Rebind an existing imported DID to a different document or key. Without it, re-importing the same document and
+   * keys is idempotent but a different binding is rejected.
+   */
+  replace?: boolean
+}
+
+export interface DidWebImportedKey {
+  /** Verification method id exactly as it appears in the imported document. */
+  verificationMethodId: string
+  /** Id of the private key in the agent's KMS. */
+  keyId: string
+  /** Backend that holds the key: `askar`, `node` or `openbao`. */
+  backend: string
+}
+
+export interface DidWebImportResponse {
+  did: string
+  didDocument: Record<string, unknown>
+  keys: DidWebImportedKey[]
+}
+
 export type Ed25519VerificationMethodType = 'Ed25519VerificationKey2018' | 'Ed25519VerificationKey2020'
 
 export interface CreateTenantOptions {
