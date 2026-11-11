@@ -245,6 +245,12 @@ export class DidController extends Controller {
       throw new BadRequestError('Provide either did or key material to import for did:key, not both')
     }
 
+    // An invalid did:web domain is rejected before an encrypted envelope consumes its single-use session, so the
+    // caller can correct the domain and retry with the same envelope.
+    if (didOptions.method === DidMethod.Web && didOptions.domain) {
+      assertValidDidWebDomain(didOptions.domain)
+    }
+
     if (!didOptions.encryptedKey) return didOptions
     if (didOptions.privateKey || didOptions.privateKeyJwk || didOptions.passphrase || didOptions.privatekey) {
       throw new BadRequestError('Provide either encryptedKey or plaintext key material, not both')
