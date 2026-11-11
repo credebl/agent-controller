@@ -89,6 +89,14 @@ import {
   verificationMethodsById,
 } from './didWebImport'
 
+/** A validated, decrypted key paired with the verification method it was published for. */
+type PreparedDidWebImportKey = {
+  method: VerificationMethod
+  privateJwk: Kms.KmsJwkPrivate
+  relativeId: string
+  thumbprint: string
+}
+
 @Tags('Dids')
 @Route('/dids')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
@@ -246,160 +254,22 @@ export class DidController extends Controller {
     try {
       assertValidDidWebIdentifier(options?.did)
       const did = options.did
+      const keyOptions = this.didWebImportKeys(options)
 
       const didDocument = await this.didWebDocumentForImport(request.agent, did, options)
-
-      const keyOptions = options.keys
-      if (!Array.isArray(keyOptions) || keyOptions.length === 0) {
-        throw new BadRequestError('keys must contain at least one verification method key')
-      }
-
-      // Structural validation happens before any envelope is decrypted, so an invalid document does not burn a session.
-      const methods = verificationMethodsById(didDocument)
-      const seenMethods = new Set<string>()
-      const seenSessions = new Set<string>()
-      for (const keyOption of keyOptions) {
-        if (!keyOption || typeof keyOption.verificationMethodId !== 'string') {
-          throw new BadRequestError('keys[].verificationMethodId is required')
-        }
-
-        const normalizedId = normalizeVerificationMethodId(did, keyOption.verificationMethodId)
-        if (seenMethods.has(normalizedId)) {
-          throw new BadRequestError(
-            `keys contains more than one entry for verification method "${keyOption.verificationMethodId}"`,
-          )
-        }
-        seenMethods.add(normalizedId)
-        if (!methods.has(normalizedId)) {
-          throw new BadRequestError(
-            `Verification method "${keyOption.verificationMethodId}" does not exist in didDocument`,
-          )
-        }
-
-        if (keyOption.encryptedKey) {
-          if (keyOption.privateKey || keyOption.privateKeyJwk || keyOption.passphrase) {
-            throw new BadRequestError('Provide either encryptedKey or plaintext key material per key, not both')
-          }
-          if (!keyOption.encryptedKey.sessionId || typeof keyOption.encryptedKey.jwe !== 'string') {
-            throw new BadRequestError('encryptedKey.sessionId and encryptedKey.jwe are required')
-          }
-          if (seenSessions.has(keyOption.encryptedKey.sessionId)) {
-            throw new BadRequestError('Each key needs its own import session')
-          }
-          seenSessions.add(keyOption.encryptedKey.sessionId)
-          continue
-        }
-
-        this.assertPlaintextKeyImportAllowed(keyOption)
-        if (!keyOption.privateKey && !keyOption.privateKeyJwk) {
-          throw new BadRequestError(
-            `Verification method "${keyOption.verificationMethodId}" needs an encryptedKey or plaintext private key`,
-          )
-        }
-      }
-
-      // Decrypt without consuming: a rejected document/key binding must leave every session usable for a retry.
-      const materials: KeyImportKeyMaterial[] = keyOptions.map((keyOption) => {
-        if (!keyOption.encryptedKey) {
-          return {
-            ...(keyOption.privateKey !== undefined ? { privateKey: keyOption.privateKey } : {}),
-            ...(keyOption.privateKeyJwk !== undefined ? { privateKeyJwk: keyOption.privateKeyJwk } : {}),
-            ...(keyOption.passphrase !== undefined ? { passphrase: keyOption.passphrase } : {}),
-          }
-        }
-
-        try {
-          return inspectImportSession({
-            sessionId: keyOption.encryptedKey.sessionId,
-            jwe: keyOption.encryptedKey.jwe,
-            agentBinding: agentBindingFor(request.agent),
-            method: 'web',
-          })
-        } catch (error) {
-          if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
-            throw new BadRequestError(error.message)
-          }
-          throw error
-        }
-      })
-
-      const prepared = keyOptions.map((keyOption, index) => {
-        const method = methods.get(
-          normalizeVerificationMethodId(did, keyOption.verificationMethodId),
-        ) as VerificationMethod
-        const privateJwk = this.readImportedPrivateKey(materials[index])
-        this.assertImportedKeySupported('web', privateJwk)
-        assertPrivateKeyMatchesVerificationMethod(privateJwk, method)
-
-        return {
-          method,
-          privateJwk,
-          relativeId: verificationMethodRelativeId(normalizeVerificationMethodId(did, method.id)),
-          thumbprint: privateJwkThumbprint(privateJwk),
-        }
-      })
-
-      const [existing] = await request.agent.dids.getCreatedDids({ did })
-      const existingDocument = existing?.didDocument
-      const existingKeys = existing?.keys
+      const methods = this.validateDidWebImportKeys(did, didDocument, keyOptions)
+      const prepared = this.prepareDidWebImportKeys(request.agent, did, keyOptions, methods)
 
       // Re-importing the same document and keys is a no-op. Rebinding an existing DID must be explicit, because an
       // already issued credential would otherwise silently stop verifying.
-      if (existingDocument && existingKeys?.length && !options.replace) {
-        const identical =
-          existingKeys.length === prepared.length &&
-          didDocumentsEqual(didDocument, existingDocument) &&
-          (
-            await Promise.all(
-              prepared.map(async (key) => {
-                const binding = existingKeys.find(
-                  ({ didDocumentRelativeKeyId }) => didDocumentRelativeKeyId === key.relativeId,
-                )
-                return (
-                  binding !== undefined &&
-                  (await this.storedKeyMatchesThumbprint(request.agent, binding.kmsKeyId, key.thumbprint))
-                )
-              }),
-            )
-          ).every(Boolean)
+      const existing = await this.matchingDidWebImport(request.agent, did, didDocument, prepared, options.replace)
 
-        if (!identical) {
-          throw new BadRequestError(
-            `${did} is already imported with a different document or key binding. Pass replace:true to rebind it.`,
-          )
-        }
-
-        this.consumeDidWebImportSessions(request.agent, keyOptions)
-
-        return {
-          did,
-          didDocument: existingDocument.toJSON(),
-          keys: prepared.map((key) => ({
-            verificationMethodId: key.method.id,
-            keyId: existingKeys.find(({ didDocumentRelativeKeyId }) => didDocumentRelativeKeyId === key.relativeId)
-              ?.kmsKeyId as string,
-            backend: this.importedKeyBackendName('web', key.privateJwk),
-          })),
-        }
-      }
-
+      // Decryption above does not consume a session, and this runs only once the import is known to be an exact
+      // re-import or certain to be stored, so a rejected request can be retried with the same envelopes.
       this.consumeDidWebImportSessions(request.agent, keyOptions)
+      if (existing) return existing
 
-      const bindings: DidDocumentKey[] = []
-      const keys: DidWebImportResponse['keys'] = []
-      for (const key of prepared) {
-        const { keyId } = await this.importKey(
-          request.agent,
-          key.privateJwk,
-          this.importedKeyBackend('web', key.privateJwk),
-        )
-        bindings.push({ didDocumentRelativeKeyId: key.relativeId, kmsKeyId: keyId })
-        keys.push({
-          verificationMethodId: key.method.id,
-          keyId,
-          backend: this.importedKeyBackendName('web', key.privateJwk),
-        })
-      }
+      const { bindings, keys } = await this.importDidWebKeys(request.agent, prepared)
 
       // `overwrite` also repairs a keyless record that `GET /dids/:did` may have stored for this DID.
       await request.agent.dids.import({ did, didDocument, keys: bindings, overwrite: true })
@@ -407,6 +277,210 @@ export class DidController extends Controller {
       return { did, didDocument: didDocument.toJSON(), keys }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /** Fails fast when no key is supplied, before the document is resolved or an envelope is decrypted. */
+  private didWebImportKeys(options: DidWebImportOptions): DidWebImportOptions['keys'] {
+    const keyOptions = options.keys
+    if (!Array.isArray(keyOptions) || keyOptions.length === 0) {
+      throw new BadRequestError('keys must contain at least one verification method key')
+    }
+    return keyOptions
+  }
+
+  /**
+   * Structural validation happens before any envelope is decrypted, so an invalid document does not burn a session.
+   */
+  private validateDidWebImportKeys(
+    did: string,
+    didDocument: DidDocument,
+    keyOptions: DidWebImportOptions['keys'],
+  ): Map<string, VerificationMethod> {
+    const methods = verificationMethodsById(didDocument)
+    const seenMethods = new Set<string>()
+    const seenSessions = new Set<string>()
+
+    for (const keyOption of keyOptions) {
+      if (!keyOption || typeof keyOption.verificationMethodId !== 'string') {
+        throw new BadRequestError('keys[].verificationMethodId is required')
+      }
+
+      const normalizedId = normalizeVerificationMethodId(did, keyOption.verificationMethodId)
+      if (seenMethods.has(normalizedId)) {
+        throw new BadRequestError(
+          `keys contains more than one entry for verification method "${keyOption.verificationMethodId}"`,
+        )
+      }
+      seenMethods.add(normalizedId)
+      if (!methods.has(normalizedId)) {
+        throw new BadRequestError(
+          `Verification method "${keyOption.verificationMethodId}" does not exist in didDocument`,
+        )
+      }
+
+      if (keyOption.encryptedKey) {
+        if (keyOption.privateKey || keyOption.privateKeyJwk || keyOption.passphrase) {
+          throw new BadRequestError('Provide either encryptedKey or plaintext key material per key, not both')
+        }
+        this.validateDidWebImportSession(keyOption.encryptedKey, seenSessions)
+        continue
+      }
+
+      this.assertPlaintextKeyImportAllowed(keyOption)
+      if (!keyOption.privateKey && !keyOption.privateKeyJwk) {
+        throw new BadRequestError(
+          `Verification method "${keyOption.verificationMethodId}" needs an encryptedKey or plaintext private key`,
+        )
+      }
+    }
+
+    return methods
+  }
+
+  private validateDidWebImportSession(
+    encryptedKey: NonNullable<DidWebImportOptions['keys'][number]['encryptedKey']>,
+    seenSessions: Set<string>,
+  ): void {
+    if (!encryptedKey.sessionId || typeof encryptedKey.jwe !== 'string') {
+      throw new BadRequestError('encryptedKey.sessionId and encryptedKey.jwe are required')
+    }
+    if (seenSessions.has(encryptedKey.sessionId)) {
+      throw new BadRequestError('Each key needs its own import session')
+    }
+    seenSessions.add(encryptedKey.sessionId)
+  }
+
+  /** Decrypts without consuming: a rejected document/key binding must leave every session usable for a retry. */
+  private didWebImportMaterial(agent: AgentType, keyOption: DidWebImportOptions['keys'][number]): KeyImportKeyMaterial {
+    if (!keyOption.encryptedKey) {
+      return {
+        ...(keyOption.privateKey !== undefined ? { privateKey: keyOption.privateKey } : {}),
+        ...(keyOption.privateKeyJwk !== undefined ? { privateKeyJwk: keyOption.privateKeyJwk } : {}),
+        ...(keyOption.passphrase !== undefined ? { passphrase: keyOption.passphrase } : {}),
+      }
+    }
+
+    try {
+      return inspectImportSession({
+        sessionId: keyOption.encryptedKey.sessionId,
+        jwe: keyOption.encryptedKey.jwe,
+        agentBinding: agentBindingFor(agent),
+        method: 'web',
+      })
+    } catch (error) {
+      if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
+  }
+
+  private prepareDidWebImportKeys(
+    agent: AgentType,
+    did: string,
+    keyOptions: DidWebImportOptions['keys'],
+    methods: Map<string, VerificationMethod>,
+  ): PreparedDidWebImportKey[] {
+    const materials = keyOptions.map((keyOption) => this.didWebImportMaterial(agent, keyOption))
+
+    return keyOptions.map((keyOption, index) => {
+      const method = methods.get(
+        normalizeVerificationMethodId(did, keyOption.verificationMethodId),
+      ) as VerificationMethod
+      const privateJwk = this.readImportedPrivateKey(materials[index])
+      this.assertImportedKeySupported('web', privateJwk)
+      assertPrivateKeyMatchesVerificationMethod(privateJwk, method)
+
+      return {
+        method,
+        privateJwk,
+        relativeId: verificationMethodRelativeId(normalizeVerificationMethodId(did, method.id)),
+        thumbprint: privateJwkThumbprint(privateJwk),
+      }
+    })
+  }
+
+  /**
+   * Returns the stored response for an exact re-import and throws for a conflicting binding. Returns `undefined` when
+   * the DID is new or the caller passed `replace`.
+   */
+  private async matchingDidWebImport(
+    agent: AgentType,
+    did: string,
+    didDocument: DidDocument,
+    prepared: PreparedDidWebImportKey[],
+    replace?: boolean,
+  ): Promise<DidWebImportResponse | undefined> {
+    if (replace) return undefined
+
+    const [existing] = await agent.dids.getCreatedDids({ did })
+    const existingDocument = existing?.didDocument
+    const existingKeys = existing?.keys
+    if (!existingDocument || !existingKeys?.length) return undefined
+
+    if (!(await this.existingDidWebImportMatches(agent, didDocument, existingDocument, existingKeys, prepared))) {
+      throw new BadRequestError(
+        `${did} is already imported with a different document or key binding. Pass replace:true to rebind it.`,
+      )
+    }
+
+    return {
+      did,
+      didDocument: existingDocument.toJSON(),
+      keys: prepared.map((key) => ({
+        verificationMethodId: key.method.id,
+        keyId: existingKeys.find(({ didDocumentRelativeKeyId }) => didDocumentRelativeKeyId === key.relativeId)
+          ?.kmsKeyId as string,
+        backend: this.importedKeyBackendName('web', key.privateJwk),
+      })),
+    }
+  }
+
+  private async existingDidWebImportMatches(
+    agent: AgentType,
+    didDocument: DidDocument,
+    existingDocument: DidDocument,
+    existingKeys: DidDocumentKey[],
+    prepared: PreparedDidWebImportKey[],
+  ): Promise<boolean> {
+    if (existingKeys.length !== prepared.length) return false
+    if (!didDocumentsEqual(didDocument, existingDocument)) return false
+
+    const matches = await Promise.all(prepared.map((key) => this.existingDidWebKeyMatches(agent, existingKeys, key)))
+    return matches.every(Boolean)
+  }
+
+  private async existingDidWebKeyMatches(
+    agent: AgentType,
+    existingKeys: DidDocumentKey[],
+    key: PreparedDidWebImportKey,
+  ): Promise<boolean> {
+    const binding = existingKeys.find(({ didDocumentRelativeKeyId }) => didDocumentRelativeKeyId === key.relativeId)
+    return binding !== undefined && (await this.storedKeyMatchesThumbprint(agent, binding.kmsKeyId, key.thumbprint))
+  }
+
+  private async importDidWebKeys(
+    agent: AgentType,
+    prepared: PreparedDidWebImportKey[],
+  ): Promise<{ bindings: DidDocumentKey[]; keys: DidWebImportResponse['keys'] }> {
+    const imported = await Promise.all(
+      prepared.map(async (key) => {
+        const { keyId } = await this.importKey(agent, key.privateJwk, this.importedKeyBackend('web', key.privateJwk))
+        return {
+          binding: { didDocumentRelativeKeyId: key.relativeId, kmsKeyId: keyId },
+          key: {
+            verificationMethodId: key.method.id,
+            keyId,
+            backend: this.importedKeyBackendName('web', key.privateJwk),
+          },
+        }
+      }),
+    )
+
+    return {
+      bindings: imported.map(({ binding }) => binding),
+      keys: imported.map(({ key }) => key),
     }
   }
 
