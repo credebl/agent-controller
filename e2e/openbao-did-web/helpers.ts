@@ -32,6 +32,13 @@ export interface DidWriteResult {
   }
 }
 
+/** Response of `POST /dids/web/import` for an externally issued did:web document. */
+export interface DidWebImportResult {
+  did: string
+  didDocument: Record<string, unknown>
+  keys: Array<{ verificationMethodId: string; keyId: string; backend: string }>
+}
+
 export interface ErrorResult {
   message?: string
 }
@@ -176,6 +183,40 @@ export function writeWithEnvelope(
     ...(domain === undefined ? {} : { domain }),
     encryptedKey: { sessionId: session.sessionId, jwe },
   })
+}
+
+/**
+ * Imports an externally issued did:web document the way an authority hands it over: the document plus private keys
+ * encrypted to single-use sessions. Each key is bound to the verification method id given in the document.
+ */
+export async function importDidWebFromEncryptedKey(
+  agentUrl: string,
+  token: string,
+  options: {
+    did: string
+    didDocument: Record<string, unknown>
+    verificationMethodId: string
+    privateJwk: JsonWebKey
+    allowUnresolvedDocument?: boolean
+    replace?: boolean
+  },
+): Promise<AgentCallResult<DidWebImportResult & ErrorResult> & { session: ImportSession; jwe: string }> {
+  const session = await createImportSession(agentUrl, token, 'web')
+  const jwe = encryptKeyImportEnvelope(
+    session.publicKeyJwk,
+    Buffer.from(JSON.stringify({ privateKeyJwk: options.privateJwk })),
+    session.protectedHeader,
+  )
+  const result = await agentCall<DidWebImportResult & ErrorResult>(agentUrl, token, 'POST', '/dids/web/import', {
+    did: options.did,
+    didDocument: options.didDocument,
+    ...(options.allowUnresolvedDocument === undefined
+      ? {}
+      : { allowUnresolvedDocument: options.allowUnresolvedDocument }),
+    ...(options.replace === undefined ? {} : { replace: options.replace }),
+    keys: [{ verificationMethodId: options.verificationMethodId, encryptedKey: { sessionId: session.sessionId, jwe } }],
+  })
+  return { ...result, session, jwe }
 }
 
 export async function createTenant(agentUrl: string, baseToken: string, label: string): Promise<TenantCredentials> {
