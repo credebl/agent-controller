@@ -20,11 +20,13 @@ jest.mock('@credo-ts/core', () => require('./didWebTestMocks').credoCoreMock())
 import type { DidDocument } from '@credo-ts/core'
 import type { JsonWebKey } from 'node:crypto'
 
-import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto'
+import { Kms } from '@credo-ts/core'
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto'
 
 import { BadRequestError } from '../../../errors'
 import { encryptKeyImportEnvelope } from '../../../utils/keyImport/jwe'
 import { consumeImportSession, createImportSession, resetImportSessions } from '../../../utils/keyImport/session'
+import { getOpenBaoConfigFromEnv, setOpenBaoConfig } from '../../../utils/kms/openBao'
 import { DidController } from '../DidController'
 import { parseDidWebDocument } from '../didWebImport'
 
@@ -65,6 +67,15 @@ const otherSigningPublicJwk = publicJwkOf(otherSigningKey)
 const ecPublicJwk = publicJwkOf(ecKey)
 const p521PublicJwk = publicJwkOf(p521Key)
 const x25519PublicJwk = publicJwkOf(x25519PrivateKey)
+
+/** RFC 7638 thumbprint, matching the one the mocked KMS derives, used as the key id for explicit backends. */
+function thumbprintOf(publicJwk: Record<string, unknown>): string {
+  const canonical =
+    publicJwk.kty === 'EC'
+      ? JSON.stringify({ crv: publicJwk.crv, kty: publicJwk.kty, x: publicJwk.x, y: publicJwk.y })
+      : JSON.stringify({ crv: publicJwk.crv, kty: publicJwk.kty, x: publicJwk.x })
+  return createHash('sha256').update(canonical).digest('base64url')
+}
 
 /** The DID document a government authority would host for its did:web. */
 function authorityDocument(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -751,6 +762,97 @@ describe('DidController.importDidWeb', () => {
     }
   })
 
+  it('accepts a PEM privateKey as the plaintext key', async () => {
+    const fixture = createAgent()
+    const previous = process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+    process.env.ALLOW_PLAINTEXT_KEY_IMPORT = 'true'
+    const pem = createPrivateKey({ key: signingKey as JsonWebKey, format: 'jwk' })
+      .export({ format: 'pem', type: 'pkcs8' })
+      .toString()
+
+    try {
+      const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', privateKey: pem }],
+      })
+
+      expect(result.keys[0].keyId).toBe('kms-key-1')
+    } finally {
+      if (previous === undefined) delete process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+      else process.env.ALLOW_PLAINTEXT_KEY_IMPORT = previous
+    }
+  })
+
+  it('accepts a JSON string privateKey as the plaintext key', async () => {
+    const fixture = createAgent()
+    const previous = process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+    process.env.ALLOW_PLAINTEXT_KEY_IMPORT = 'true'
+
+    try {
+      const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', privateKey: JSON.stringify(signingKey) }],
+      })
+
+      expect(result.keys[0].keyId).toBe('kms-key-1')
+    } finally {
+      if (previous === undefined) delete process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+      else process.env.ALLOW_PLAINTEXT_KEY_IMPORT = previous
+    }
+  })
+
+  it('rejects both plaintext key forms in one key', async () => {
+    const fixture = createAgent()
+    const previous = process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+    process.env.ALLOW_PLAINTEXT_KEY_IMPORT = 'true'
+
+    try {
+      await expect(
+        controller.importDidWeb({ agent: fixture.agent } as never, {
+          did: DID,
+          didDocument: authorityDocument(),
+          allowUnresolvedDocument: true,
+          keys: [
+            {
+              verificationMethodId: '#authority-signing-key',
+              privateKey: JSON.stringify(signingKey),
+              privateKeyJwk: signingKey,
+            },
+          ],
+        }),
+      ).rejects.toThrow('Provide either privateKey or privateKeyJwk, not both')
+      expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+    } finally {
+      if (previous === undefined) delete process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+      else process.env.ALLOW_PLAINTEXT_KEY_IMPORT = previous
+    }
+  })
+
+  it('rejects a malformed plaintext private key', async () => {
+    const fixture = createAgent()
+    const previous = process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+    process.env.ALLOW_PLAINTEXT_KEY_IMPORT = 'true'
+
+    try {
+      await expect(
+        controller.importDidWeb({ agent: fixture.agent } as never, {
+          did: DID,
+          didDocument: authorityDocument(),
+          allowUnresolvedDocument: true,
+          keys: [{ verificationMethodId: '#authority-signing-key', privateKey: 'not a private key' }],
+        }),
+      ).rejects.toThrow('Unable to read privateKey')
+      expect(fixture.kmsImportKey).not.toHaveBeenCalled()
+    } finally {
+      if (previous === undefined) delete process.env.ALLOW_PLAINTEXT_KEY_IMPORT
+      else process.env.ALLOW_PLAINTEXT_KEY_IMPORT = previous
+    }
+  })
+
   it('rejects a key type that cannot sign, even when the document publishes it', async () => {
     const fixture = createAgent()
     const didDocument = authorityDocument({
@@ -815,6 +917,88 @@ describe('DidController.importDidWeb', () => {
     expect(fixture.kmsImportKey).toHaveBeenCalledWith(
       expect.objectContaining({ backend: 'node', privateJwk: expect.objectContaining({ crv: 'P-521' }) }),
     )
+  })
+
+  it('routes a did:web key to OpenBao when the did:web opt-in is enabled', async () => {
+    const fixture = createAgent()
+    setOpenBaoConfig({ ...getOpenBaoConfigFromEnv(), enabled: true, writeEnabled: true, didWebEnabled: true })
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    try {
+      const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+      })
+
+      expect(result.keys).toEqual([
+        { verificationMethodId: `${DID}#authority-signing-key`, keyId: 'kms-key-1', backend: 'openbao' },
+      ])
+      // OpenBao uses the thumbprint as the deterministic key id, so a repeated import reuses the Transit key.
+      expect(fixture.kmsImportKey).toHaveBeenCalledWith({
+        backend: 'openbao',
+        privateJwk: expect.objectContaining({ kid: thumbprintOf(signingPublicJwk) }),
+      })
+    } finally {
+      setOpenBaoConfig(getOpenBaoConfigFromEnv())
+    }
+  })
+
+  it('keeps Ed25519 on Askar when OpenBao is enabled without the did:web opt-in', async () => {
+    const fixture = createAgent()
+    setOpenBaoConfig({ ...getOpenBaoConfigFromEnv(), enabled: true, writeEnabled: true, didWebEnabled: false })
+    const { encryptedKey: key } = await encryptedKey(signingKey)
+
+    try {
+      const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+        did: DID,
+        didDocument: authorityDocument(),
+        allowUnresolvedDocument: true,
+        keys: [{ verificationMethodId: '#authority-signing-key', encryptedKey: key }],
+      })
+
+      expect(result.keys[0].backend).toBe('askar')
+      expect(fixture.kmsImportKey).toHaveBeenCalledWith({
+        privateJwk: expect.objectContaining({ crv: 'Ed25519' }),
+      })
+    } finally {
+      setOpenBaoConfig(getOpenBaoConfigFromEnv())
+    }
+  })
+
+  it('reuses an existing key when the backend reports it was already imported', async () => {
+    const fixture = createAgent()
+    const didDocument = authorityDocument({
+      verificationMethod: [
+        {
+          id: `${DID}#assertion-key`,
+          type: 'JsonWebKey2020',
+          controller: DID,
+          publicKeyJwk: p521PublicJwk,
+        },
+      ],
+      authentication: [],
+      assertionMethod: [`${DID}#assertion-key`],
+    })
+    preload(fixture, didDocument, [{ verificationMethodId: `${DID}#assertion-key`, privateJwk: p521Key }])
+    // The Node KMS derives the key id from the thumbprint, so a duplicate import can fall back to it.
+    const existingKeyId = thumbprintOf(p521PublicJwk)
+    fixture.keyStore.set(existingKeyId, p521PublicJwk)
+    fixture.kmsImportKey.mockRejectedValueOnce(new Kms.KeyManagementKeyExistsError())
+    const { encryptedKey: key } = await encryptedKey(p521Key)
+
+    const result = await controller.importDidWeb({ agent: fixture.agent } as never, {
+      did: DID,
+      didDocument,
+      allowUnresolvedDocument: true,
+      replace: true,
+      keys: [{ verificationMethodId: '#assertion-key', encryptedKey: key }],
+    })
+
+    expect(result.keys).toEqual([
+      { verificationMethodId: `${DID}#assertion-key`, keyId: existingKeyId, backend: 'node' },
+    ])
   })
 
   it('repairs a keyless record that GET /dids/:did stored for the same DID', async () => {
