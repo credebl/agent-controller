@@ -10,14 +10,23 @@ import {
   createDidFromEncryptedKey,
   createTenant,
   deleteTenant,
+  ed25519AuthorityDocument,
+  ed25519PublicKeyBase58,
   getAgentToken,
+  importDidWebFromEncryptedKey,
   liveConfig,
   liveIntegrationEnabled,
+  publicJwkOf,
   transitKey,
   transitKeys,
 } from './helpers'
 
 const describeLive = liveIntegrationEnabled ? describe : describe.skip
+
+/** A unique authority DID per run: the local record and OpenBao key otherwise collide between local runs. */
+function uniqueAuthorityDid(label: string): string {
+  return `did:web:tenant-authority.example.com:it:${label}:${Date.now()}`
+}
 
 /** `ac_<scope-hash>_<encoded-key-id>`; the scope hash isolates each tenant's Transit keys. */
 function scopeOf(transitKeyName: string): string {
@@ -33,6 +42,10 @@ describeLive('did:web encrypted key import (multi-tenant agent + OpenBao)', () =
   let didA: string
   let publishedKeyA: string
   let transitKeyA: string
+  let authorityDidA: string
+  let authorityJwk: JsonWebKey
+  let authorityPublicJwk: JsonWebKey
+  let transitKeyAuthorityA: string
 
   beforeAll(async () => {
     baseToken = await getAgentToken(config.tenantAgentUrl, config.apiKey)
@@ -133,5 +146,105 @@ describeLive('did:web encrypted key import (multi-tenant agent + OpenBao)', () =
     const [keyA, keyB] = await Promise.all([transitKey(config, transitKeyA), transitKey(config, created[0])])
     expect(scopeOf(created[0])).not.toBe(scopeOf(transitKeyA))
     expect(keyB?.data?.keys?.['1']?.public_key).toBe(keyA?.data?.keys?.['1']?.public_key)
+  })
+
+  it('imports an externally issued authority did:web in tenant A and signs with it', async () => {
+    authorityDidA = uniqueAuthorityDid('a')
+    authorityJwk = generateKeyPairSync('ed25519').privateKey.export({ format: 'jwk' })
+    authorityPublicJwk = publicJwkOf(authorityJwk)
+    const verificationMethodId = `${authorityDidA}#authority-signing-key`
+
+    const before = await transitKeys(config)
+    const imported = await importDidWebFromEncryptedKey(config.tenantAgentUrl, tenantA.token, {
+      did: authorityDidA,
+      didDocument: ed25519AuthorityDocument(authorityDidA, authorityJwk, verificationMethodId),
+      verificationMethodId,
+      privateJwk: authorityJwk,
+      allowUnresolvedDocument: true,
+    })
+
+    expect(imported.status).toBe(200)
+    expect(imported.body.did).toBe(authorityDidA)
+    expect(imported.body.keys).toEqual([{ verificationMethodId, keyId: expect.any(String), backend: 'openbao' }])
+
+    const created = (await transitKeys(config)).filter((key) => !before.includes(key))
+    expect(created).toHaveLength(1)
+    transitKeyAuthorityA = created[0]
+
+    const data = Buffer.from('tenant authority imported did:web payload')
+    const signature = await agentCall<string>(config.tenantAgentUrl, tenantA.token, 'POST', SIGN_RAW_DATA_PATH, {
+      data: data.toString('base64'),
+      did: authorityDidA,
+      keyType: 'Ed25519',
+      // The controller signs with the DID record's key; tsoa still requires this field on the request body.
+      publicKeyBase58: ed25519PublicKeyBase58(authorityJwk),
+    })
+    expect(signature.status).toBe(200)
+    expect(
+      verifySignature(
+        null,
+        data,
+        createPublicKey({ key: authorityPublicJwk, format: 'jwk' }),
+        Buffer.from(signature.body, 'base64'),
+      ),
+    ).toBe(true)
+  })
+
+  it('does not let tenant B sign with tenant A imported authority DID', async () => {
+    const result = await agentCall<{ message?: string }>(
+      config.tenantAgentUrl,
+      tenantB.token,
+      'POST',
+      SIGN_RAW_DATA_PATH,
+      {
+        data: Buffer.from('cross tenant authority attempt').toString('base64'),
+        did: authorityDidA,
+        keyType: 'Ed25519',
+        publicKeyBase58: ed25519PublicKeyBase58(authorityJwk),
+      },
+    )
+
+    expect(result.status).not.toBe(200)
+  })
+
+  it('scopes the same authority key material separately when tenant B imports it', async () => {
+    const authorityDidB = uniqueAuthorityDid('b')
+    const verificationMethodId = `${authorityDidB}#authority-signing-key`
+
+    const before = await transitKeys(config)
+    const imported = await importDidWebFromEncryptedKey(config.tenantAgentUrl, tenantB.token, {
+      did: authorityDidB,
+      didDocument: ed25519AuthorityDocument(authorityDidB, authorityJwk, verificationMethodId),
+      verificationMethodId,
+      privateJwk: authorityJwk,
+      allowUnresolvedDocument: true,
+    })
+
+    expect(imported.status).toBe(200)
+    const created = (await transitKeys(config)).filter((key) => !before.includes(key))
+    expect(created).toHaveLength(1)
+
+    // Both tenants hold the same authority key, but each one under its own scoped Transit key.
+    const [keyA, keyB] = await Promise.all([transitKey(config, transitKeyAuthorityA), transitKey(config, created[0])])
+    expect(scopeOf(created[0])).not.toBe(scopeOf(transitKeyAuthorityA))
+    expect(keyB?.data?.keys?.['1']?.public_key).toBe(keyA?.data?.keys?.['1']?.public_key)
+
+    const data = Buffer.from('tenant B authority imported did:web payload')
+    const signature = await agentCall<string>(config.tenantAgentUrl, tenantB.token, 'POST', SIGN_RAW_DATA_PATH, {
+      data: data.toString('base64'),
+      did: authorityDidB,
+      keyType: 'Ed25519',
+      // The controller signs with the DID record's key; tsoa still requires this field on the request body.
+      publicKeyBase58: ed25519PublicKeyBase58(authorityJwk),
+    })
+    expect(signature.status).toBe(200)
+    expect(
+      verifySignature(
+        null,
+        data,
+        createPublicKey({ key: authorityPublicJwk, format: 'jwk' }),
+        Buffer.from(signature.body, 'base64'),
+      ),
+    ).toBe(true)
   })
 })
