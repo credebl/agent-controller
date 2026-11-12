@@ -2546,6 +2546,11 @@
 					"bindingPolicy": {
 						"$ref": "#/components/schemas/CredentialBindingPolicy",
 						"description": "What to do when the issuer does not support `holderDidUrl` (DID method or key algorithm):\n`require` fails the request, `prefer` binds to a new key instead. Ignored without `holderDidUrl`."
+					},
+					"sendNotification": {
+						"type": "boolean",
+						"description": "Send OID4VCI notifications to the issuer: `credential_accepted` for each stored credential and\n`credential_failure` for each one that could not be stored. Only for credentials with a\n`notification_id`, and only when the issuer has a `notification_endpoint`.",
+						"default": true
 					}
 				},
 				"required": [

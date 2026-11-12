@@ -1,6 +1,8 @@
 import type {
   AuthorizeRequestCredentialOffer,
   CredentialListQuery,
+  CredentialNotificationEvent,
+  CredentialNotificationResult,
   CredentialTags,
   DeleteCredentialBody,
   PaginatedCredentials,
@@ -11,7 +13,7 @@ import type {
 import type { BaseRecordAny, DcqlCredentialsForRequest } from '@credo-ts/core'
 import type {
   OpenId4VcAuthorizationCodeTokenRequestOptions,
-  OpenId4VciNotificationEvent,
+  OpenId4VciCredentialResponse,
   OpenId4VciPreAuthorizedTokenRequestOptions,
   OpenId4VciResolvedCredentialOffer,
   OpenId4VciTokenRequestOptions,
@@ -46,9 +48,18 @@ import {
 } from './credentialBindingResolver'
 type FilterValue = string | string[] | undefined
 
+interface CredentialNotificationContext {
+  enabled: boolean
+  metadata: OpenId4VciResolvedCredentialOffer['metadata']
+  accessToken: string
+  dpop?: OpenId4VciTokenRequestOptions['dpop']
+}
+
 export class HolderService {
   private HOLDER_REDIRECT = process.env.HOLDER_REDIRECT ?? 'http://localhost:4001/redirect'
   private HOLDER_CLIENT_ID = process.env.HOLDER_CLIENT_ID ?? 'wallet'
+  // How long to wait for the issuer to answer an OID4VCI notification before giving up on it
+  private NOTIFICATION_TIMEOUT_MS = Number(process.env.OID4VCI_NOTIFICATION_TIMEOUT_MS) || 5000
 
   // Tags are dynamic - allow all string/string[] values
   private readonly DEFAULT_PAGE = 1
@@ -368,7 +379,7 @@ export class HolderService {
     agentReq: Req,
     resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
     options: OpenId4VciTokenRequestOptions,
-    { credentialsToRequest, tags, holderDidUrl, bindingPolicy }: RequestCredentialBody,
+    { credentialsToRequest, tags, holderDidUrl, bindingPolicy, sendNotification = true }: RequestCredentialBody,
   ) {
     const offeredIds = resolvedCredentialOffer.credentialOfferPayload.credential_configuration_ids
     const notOffered = credentialsToRequest?.filter((id) => !offeredIds.includes(id)) ?? []
@@ -396,81 +407,85 @@ export class HolderService {
       ...tokenResponse,
     })
 
-    if (holderDidUrl && bindingPolicy !== 'prefer') {
-      assertW3cCredentialsBoundToHolderDid(
-        credentialResponse.credentials.map((response) => response.record),
-        holderDidUrl,
-      )
-    }
-
-    const sanitizedTags = this.sanitizeTags(tags)
-
-    const notificationContext = {
+    const notificationContext: CredentialNotificationContext = {
+      enabled: sendNotification,
       metadata: resolvedCredentialOffer.metadata,
       accessToken: tokenResponse.accessToken,
       dpop: credentialResponse.dpop,
     }
 
+    if (holderDidUrl && bindingPolicy !== 'prefer') {
+      try {
+        assertW3cCredentialsBoundToHolderDid(
+          credentialResponse.credentials.map((response) => response.record),
+          holderDidUrl,
+        )
+      } catch (error) {
+        // None of the credentials is stored, so tell the issuer that each of them failed
+        await this.sendCredentialNotifications(
+          agentReq,
+          notificationContext,
+          credentialResponse.credentials.map((response) => ({ response, event: 'credential_failure' })),
+        )
+        throw error
+      }
+    }
+
+    const sanitizedTags = this.sanitizeTags(tags)
+
     const results = await Promise.allSettled(
-      credentialResponse.credentials.map(async (response) => {
-        const { record: credentialRecord, notificationId } = response
-
-        try {
-          if (sanitizedTags && Object.keys(sanitizedTags).length > 0) {
-            try {
-              credentialRecord.setTags(sanitizedTags as any)
-            } catch (error) {
-              // Ignore tag setting errors to avoid blocking issuance
-            }
+      credentialResponse.credentials.map(async ({ record: credentialRecord }) => {
+        if (sanitizedTags && Object.keys(sanitizedTags).length > 0) {
+          try {
+            credentialRecord.setTags(sanitizedTags as any)
+          } catch (error) {
+            // Ignore tag setting errors to avoid blocking issuance
           }
-
-          let storedCredential: unknown
-          if (
-            credentialRecord instanceof W3cCredentialRecord ||
-            (credentialRecord as any).type === 'W3cCredentialRecord'
-          ) {
-            storedCredential = await agentReq.agent.w3cCredentials.store({
-              record: credentialRecord as W3cCredentialRecord,
-            })
-          } else if (credentialRecord instanceof MdocRecord) {
-            storedCredential = await agentReq.agent.mdoc.store({ record: credentialRecord })
-          } else if (credentialRecord instanceof SdJwtVcRecord) {
-            storedCredential = await agentReq.agent.sdJwtVc.store({
-              record: credentialRecord,
-            })
-          } else {
-            /*
-            W3C V2.0 Support
-            if (
-              credentialRecord instanceof W3cV2CredentialRecord ||
-              (credentialRecord as any).type === 'W3cV2CredentialRecord'
-            ) {
-              storedCredential = await agentReq.agent.w3cV2Credentials.store({
-                record: credentialRecord as W3cV2CredentialRecord,
-              })
-            } else {
-            */
-            throw new Error(
-              `Unsupported credential record type: ${(credentialRecord as any)?.type || typeof credentialRecord}`,
-            )
-          }
-
-          await this.sendCredentialNotification(agentReq, {
-            ...notificationContext,
-            notificationId,
-            notificationEvent: 'credential_accepted',
-          })
-
-          return storedCredential
-        } catch (error) {
-          await this.sendCredentialNotification(agentReq, {
-            ...notificationContext,
-            notificationId,
-            notificationEvent: 'credential_failure',
-          })
-          throw error
         }
+
+        if (
+          credentialRecord instanceof W3cCredentialRecord ||
+          (credentialRecord as any).type === 'W3cCredentialRecord'
+        ) {
+          return await agentReq.agent.w3cCredentials.store({
+            record: credentialRecord as W3cCredentialRecord,
+          })
+        }
+
+        /*
+        W3C V2.0 Support
+        if (
+          credentialRecord instanceof W3cV2CredentialRecord ||
+          (credentialRecord as any).type === 'W3cV2CredentialRecord'
+        ) {
+          return await agentReq.agent.w3cV2Credentials.store({
+            record: credentialRecord as W3cV2CredentialRecord,
+          })
+        }
+        */
+
+        if (credentialRecord instanceof MdocRecord) {
+          return await agentReq.agent.mdoc.store({ record: credentialRecord })
+        }
+        if (credentialRecord instanceof SdJwtVcRecord) {
+          return await agentReq.agent.sdJwtVc.store({
+            record: credentialRecord,
+          })
+        }
+        throw new Error(
+          `Unsupported credential record type: ${(credentialRecord as any)?.type || typeof credentialRecord}`,
+        )
       }),
+    )
+
+    // credential_accepted for each stored credential, credential_failure for each one that could not be stored
+    const notifications = await this.sendCredentialNotifications(
+      agentReq,
+      notificationContext,
+      credentialResponse.credentials.map((response, index) => ({
+        response,
+        event: results[index].status === 'fulfilled' ? 'credential_accepted' : 'credential_failure',
+      })),
     )
 
     const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
@@ -478,44 +493,91 @@ export class HolderService {
       throw rejected.reason
     }
 
+    return results.map((result, index) => ({
+      ...JsonTransformer.toJSON((result as PromiseFulfilledResult<BaseRecordAny>).value),
+      notification: notifications[index],
+    })) as any
+  }
+
+  /**
+   * Sends an OID4VCI notification to the issuer for each credential, one at a time: an issuer may record
+   * each notification on the issuance session, and parallel updates of one session can overwrite each other.
+   * A notification that is not sent is logged and reported, but never fails the request.
+   */
+  private async sendCredentialNotifications(
+    agentReq: Req,
+    context: CredentialNotificationContext,
+    credentials: Array<{ response: OpenId4VciCredentialResponse; event: CredentialNotificationEvent }>,
+  ): Promise<CredentialNotificationResult[]> {
+    const results: CredentialNotificationResult[] = []
+    for (const { response, event } of credentials) {
+      results.push(await this.sendCredentialNotification(agentReq, context, response, event))
+    }
     return results
-      .filter((result): result is PromiseFulfilledResult<unknown> => result.status === 'fulfilled')
-      .map((result) => result.value) as any
   }
 
   private async sendCredentialNotification(
     agentReq: Req,
-    {
-      metadata,
-      accessToken,
-      dpop,
-      notificationId,
-      notificationEvent,
-    }: {
-      metadata: OpenId4VciResolvedCredentialOffer['metadata']
-      accessToken: string
-      dpop?: OpenId4VciTokenRequestOptions['dpop']
-      notificationId?: string
-      notificationEvent: OpenId4VciNotificationEvent
-    },
-  ) {
-    if (!notificationId) {
-      return
+    { enabled, metadata, accessToken, dpop }: CredentialNotificationContext,
+    { notificationId, credentialConfigurationId }: OpenId4VciCredentialResponse,
+    event: CredentialNotificationEvent,
+  ): Promise<CredentialNotificationResult> {
+    if (!enabled) return { status: 'skipped', reason: 'sendNotification is false' }
+    if (!metadata.credentialIssuer.notification_endpoint) {
+      return { status: 'skipped', reason: 'Issuer metadata has no notification_endpoint' }
     }
+    if (!notificationId) return { status: 'skipped', reason: 'Credential response has no notification_id' }
 
     try {
-      await agentReq.agent.modules.openid4vc.holder.sendNotification({
-        metadata,
-        accessToken,
-        dpop,
-        notificationId,
-        notificationEvent,
-      })
-    } catch (error) {
-      agentReq.agent.config.logger.warn(
-        `[OpenId4VCI] Failed to send '${notificationEvent}' notification to the issuer`,
-        { notificationId, error },
+      await this.withTimeout(
+        agentReq.agent.modules.openid4vc.holder.sendNotification({
+          metadata,
+          accessToken,
+          dpop,
+          notificationId,
+          notificationEvent: event,
+        }),
+        this.NOTIFICATION_TIMEOUT_MS,
+        `No answer from the issuer within ${this.NOTIFICATION_TIMEOUT_MS} ms`,
       )
+      return { status: 'sent', event }
+    } catch (error) {
+      const reason = this.notificationErrorReason(error)
+      agentReq.agent.config.logger.warn(
+        `[OpenId4VCI] Failed to send '${event}' notification to the issuer for '${credentialConfigurationId}': ${reason}`,
+        { notificationId, credentialIssuer: metadata.credentialIssuer.credential_issuer },
+      )
+      return { status: 'failed', event, reason }
+    }
+  }
+
+  /**
+   * The error message, plus the issuer's HTTP status and OAuth error code when the issuer
+   * rejected the notification (e.g. `HTTP 400 invalid_notification_id`).
+   */
+  private notificationErrorReason(error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    const { response } = (error ?? {}) as {
+      response?: {
+        response?: { status?: number }
+        notificationErrorResponseResult?: { success: boolean; data?: { error?: string } }
+      }
+    }
+    const status = response?.response?.status
+    const code = response?.notificationErrorResponseResult?.data?.error
+    const detail = [status && `HTTP ${status}`, code].filter(Boolean).join(' ')
+    return detail ? `${message}: ${detail}` : message
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), timeoutMs)
+    })
+    try {
+      return await Promise.race([promise, timeout])
+    } finally {
+      clearTimeout(timer)
     }
   }
 

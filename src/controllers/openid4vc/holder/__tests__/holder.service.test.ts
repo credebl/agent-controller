@@ -282,6 +282,12 @@ describe('HolderService pagination and search', () => {
 
 describe('HolderService requestCredential', () => {
   const offeredIds = ['IecSdJwt', 'IecLdp']
+  const metadata = {
+    credentialIssuer: {
+      credential_issuer: 'https://issuer.example.com',
+      notification_endpoint: 'https://issuer.example.com/notification',
+    },
+  }
 
   const createAgentReq = (
     options: {
@@ -292,7 +298,7 @@ describe('HolderService requestCredential', () => {
     const holder = {
       resolveCredentialOffer: jest.fn().mockResolvedValue(
         options.credentialOffer ?? {
-          metadata: { credentialIssuer: { credential_issuer: 'https://issuer.example.com' } },
+          metadata,
           credentialOfferPayload: {
             credential_configuration_ids: offeredIds,
             grants: { 'urn:ietf:params:oauth:grant-type:pre-authorized_code': {} },
@@ -431,26 +437,34 @@ describe('HolderService requestCredential', () => {
   })
 
   describe('credential notifications', () => {
+    // The mocked record class ignores constructor arguments, so set the fields the tests read
+    const sdJwt = (id: string) =>
+      Object.assign(new SdJwtVcRecord({ id, credentialInstances: [{ compactSdJwtVc: 'sd-jwt' }] }), { id })
+    const accepted = { status: 'sent', event: 'credential_accepted' }
+    const events = (holder: any) =>
+      holder.sendNotification.mock.calls.map(([options]: any[]) => options.notificationEvent)
+
     it('sends credential_accepted after storing a credential with notificationId', async () => {
-      const record = new SdJwtVcRecord({ credentialInstances: [{ compactSdJwtVc: 'sd-jwt' }] })
+      const record = sdJwt('cred-1')
       const { agentReq, holder } = createAgentReq({ credentials: [{ record, notificationId: 'notif-1' }] })
 
       const result = await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })
 
       expect(agentReq.agent.sdJwtVc.store).toHaveBeenCalledWith({ record })
       expect(holder.sendNotification).toHaveBeenCalledWith({
-        metadata: { credentialIssuer: { credential_issuer: 'https://issuer.example.com' } },
+        metadata,
         accessToken: 'token',
         dpop: undefined,
         notificationId: 'notif-1',
         notificationEvent: 'credential_accepted',
       })
-      expect(result).toEqual([record])
+      expect(result).toEqual([{ ...record, notification: accepted }])
     })
 
     it('sends credential_failure and rejects when storing fails', async () => {
-      const record = new SdJwtVcRecord({ credentialInstances: [{ compactSdJwtVc: 'sd-jwt' }] })
-      const { agentReq, holder } = createAgentReq({ credentials: [{ record, notificationId: 'notif-2' }] })
+      const { agentReq, holder } = createAgentReq({
+        credentials: [{ record: sdJwt('cred-2'), notificationId: 'notif-2' }],
+      })
       agentReq.agent.sdJwtVc.store.mockRejectedValue(new Error('store failed'))
 
       await expect(new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })).rejects.toThrow(
@@ -465,24 +479,223 @@ describe('HolderService requestCredential', () => {
       )
     })
 
-    it('skips notifications when the issuer does not return a notificationId', async () => {
-      const record = new SdJwtVcRecord({ credentialInstances: [{ compactSdJwtVc: 'sd-jwt' }] })
-      const { agentReq, holder } = createAgentReq({ credentials: [{ record }] })
+    it('sends credential_failure and rejects for an unsupported record type', async () => {
+      const { agentReq, holder } = createAgentReq({
+        credentials: [{ record: { type: 'UnknownRecord' }, notificationId: 'notif-u' }],
+      })
+
+      await expect(new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })).rejects.toThrow(
+        'Unsupported credential record type: UnknownRecord',
+      )
+      expect(events(holder)).toEqual(['credential_failure'])
+    })
+
+    it('stores the other credentials and reports each outcome when one of them fails', async () => {
+      const { agentReq, holder } = createAgentReq({
+        credentials: [
+          { record: sdJwt('ok'), notificationId: 'notif-ok' },
+          { record: sdJwt('bad'), notificationId: 'notif-bad' },
+        ],
+      })
+      agentReq.agent.sdJwtVc.store.mockImplementation(async ({ record }: any) => {
+        if (record.id === 'bad') throw new Error('store failed')
+        return record
+      })
+
+      await expect(new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })).rejects.toThrow(
+        'store failed',
+      )
+
+      expect(agentReq.agent.sdJwtVc.store).toHaveBeenCalledTimes(2)
+      expect(holder.sendNotification.mock.calls.map(([o]: any[]) => [o.notificationId, o.notificationEvent])).toEqual([
+        ['notif-ok', 'credential_accepted'],
+        ['notif-bad', 'credential_failure'],
+      ])
+    })
+
+    it('sends credential_failure for every credential when the holder DID binding check fails', async () => {
+      const record = { type: 'W3cCredentialRecord' }
+      const { agentReq, holder } = createAgentReq({
+        credentials: [
+          { record, notificationId: 'notif-w3c' },
+          { record: sdJwt('cred'), notificationId: 'notif-sd' },
+        ],
+      })
+      jest.mocked(assertW3cCredentialsBoundToHolderDid).mockImplementation(() => {
+        throw new Error('not the holder DID')
+      })
+
+      await expect(
+        new HolderService().requestCredential(agentReq, {
+          credentialOfferUri: 'offer',
+          holderDidUrl: 'did:web:example.com#key-1',
+        }),
+      ).rejects.toThrow('not the holder DID')
+
+      expect(agentReq.agent.w3cCredentials.store).not.toHaveBeenCalled()
+      expect(agentReq.agent.sdJwtVc.store).not.toHaveBeenCalled()
+      expect(holder.sendNotification.mock.calls.map(([o]: any[]) => [o.notificationId, o.notificationEvent])).toEqual([
+        ['notif-w3c', 'credential_failure'],
+        ['notif-sd', 'credential_failure'],
+      ])
+    })
+
+    it('notifies only after every credential is stored', async () => {
+      const { agentReq, holder } = createAgentReq({
+        credentials: [
+          { record: sdJwt('a'), notificationId: 'notif-a' },
+          { record: sdJwt('b'), notificationId: 'notif-b' },
+        ],
+      })
 
       await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })
+
+      const lastStore = Math.max(...agentReq.agent.sdJwtVc.store.mock.invocationCallOrder)
+      expect(Math.min(...holder.sendNotification.mock.invocationCallOrder)).toBeGreaterThan(lastStore)
+    })
+
+    it('sends the notifications one at a time', async () => {
+      let inFlight = 0
+      let maxInFlight = 0
+      const { agentReq, holder } = createAgentReq({
+        credentials: [
+          { record: sdJwt('a'), notificationId: 'notif-a' },
+          { record: sdJwt('b'), notificationId: 'notif-b' },
+        ],
+      })
+      holder.sendNotification.mockImplementation(async () => {
+        maxInFlight = Math.max(maxInFlight, ++inFlight)
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        inFlight--
+      })
+
+      await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })
+
+      expect(holder.sendNotification).toHaveBeenCalledTimes(2)
+      expect(maxInFlight).toBe(1)
+    })
+
+    it('uses the DPoP options returned with the credential response', async () => {
+      const dpop = { alg: 'ES256', jwk: 'jwk', nonce: 'nonce-2' }
+      const { agentReq, holder } = createAgentReq()
+      holder.requestCredentials.mockResolvedValue({
+        credentials: [{ record: sdJwt('a'), notificationId: 'notif-a' }],
+        dpop,
+      })
+
+      await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })
+
+      expect(holder.sendNotification).toHaveBeenCalledWith(expect.objectContaining({ dpop }))
+    })
+
+    it('skips notifications when the issuer does not return a notificationId', async () => {
+      const record = sdJwt('cred-3')
+      const { agentReq, holder } = createAgentReq({ credentials: [{ record }] })
+
+      const result = await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })
+
+      expect(holder.sendNotification).not.toHaveBeenCalled()
+      expect(result).toEqual([
+        { ...record, notification: { status: 'skipped', reason: 'Credential response has no notification_id' } },
+      ])
+    })
+
+    it('skips notifications when the issuer has no notification_endpoint', async () => {
+      const { agentReq, holder } = createAgentReq({
+        credentials: [{ record: sdJwt('cred'), notificationId: 'notif-1' }],
+        credentialOffer: {
+          metadata: { credentialIssuer: { credential_issuer: 'https://issuer.example.com' } },
+          credentialOfferPayload: { credential_configuration_ids: offeredIds, grants: {} },
+        },
+      })
+
+      const [credential] = (await new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'offer',
+      })) as any[]
+
+      expect(holder.sendNotification).not.toHaveBeenCalled()
+      expect(agentReq.agent.config.logger.warn).not.toHaveBeenCalled()
+      expect(credential.notification).toEqual({
+        status: 'skipped',
+        reason: 'Issuer metadata has no notification_endpoint',
+      })
+    })
+
+    it('sends nothing when sendNotification is false, also when storing fails', async () => {
+      const { agentReq, holder } = createAgentReq({ credentials: [{ record: sdJwt('a'), notificationId: 'notif-a' }] })
+
+      const [credential] = (await new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'offer',
+        sendNotification: false,
+      })) as any[]
+      expect(credential.notification).toEqual({ status: 'skipped', reason: 'sendNotification is false' })
+
+      agentReq.agent.sdJwtVc.store.mockRejectedValue(new Error('store failed'))
+      await expect(
+        new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer', sendNotification: false }),
+      ).rejects.toThrow('store failed')
 
       expect(holder.sendNotification).not.toHaveBeenCalled()
     })
 
     it('does not fail issuance when the notification cannot be sent', async () => {
-      const record = new SdJwtVcRecord({ credentialInstances: [{ compactSdJwtVc: 'sd-jwt' }] })
+      const record = sdJwt('cred-4')
       const { agentReq, holder } = createAgentReq({ credentials: [{ record, notificationId: 'notif-3' }] })
       holder.sendNotification.mockRejectedValue(new Error('network error'))
 
       const result = await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })
 
-      expect(result).toEqual([record])
-      expect(agentReq.agent.config.logger.warn).toHaveBeenCalled()
+      expect(result).toEqual([
+        { ...record, notification: { status: 'failed', event: 'credential_accepted', reason: 'network error' } },
+      ])
+      expect(agentReq.agent.config.logger.warn).toHaveBeenCalledWith(expect.stringContaining("'credential_accepted'"), {
+        notificationId: 'notif-3',
+        credentialIssuer: 'https://issuer.example.com',
+      })
+    })
+
+    it("adds the issuer's HTTP status and error code to the failure reason", async () => {
+      const { agentReq, holder } = createAgentReq({ credentials: [{ record: sdJwt('a'), notificationId: 'notif-a' }] })
+      holder.sendNotification.mockRejectedValue(
+        Object.assign(new Error("Error sending notification to 'https://issuer.example.com'"), {
+          response: {
+            response: { status: 400 },
+            notificationErrorResponseResult: { success: true, data: { error: 'invalid_notification_id' } },
+          },
+        }),
+      )
+
+      const [credential] = (await new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'offer',
+      })) as any[]
+
+      expect(credential.notification).toEqual({
+        status: 'failed',
+        event: 'credential_accepted',
+        reason: "Error sending notification to 'https://issuer.example.com': HTTP 400 invalid_notification_id",
+      })
+    })
+
+    it('gives up on an issuer that does not answer the notification', async () => {
+      process.env.OID4VCI_NOTIFICATION_TIMEOUT_MS = '20'
+      try {
+        const { agentReq, holder } = createAgentReq({
+          credentials: [{ record: sdJwt('a'), notificationId: 'notif-a' }],
+        })
+        holder.sendNotification.mockReturnValue(new Promise(() => undefined))
+
+        const [credential] = (await new HolderService().requestCredential(agentReq, {
+          credentialOfferUri: 'offer',
+        })) as any[]
+
+        expect(credential.notification).toEqual({
+          status: 'failed',
+          event: 'credential_accepted',
+          reason: 'No answer from the issuer within 20 ms',
+        })
+      } finally {
+        delete process.env.OID4VCI_NOTIFICATION_TIMEOUT_MS
+      }
     })
   })
 })

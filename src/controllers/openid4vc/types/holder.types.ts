@@ -27,9 +27,27 @@ export interface RequestCredentialBody {
    * @default "require"
    */
   bindingPolicy?: CredentialBindingPolicy
+  /**
+   * Send OID4VCI notifications to the issuer: `credential_accepted` for each stored credential and
+   * `credential_failure` for each one that could not be stored. Only for credentials with a
+   * `notification_id`, and only when the issuer has a `notification_endpoint`.
+   * @default true
+   */
+  sendNotification?: boolean
 }
 
 export type CredentialBindingPolicy = 'require' | 'prefer'
+
+export type CredentialNotificationEvent = 'credential_accepted' | 'credential_failure'
+
+/**
+ * Outcome of the OID4VCI notification for one received credential. A notification that is not
+ * sent does not fail the request.
+ */
+export type CredentialNotificationResult =
+  | { status: 'sent'; event: CredentialNotificationEvent }
+  | { status: 'skipped'; reason: string }
+  | { status: 'failed'; event: CredentialNotificationEvent; reason: string }
 
 export type CredentialTags = Record<string, string | string[] | undefined>
 
