@@ -7,7 +7,8 @@
 - **oid4vc holder:** `POST /openid4vc/holder/request-credential` sends OID4VCI notifications to the issuer's `notification_endpoint` for each credential response that has a `notification_id`: `credential_accepted` once the credential is stored, and `credential_failure` when it cannot be stored or fails the holder DID binding check. A failed store still fails the request; a notification that cannot be sent is logged and never fails it.
   - Notifications are sent one at a time, after all credentials are stored, so an issuer that records them on the issuance session cannot lose one to a concurrent update.
   - Each returned credential has a `notification` field: `{ status: "sent", event }`, `{ status: "skipped", reason }` (no `notification_endpoint`, no `notification_id`, or turned off) or `{ status: "failed", event, reason }`. The reason includes the issuer's HTTP status and error code, e.g. `HTTP 400 invalid_notification_id`.
-  - An issuer that does not answer within `OID4VCI_NOTIFICATION_TIMEOUT_MS` (default 5000) is reported as `failed`.
+  - An issuer that does not answer within `OID4VCI_NOTIFICATION_TIMEOUT_MS` (default 5000) is reported as `failed`, and no further notifications are sent for that offer, since the timed-out call may still reach the issuer.
+  - When a credential cannot be stored, the request fails without waiting for the other stores to finish; a credential still being stored then gets no notification.
   - Turn notifications off with `sendNotification: false` in the request body.
 
 ### API

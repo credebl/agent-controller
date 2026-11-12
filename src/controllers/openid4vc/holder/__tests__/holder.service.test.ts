@@ -513,6 +513,27 @@ describe('HolderService requestCredential', () => {
       ])
     })
 
+    it('fails promptly when a store fails while another one never settles', async () => {
+      const { agentReq, holder } = createAgentReq({
+        credentials: [
+          { record: sdJwt('bad'), notificationId: 'notif-bad' },
+          { record: sdJwt('stuck'), notificationId: 'notif-stuck' },
+        ],
+      })
+      agentReq.agent.sdJwtVc.store.mockImplementation(({ record }: any) =>
+        record.id === 'bad' ? Promise.reject(new Error('store failed')) : new Promise(() => undefined),
+      )
+
+      await expect(new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })).rejects.toThrow(
+        'store failed',
+      )
+
+      // Only the credential known to have failed is reported; the one still being stored is not
+      expect(holder.sendNotification.mock.calls.map(([o]: any[]) => [o.notificationId, o.notificationEvent])).toEqual([
+        ['notif-bad', 'credential_failure'],
+      ])
+    })
+
     it('sends credential_failure for every credential when the holder DID binding check fails', async () => {
       const record = { type: 'W3cCredentialRecord' }
       const { agentReq, holder } = createAgentReq({
@@ -674,6 +695,45 @@ describe('HolderService requestCredential', () => {
         event: 'credential_accepted',
         reason: "Error sending notification to 'https://issuer.example.com': HTTP 400 invalid_notification_id",
       })
+    })
+
+    it('sends no further notifications after one times out', async () => {
+      process.env.OID4VCI_NOTIFICATION_TIMEOUT_MS = '20'
+      try {
+        const { agentReq, holder } = createAgentReq({
+          credentials: [
+            { record: sdJwt('a'), notificationId: 'notif-a' },
+            { record: sdJwt('b'), notificationId: 'notif-b' },
+          ],
+        })
+        holder.sendNotification.mockReturnValue(new Promise(() => undefined))
+
+        const result = (await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })) as any[]
+
+        // The timed-out call may still reach the issuer, so a second call could overlap it
+        expect(holder.sendNotification).toHaveBeenCalledTimes(1)
+        expect(result.map((c) => c.notification)).toEqual([
+          { status: 'failed', event: 'credential_accepted', reason: 'No answer from the issuer within 20 ms' },
+          { status: 'skipped', reason: 'An earlier notification to this issuer timed out' },
+        ])
+      } finally {
+        delete process.env.OID4VCI_NOTIFICATION_TIMEOUT_MS
+      }
+    })
+
+    it('keeps sending after a notification that failed without timing out', async () => {
+      const { agentReq, holder } = createAgentReq({
+        credentials: [
+          { record: sdJwt('a'), notificationId: 'notif-a' },
+          { record: sdJwt('b'), notificationId: 'notif-b' },
+        ],
+      })
+      holder.sendNotification.mockRejectedValueOnce(new Error('network error')).mockResolvedValueOnce(undefined)
+
+      const result = (await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })) as any[]
+
+      expect(holder.sendNotification).toHaveBeenCalledTimes(2)
+      expect(result.map((c) => c.notification.status)).toEqual(['failed', 'sent'])
     })
 
     it('gives up on an issuer that does not answer the notification', async () => {
