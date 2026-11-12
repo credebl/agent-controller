@@ -1,10 +1,10 @@
+import { SdJwtVcRecord } from '@credo-ts/core'
+
 import {
   assertOfferAcceptsHolderDid,
   assertW3cCredentialsBoundToHolderDid,
   getCredentialBindingResolver,
 } from '../credentialBindingResolver'
-import { SdJwtVcRecord } from '@credo-ts/core'
-
 import { HolderService } from '../holder.service'
 
 // Avoid loading Credo's ESM/native dependencies in Jest; only the symbols the service touches are stubbed.
