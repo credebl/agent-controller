@@ -519,6 +519,22 @@ describe('HolderService requestCredential', () => {
       ])
     })
 
+    it('sends credential_failure for every credential that failed, when several fail together', async () => {
+      const { agentReq, holder } = createAgentReq({
+        credentials: [
+          { record: { type: 'UnknownRecord' }, notificationId: 'notif-u1' },
+          { record: { type: 'OtherRecord' }, notificationId: 'notif-u2' },
+        ],
+      })
+
+      await expectRequestToFail(agentReq, 'Unsupported credential record type: UnknownRecord')
+
+      expect(sentNotifications(holder)).toEqual([
+        ['notif-u1', 'credential_failure'],
+        ['notif-u2', 'credential_failure'],
+      ])
+    })
+
     it('fails promptly when a store fails while another one never settles', async () => {
       const { agentReq, holder } = withCredentials('bad', 'stuck')
       agentReq.agent.sdJwtVc.store.mockImplementation(({ record }: any) =>

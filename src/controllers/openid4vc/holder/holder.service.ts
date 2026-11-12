@@ -510,6 +510,7 @@ export class HolderService {
     const results: Array<PromiseSettledResult<T> | undefined> = promises.map(() => undefined)
     return new Promise((resolve) => {
       let pending = promises.length
+      let snapshotScheduled = false
       if (pending === 0) resolve(results)
       promises.forEach((promise, index) => {
         promise.then(
@@ -519,8 +520,12 @@ export class HolderService {
           },
           (reason) => {
             results[index] = { status: 'rejected', reason }
-            // A copy, so stores that settle later do not change what the caller sees
-            resolve([...results])
+            if (snapshotScheduled) return
+            snapshotScheduled = true
+            // Take the snapshot once the handlers of stores that have already settled (e.g. several that
+            // failed at once) have run, without waiting for stores still in progress. A copy, so stores
+            // that settle later do not change what the caller sees.
+            setImmediate(() => resolve([...results]))
           },
         )
       })
