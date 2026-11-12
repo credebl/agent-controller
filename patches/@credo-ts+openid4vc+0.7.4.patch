@@ -259,7 +259,7 @@ index c020411..87b031f 100644
          batch_size: number;
        } | undefined;
 diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
-index bf928c7..169437b 100644
+index bf928c7..1f89467 100644
 --- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
 +++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
 @@ -1,7 +1,7 @@
@@ -279,7 +279,20 @@ index bf928c7..169437b 100644
  import { generateTxCode } from "./util/txCode.mjs";
  import { ClaimFormat, CredoError, EventEmitter, JwsService, Jwt, JwtPayload, Kms, MdocApi, SdJwtVcApi, TypedArrayEncoder, W3cCredentialService, W3cV2CredentialService, injectable, joinUriParts, utils } from "@credo-ts/core";
  import { HashAlgorithm, Oauth2AuthorizationServer, Oauth2Client, Oauth2ErrorCodes, Oauth2ResourceServer, Oauth2ServerErrorResponseError, PkceCodeChallengeMethod, SupportedClientAuthenticationMethod, authorizationCodeGrantIdentifier, calculateJwkThumbprint, preAuthorizedCodeGrantIdentifier, refreshTokenGrantIdentifier } from "@openid4vc/oauth2";
-@@ -359,7 +360,9 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+@@ -351,15 +352,20 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 				holderBinding: verifiedCredentialRequestProofs
+ 			});
+ 			const newState = issuanceSession.state === "CredentialsPartiallyIssued" ? "CredentialsPartiallyIssued" : "CredentialRequestReceived";
+-			await this.updateExpiresAt(agentContext, issuanceSession, signOptionsOrDeferral.interval);
+-			await this.updateState(agentContext, issuanceSession, newState);
++			await withIssuanceSessionLock(agentContext, issuanceSession.id, async () => {
++				await this.mergeStoredNotifications(agentContext, issuanceSession);
++				await this.updateExpiresAt(agentContext, issuanceSession, signOptionsOrDeferral.interval);
++				await this.updateState(agentContext, issuanceSession, newState);
++			});
+ 		} else {
+ 			const credentials = await this.getSignedCredentials(agentContext, signOptionsOrDeferral, {
+ 				issuanceSession,
  				credentialConfiguration,
  				expectedLength: verifiedCredentialRequestProofs.keys.length
  			});
@@ -289,7 +302,30 @@ index bf928c7..169437b 100644
  				credential: credentialRequest.proof ? credentials.credentials[0] : void 0,
  				credentials: credentialRequest.proofs ? issuanceSession.openId4VciVersion === "v1" || issuanceSession.openId4VciVersion === "v1.draft15" ? credentials.credentials.map((c) => ({ credential: c })) : credentials.credentials : void 0,
  				cNonce,
-@@ -426,7 +429,11 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+@@ -368,7 +374,10 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 			})).credentialResponse;
+ 			issuanceSession.issuedCredentials.push(credentialConfigurationId);
+ 			const newState = issuanceSession.issuedCredentials.length >= issuanceSession.credentialOfferPayload.credential_configuration_ids.length ? "Completed" : "CredentialsPartiallyIssued";
+-			await this.updateState(agentContext, issuanceSession, newState);
++			await withIssuanceSessionLock(agentContext, issuanceSession.id, async () => {
++				await this.mergeStoredNotifications(agentContext, issuanceSession);
++				await this.updateState(agentContext, issuanceSession, newState);
++			});
+ 		}
+ 		return {
+ 			credentialResponse,
+@@ -419,24 +428,113 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 				};
+ 				return tx;
+ 			});
+-			await this.updateExpiresAt(agentContext, issuanceSession, signOptionsOrDeferral.interval);
++			await withIssuanceSessionLock(agentContext, issuanceSession.id, async () => {
++				await this.mergeStoredNotifications(agentContext, issuanceSession);
++				await this.updateExpiresAt(agentContext, issuanceSession, signOptionsOrDeferral.interval);
++			});
+ 		} else {
+ 			const credentials = await this.getSignedCredentials(agentContext, signOptionsOrDeferral, {
+ 				issuanceSession,
  				credentialConfiguration,
  				expectedLength: transaction.numberOfCredentials
  			});
@@ -302,10 +338,32 @@ index bf928c7..169437b 100644
  			issuanceSession.issuedCredentials.push(credentialConfigurationId);
  			issuanceSession.transactions = issuanceSession.transactions?.filter((tx) => tx.transactionId !== transaction.transactionId);
  			const newState = issuanceSession.issuedCredentials.length >= issuanceSession.credentialOfferPayload.credential_configuration_ids.length ? "Completed" : "CredentialsPartiallyIssued";
-@@ -437,6 +444,61 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+-			await this.updateState(agentContext, issuanceSession, newState);
++			await withIssuanceSessionLock(agentContext, issuanceSession.id, async () => {
++				await this.mergeStoredNotifications(agentContext, issuanceSession);
++				await this.updateState(agentContext, issuanceSession, newState);
++			});
+ 		}
+ 		return {
+ 			deferredCredentialResponse,
  			issuanceSession
  		};
  	}
++	/**
++	* Takes the notifications stored on the issuance session into the given record before it is saved, so a
++	* notification processed (or a `notification_id` registered) while this request was running is not
++	* overwritten. Events of a notification are only ever added by `processNotification`, so the stored
++	* events win. Must run under `withIssuanceSessionLock` for the same session, together with the save.
++	*/
++	async mergeStoredNotifications(agentContext, issuanceSession) {
++		const stored = await this.openId4VcIssuanceSessionRepository.getById(agentContext, issuanceSession.id);
++		const storedIds = new Set(stored.notifications.map((n) => n.notificationId));
++		const own = new Map(issuanceSession.notifications.map((n) => [n.notificationId, n]));
++		issuanceSession.notifications = [...stored.notifications.map((n) => own.has(n.notificationId) ? {
++			...own.get(n.notificationId),
++			events: n.events
++		} : n), ...issuanceSession.notifications.filter((n) => !storedIds.has(n.notificationId))];
++	}
 +	/**
 +	* Creates a `notification_id` for the credential(s) of a credential response and registers it on the
 +	* issuance session, so the wallet can later report on the credential(s) at the notification endpoint.
@@ -334,6 +392,11 @@ index bf928c7..169437b 100644
 +			const issuanceSession = await this.openId4VcIssuanceSessionRepository.getById(agentContext, options.issuanceSession.id);
 +			const notification = issuanceSession.notifications.find((n) => n.notificationId === notificationId);
 +			if (!notification) throw new CredoError(`Issuance session '${issuanceSession.id}' does not contain a notification with id '${notificationId}'`);
++			if (notification.events.some((e) => e.event === event && e.eventDescription === eventDescription)) return {
++				issuanceSession,
++				notification,
++				notificationEvent: void 0
++			};
 +			const notificationEvent = {
 +				event,
 +				eventDescription,
@@ -347,6 +410,10 @@ index bf928c7..169437b 100644
 +				notificationEvent
 +			};
 +		});
++		if (!notificationEvent) {
++			agentContext.config.logger.debug(`Ignored repeated notification '${event}' for notification id '${notificationId}' of openid4vc issuance session ${issuanceSession.id}`);
++			return issuanceSession;
++		}
 +		agentContext.config.logger.debug(`Received notification '${event}' for notification id '${notificationId}' of openid4vc issuance session ${issuanceSession.id}`);
 +		agentContext.dependencyManager.resolve(EventEmitter).emit(agentContext, {
 +			type: "OpenId4VcIssuer.IssuanceSessionNotificationReceived",
@@ -364,7 +431,7 @@ index bf928c7..169437b 100644
  	async verifyCredentialRequestProofs(agentContext, options) {
  		const { parsedCredentialRequest, issuer, issuanceSession, credentialConfiguration, credentialConfigurationId } = options;
  		const { proofs } = parsedCredentialRequest;
-@@ -742,6 +804,7 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+@@ -742,6 +840,7 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
  			authorization_servers: authorizationServers,
  			display: issuerRecord.display,
  			nonce_endpoint: joinUriParts(issuerUrl, [config.nonceEndpointPath]),
@@ -372,7 +439,7 @@ index bf928c7..169437b 100644
  			batch_credential_issuance: issuerRecord.batchCredentialIssuance ? { batch_size: issuerRecord.batchCredentialIssuance.batchSize } : void 0
  		};
  		const clientAttestationAuthMethods = [...issuerRecord.clientAttestationSigningAlgValuesSupported && issuerRecord.clientAttestationPopSigningAlgValuesSupported ? [SupportedClientAuthenticationMethod.ClientAttestationJwt] : [], ...issuerRecord.clientAttestationSigningAlgValuesSupported && issuerRecord.dpopSigningAlgValuesSupported ? [SupportedClientAuthenticationMethod.ClientAttestationJwtDpop] : []];
-@@ -1159,7 +1222,8 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+@@ -1159,7 +1258,8 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
  			verificationMethod: options.verificationMethod,
  			alg: publicJwk.signatureAlgorithm
  		});

@@ -5,6 +5,9 @@
 ### Features
 
 - **oid4vc issuer:** issuers advertise a `notification_endpoint` (`{baseUrl}/{issuerId}/notification`) and return a `notification_id` with each credential response (OpenID4VCI 1.0 §11). A wallet notification (`credential_accepted`, `credential_failure` or `credential_deleted`) is checked against the access token of the session that issued the `notification_id`, recorded on the issuance session (`notifications[]`), and posted to the issuance webhook topic `/openid4vc-issuance`: the session record, whose state is unchanged, plus a `notification` object (`notificationId`, `credentialConfigurationId`, `event`, `eventDescription?`, `receivedAt`). It is also sent on the web socket. Webhooks posted on a state change also carry `notifications[]`. Set `OID4VCI_NOTIFICATION_ENDPOINT_ENABLED=false` to turn the endpoint off.
+  - A repeated identical notification (same `notification_id`, `event` and `event_description`) returns 204 without being recorded or posted again.
+  - Credential and deferred credential responses save the issuance session under the same per-session lock as notifications and keep notifications stored in the meantime, so neither overwrites the other.
+  - **Limitation:** the endpoint needs the session's access token, which expires after `OID4VCI_ACCESS_TOKEN_EXPIRY` (default 3600 s), and the controller issues no refresh token. A wallet can therefore report `credential_deleted` only within that time; later deletions are not received. Raise `OID4VCI_ACCESS_TOKEN_EXPIRY` if issuers need a longer window.
 
 ### Dependencies
 
