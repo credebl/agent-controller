@@ -301,6 +301,8 @@ const getModules = (
         accessTokenExpiresInSeconds: Number(process.env.OID4VCI_ACCESS_TOKEN_EXPIRY) || 3600,
         authorizationCodeExpiresInSeconds: Number(process.env.OID4VCI_AUTH_CODE_EXPIRY) || 3600,
         cNonceExpiresInSeconds: Number(process.env.OID4VCI_CNONCE_EXPIRY) || 3600,
+        // OID4VCI notification endpoint (credential_accepted / _deleted / _failure from wallets); on unless 'false'
+        notificationEndpointEnabled: process.env.OID4VCI_NOTIFICATION_ENDPOINT_ENABLED !== 'false',
         dpopRequired: false,
         credentialRequestToCredentialMapper: (...args) => getMixedCredentialRequestToCredentialMapper()(...args),
       },

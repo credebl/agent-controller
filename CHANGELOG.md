@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- **oid4vc issuer:** issuers advertise a `notification_endpoint` (`{baseUrl}/{issuerId}/notification`) and return a `notification_id` with each credential response (OpenID4VCI 1.0 §11). A wallet notification (`credential_accepted`, `credential_failure` or `credential_deleted`) is checked against the access token of the session that issued the `notification_id`, recorded on the issuance session (`notifications[]`), and posted to the issuance webhook topic `/openid4vc-issuance`: the session record, whose state is unchanged, plus a `notification` object (`notificationId`, `credentialConfigurationId`, `event`, `eventDescription?`, `receivedAt`). It is also sent on the web socket. Webhooks posted on a state change also carry `notifications[]`. Set `OID4VCI_NOTIFICATION_ENDPOINT_ENABLED=false` to turn the endpoint off.
+
+### Dependencies
+
+- The `@credo-ts/openid4vc` 0.7.4 patch adds the issuer notification endpoint from openwallet-foundation/credo-ts#3215, which is not released yet. The existing changes in the patch are kept. Remove this part of the patch once a Credo release includes it.
+
 ## [2.3.2](https://github.com/credebl/agent-controller/compare/v2.3.1...v2.3.2) (2026-11-04)
 
 ### Features
