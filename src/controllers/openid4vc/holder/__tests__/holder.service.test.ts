@@ -3,6 +3,8 @@ import {
   assertW3cCredentialsBoundToHolderDid,
   getCredentialBindingResolver,
 } from '../credentialBindingResolver'
+import { SdJwtVcRecord } from '@credo-ts/core'
+
 import { HolderService } from '../holder.service'
 
 // Avoid loading Credo's ESM/native dependencies in Jest; only the symbols the service touches are stubbed.
@@ -281,18 +283,37 @@ describe('HolderService pagination and search', () => {
 describe('HolderService requestCredential', () => {
   const offeredIds = ['IecSdJwt', 'IecLdp']
 
-  const createAgentReq = () => {
+  const createAgentReq = (
+    options: {
+      credentials?: any[]
+      credentialOffer?: any
+    } = {},
+  ) => {
     const holder = {
-      resolveCredentialOffer: jest.fn().mockResolvedValue({
-        credentialOfferPayload: {
-          credential_configuration_ids: offeredIds,
-          grants: { 'urn:ietf:params:oauth:grant-type:pre-authorized_code': {} },
+      resolveCredentialOffer: jest.fn().mockResolvedValue(
+        options.credentialOffer ?? {
+          metadata: { credentialIssuer: { credential_issuer: 'https://issuer.example.com' } },
+          credentialOfferPayload: {
+            credential_configuration_ids: offeredIds,
+            grants: { 'urn:ietf:params:oauth:grant-type:pre-authorized_code': {} },
+          },
         },
-      }),
+      ),
       requestToken: jest.fn().mockResolvedValue({ accessToken: 'token' }),
-      requestCredentials: jest.fn().mockResolvedValue({ credentials: [] }),
+      requestCredentials: jest.fn().mockResolvedValue({ credentials: options.credentials ?? [] }),
+      sendNotification: jest.fn().mockResolvedValue(undefined),
     }
-    return { agentReq: { agent: { context: 'agentContext', modules: { openid4vc: { holder } } } } as any, holder }
+    const agentReq = {
+      agent: {
+        context: 'agentContext',
+        config: { logger: { warn: jest.fn() } },
+        modules: { openid4vc: { holder } },
+        w3cCredentials: { store: jest.fn(async ({ record }: any) => record) },
+        mdoc: { store: jest.fn(async ({ record }: any) => record) },
+        sdJwtVc: { store: jest.fn(async ({ record }: any) => record) },
+      },
+    } as any
+    return { agentReq, holder }
   }
 
   beforeEach(() => {
@@ -407,5 +428,61 @@ describe('HolderService requestCredential', () => {
     await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'openid-credential-offer://x' })
 
     expect(assertW3cCredentialsBoundToHolderDid).not.toHaveBeenCalled()
+  })
+
+  describe('credential notifications', () => {
+    it('sends credential_accepted after storing a credential with notificationId', async () => {
+      const record = new SdJwtVcRecord({ credentialInstances: [{ compactSdJwtVc: 'sd-jwt' }] })
+      const { agentReq, holder } = createAgentReq({ credentials: [{ record, notificationId: 'notif-1' }] })
+
+      const result = await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })
+
+      expect(agentReq.agent.sdJwtVc.store).toHaveBeenCalledWith({ record })
+      expect(holder.sendNotification).toHaveBeenCalledWith({
+        metadata: { credentialIssuer: { credential_issuer: 'https://issuer.example.com' } },
+        accessToken: 'token',
+        dpop: undefined,
+        notificationId: 'notif-1',
+        notificationEvent: 'credential_accepted',
+      })
+      expect(result).toEqual([record])
+    })
+
+    it('sends credential_failure and rejects when storing fails', async () => {
+      const record = new SdJwtVcRecord({ credentialInstances: [{ compactSdJwtVc: 'sd-jwt' }] })
+      const { agentReq, holder } = createAgentReq({ credentials: [{ record, notificationId: 'notif-2' }] })
+      agentReq.agent.sdJwtVc.store.mockRejectedValue(new Error('store failed'))
+
+      await expect(new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })).rejects.toThrow(
+        'store failed',
+      )
+
+      expect(holder.sendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ notificationId: 'notif-2', notificationEvent: 'credential_failure' }),
+      )
+      expect(holder.sendNotification).not.toHaveBeenCalledWith(
+        expect.objectContaining({ notificationEvent: 'credential_accepted' }),
+      )
+    })
+
+    it('skips notifications when the issuer does not return a notificationId', async () => {
+      const record = new SdJwtVcRecord({ credentialInstances: [{ compactSdJwtVc: 'sd-jwt' }] })
+      const { agentReq, holder } = createAgentReq({ credentials: [{ record }] })
+
+      await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })
+
+      expect(holder.sendNotification).not.toHaveBeenCalled()
+    })
+
+    it('does not fail issuance when the notification cannot be sent', async () => {
+      const record = new SdJwtVcRecord({ credentialInstances: [{ compactSdJwtVc: 'sd-jwt' }] })
+      const { agentReq, holder } = createAgentReq({ credentials: [{ record, notificationId: 'notif-3' }] })
+      holder.sendNotification.mockRejectedValue(new Error('network error'))
+
+      const result = await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'offer' })
+
+      expect(result).toEqual([record])
+      expect(agentReq.agent.config.logger.warn).toHaveBeenCalled()
+    })
   })
 })

@@ -11,6 +11,7 @@ import type {
 import type { BaseRecordAny, DcqlCredentialsForRequest } from '@credo-ts/core'
 import type {
   OpenId4VcAuthorizationCodeTokenRequestOptions,
+  OpenId4VciNotificationEvent,
   OpenId4VciPreAuthorizedTokenRequestOptions,
   OpenId4VciResolvedCredentialOffer,
   OpenId4VciTokenRequestOptions,
@@ -404,54 +405,118 @@ export class HolderService {
 
     const sanitizedTags = this.sanitizeTags(tags)
 
-    const storedCredentials = await Promise.all(
+    const notificationContext = {
+      metadata: resolvedCredentialOffer.metadata,
+      accessToken: tokenResponse.accessToken,
+      dpop: credentialResponse.dpop,
+    }
+
+    const results = await Promise.allSettled(
       credentialResponse.credentials.map(async (response) => {
-        const credentialRecord = response.record
+        const { record: credentialRecord, notificationId } = response
 
-        if (sanitizedTags && Object.keys(sanitizedTags).length > 0) {
-          try {
-            credentialRecord.setTags(sanitizedTags as any)
-          } catch (error) {
-            // Ignore tag setting errors to avoid blocking issuance
+        try {
+          if (sanitizedTags && Object.keys(sanitizedTags).length > 0) {
+            try {
+              credentialRecord.setTags(sanitizedTags as any)
+            } catch (error) {
+              // Ignore tag setting errors to avoid blocking issuance
+            }
           }
-        }
 
-        if (
-          credentialRecord instanceof W3cCredentialRecord ||
-          (credentialRecord as any).type === 'W3cCredentialRecord'
-        ) {
-          return await agentReq.agent.w3cCredentials.store({
-            record: credentialRecord as W3cCredentialRecord,
-          })
-        }
+          let storedCredential: unknown
+          if (
+            credentialRecord instanceof W3cCredentialRecord ||
+            (credentialRecord as any).type === 'W3cCredentialRecord'
+          ) {
+            storedCredential = await agentReq.agent.w3cCredentials.store({
+              record: credentialRecord as W3cCredentialRecord,
+            })
+          } else if (credentialRecord instanceof MdocRecord) {
+            storedCredential = await agentReq.agent.mdoc.store({ record: credentialRecord })
+          } else if (credentialRecord instanceof SdJwtVcRecord) {
+            storedCredential = await agentReq.agent.sdJwtVc.store({
+              record: credentialRecord,
+            })
+          } else {
+            /*
+            W3C V2.0 Support
+            if (
+              credentialRecord instanceof W3cV2CredentialRecord ||
+              (credentialRecord as any).type === 'W3cV2CredentialRecord'
+            ) {
+              storedCredential = await agentReq.agent.w3cV2Credentials.store({
+                record: credentialRecord as W3cV2CredentialRecord,
+              })
+            } else {
+            */
+            throw new Error(
+              `Unsupported credential record type: ${(credentialRecord as any)?.type || typeof credentialRecord}`,
+            )
+          }
 
-        /* 
-        W3C V2.0 Support
-        if (
-          credentialRecord instanceof W3cV2CredentialRecord ||
-          (credentialRecord as any).type === 'W3cV2CredentialRecord'
-        ) {
-          return await agentReq.agent.w3cV2Credentials.store({
-            record: credentialRecord as W3cV2CredentialRecord,
+          await this.sendCredentialNotification(agentReq, {
+            ...notificationContext,
+            notificationId,
+            notificationEvent: 'credential_accepted',
           })
-        }
-        */
 
-        if (credentialRecord instanceof MdocRecord) {
-          return await agentReq.agent.mdoc.store({ record: credentialRecord })
-        }
-        if (credentialRecord instanceof SdJwtVcRecord) {
-          return await agentReq.agent.sdJwtVc.store({
-            record: credentialRecord,
+          return storedCredential
+        } catch (error) {
+          await this.sendCredentialNotification(agentReq, {
+            ...notificationContext,
+            notificationId,
+            notificationEvent: 'credential_failure',
           })
+          throw error
         }
-        throw new Error(
-          `Unsupported credential record type: ${(credentialRecord as any)?.type || typeof credentialRecord}`,
-        )
       }),
     )
 
-    return storedCredentials as any
+    const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+    if (rejected) {
+      throw rejected.reason
+    }
+
+    return results
+      .filter((result): result is PromiseFulfilledResult<unknown> => result.status === 'fulfilled')
+      .map((result) => result.value) as any
+  }
+
+  private async sendCredentialNotification(
+    agentReq: Req,
+    {
+      metadata,
+      accessToken,
+      dpop,
+      notificationId,
+      notificationEvent,
+    }: {
+      metadata: OpenId4VciResolvedCredentialOffer['metadata']
+      accessToken: string
+      dpop?: OpenId4VciTokenRequestOptions['dpop']
+      notificationId?: string
+      notificationEvent: OpenId4VciNotificationEvent
+    },
+  ) {
+    if (!notificationId) {
+      return
+    }
+
+    try {
+      await agentReq.agent.modules.openid4vc.holder.sendNotification({
+        metadata,
+        accessToken,
+        dpop,
+        notificationId,
+        notificationEvent,
+      })
+    } catch (error) {
+      agentReq.agent.config.logger.warn(
+        `[OpenId4VCI] Failed to send '${notificationEvent}' notification to the issuer`,
+        { notificationId, error },
+      )
+    }
   }
 
   private async initiateAuthorization(
