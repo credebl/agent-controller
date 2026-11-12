@@ -537,20 +537,20 @@ export class HolderService {
     context: CredentialNotificationContext,
     credentials: Array<{ response: OpenId4VciCredentialResponse; event?: CredentialNotificationEvent }>,
   ): Promise<CredentialNotificationResult[]> {
-    const results: CredentialNotificationResult[] = []
-    let timedOut = false
-    for (const { response, event } of credentials) {
-      if (timedOut) {
-        // A timed-out call cannot be cancelled and may still reach the issuer, so a further call could
-        // update the issuance session at the same time
-        results.push({ status: 'skipped', reason: 'An earlier notification to this issuer timed out' })
-        continue
+    const [first, ...rest] = credentials
+    if (!first) return []
+
+    const sent = await this.sendCredentialNotification(agentReq, context, first.response, first.event)
+    if (sent.timedOut) {
+      // A timed-out call cannot be cancelled and may still reach the issuer, so a further call could
+      // update the issuance session at the same time
+      const skipped: CredentialNotificationResult = {
+        status: 'skipped',
+        reason: 'An earlier notification to this issuer timed out',
       }
-      const sent = await this.sendCredentialNotification(agentReq, context, response, event)
-      timedOut = sent.timedOut
-      results.push(sent.result)
+      return [sent.result, ...rest.map(() => skipped)]
     }
-    return results
+    return [sent.result, ...(await this.sendCredentialNotifications(agentReq, context, rest))]
   }
 
   private async sendCredentialNotification(
