@@ -166,6 +166,71 @@ curl -s -X POST "http://127.0.0.1:5050/orgs/$ORG_ID/agents/did" \
   -d '{"method":"key","encryptedKey":{"sessionId":"…","jwe":"…"}}'
 ```
 
+## Importing an externally issued did:web document
+
+When the identity is created and hosted by an external authority (for example a government agency), the authority
+publishes the DID document and supplies the private key(s). `POST /dids/write` cannot represent that: it requires a
+`domain` and regenerates a minimal document with a hardcoded `#key-1`, so the signature would reference a verification
+method the authority does not publish. Use `POST /dids/web/import` instead. `POST /dids/write` now rejects a
+`didDocument` for `method: "web"` and points at this endpoint.
+
+```json
+{
+  "did": "did:web:gov-agency.example.com",
+  "didDocument": {
+    "@context": ["https://www.w3.org/ns/did/v1", "https://w3id.org/security/suites/ed25519-2020/v1"],
+    "id": "did:web:gov-agency.example.com",
+    "verificationMethod": [
+      {
+        "id": "did:web:gov-agency.example.com#authority-signing-key",
+        "type": "Ed25519VerificationKey2020",
+        "controller": "did:web:gov-agency.example.com",
+        "publicKeyJwk": { "kty": "OKP", "crv": "Ed25519", "x": "…" }
+      }
+    ],
+    "authentication": ["did:web:gov-agency.example.com#authority-signing-key"],
+    "assertionMethod": ["did:web:gov-agency.example.com#authority-signing-key"]
+  },
+  "keys": [
+    {
+      "verificationMethodId": "did:web:gov-agency.example.com#authority-signing-key",
+      "encryptedKey": { "sessionId": "…", "jwe": "…" }
+    }
+  ]
+}
+```
+
+- The supplied document is stored **verbatim**: its `@context`, services and verification method ids are preserved.
+  Each key is bound to the verification method named by `verificationMethodId` (absolute or `#`-relative), so the
+  agent signs with the authority's id rather than a generated one.
+- Verification methods without a key (for example an X25519 `keyAgreement` key) stay in the document as public-only
+  entries.
+- The private key must match the public key published in that verification method (RFC 7638 thumbprint). A mismatch is
+  a 400, so a caller cannot bind an unrelated key and produce signatures that no verifier can check against the hosted
+  document.
+- When `didDocument` is omitted it is resolved over the network. When it is supplied it is compared with the published
+  document unless `allowUnresolvedDocument: true` is set, which is the offline / air-gapped / private-deployment path.
+- Each key needs its own import session. All envelopes are decrypted and validated before any session is consumed, so a
+  rejected request can be retried with the same envelopes.
+- Re-importing the same document and key binding is idempotent. Changing the document or a key binding requires
+  `replace: true`, because an already issued credential would otherwise silently stop verifying.
+
+The response reports the backend that holds each key:
+
+```json
+{
+  "did": "did:web:gov-agency.example.com",
+  "didDocument": { "…": "…" },
+  "keys": [
+    {
+      "verificationMethodId": "did:web:gov-agency.example.com#authority-signing-key",
+      "keyId": "…",
+      "backend": "openbao"
+    }
+  ]
+}
+```
+
 ## Where the KMS stores an imported key
 
 The agent selects the same backend for an imported key as it would for a generated key, and reports the actual

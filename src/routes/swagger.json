@@ -3540,6 +3540,118 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"DidWebImportedKey": {
+				"properties": {
+					"verificationMethodId": {
+						"type": "string",
+						"description": "Verification method id exactly as it appears in the imported document."
+					},
+					"keyId": {
+						"type": "string",
+						"description": "Id of the private key in the agent's KMS."
+					},
+					"backend": {
+						"type": "string",
+						"description": "Backend that holds the key: `askar`, `node` or `openbao`."
+					}
+				},
+				"required": [
+					"verificationMethodId",
+					"keyId",
+					"backend"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidWebImportResponse": {
+				"properties": {
+					"did": {
+						"type": "string"
+					},
+					"didDocument": {
+						"$ref": "#/components/schemas/Record_string.unknown_"
+					},
+					"keys": {
+						"items": {
+							"$ref": "#/components/schemas/DidWebImportedKey"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"did",
+					"didDocument",
+					"keys"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidWebImportKey": {
+				"description": "One private key of an imported did:web document, bound to the verification method the authority published it for.",
+				"properties": {
+					"verificationMethodId": {
+						"type": "string",
+						"description": "Id of a verification method in `didDocument`. It can be absolute (`did:web:example.com#key-1`) or relative\n(`#key-1`) to the imported DID.",
+						"example": "did:web:gov-agency.example.com#authority-signing-key"
+					},
+					"encryptedKey": {
+						"$ref": "#/components/schemas/KeyImportEncryptedKey",
+						"description": "Private key material encrypted to a single-use import session (see `POST /dids/import/session` with method `web`).\nEach key needs its own session."
+					},
+					"privateKey": {
+						"type": "string",
+						"deprecated": true
+					},
+					"privateKeyJwk": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"deprecated": true
+					},
+					"passphrase": {
+						"type": "string",
+						"deprecated": true
+					}
+				},
+				"required": [
+					"verificationMethodId"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DidWebImportOptions": {
+				"description": "Imports a `did:web` identity created and hosted by an external authority (for example a government agency). Unlike\n`POST /dids/write`, the supplied DID document is stored verbatim instead of being regenerated from a domain.",
+				"properties": {
+					"did": {
+						"type": "string",
+						"description": "The authority's DID.",
+						"example": "did:web:gov-agency.example.com"
+					},
+					"didDocument": {
+						"$ref": "#/components/schemas/Record_string.unknown_",
+						"description": "The DID document as published by the authority. When omitted it is resolved over the network instead."
+					},
+					"keys": {
+						"items": {
+							"$ref": "#/components/schemas/DidWebImportKey"
+						},
+						"type": "array",
+						"description": "Private keys to import. Verification methods without a key stay in the document as public-only entries."
+					},
+					"allowUnresolvedDocument": {
+						"type": "boolean",
+						"description": "Import the supplied `didDocument` even when it cannot be resolved over the network (air-gapped or private\ndeployments). Without this flag a supplied document is compared with the published document and rejected on a\nmismatch."
+					},
+					"replace": {
+						"type": "boolean",
+						"description": "Rebind an existing imported DID to a different document or key. Without it, re-importing the same document and\nkeys is idempotent but a different binding is rejected."
+					}
+				},
+				"required": [
+					"did",
+					"keys"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"DidX509ImportResponse": {
 				"properties": {
 					"did": {
@@ -10159,6 +10271,46 @@
 						"application/json": {
 							"schema": {
 								"$ref": "#/components/schemas/DidCreate"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/dids/web/import": {
+			"post": {
+				"operationId": "ImportDidWeb",
+				"responses": {
+					"200": {
+						"description": "DidWebImportResponse",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/DidWebImportResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Imports a `did:web` identity that was created and is hosted by an external authority, for example a government\nagency. The authority's document is stored verbatim and each supplied private key is bound to the verification\nmethod it was published for, so signatures reference the authority's ids instead of a regenerated `#key-1`.",
+				"tags": [
+					"Dids"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/DidWebImportOptions"
 							}
 						}
 					}
