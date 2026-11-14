@@ -1046,6 +1046,7 @@ const models: TsoaRoute.Models = {
             "tags": {"ref":"CredentialTags"},
             "holderDidUrl": {"dataType":"string"},
             "bindingPolicy": {"ref":"CredentialBindingPolicy","default":"require"},
+            "sendNotification": {"dataType":"boolean","default":true},
         },
         "additionalProperties": false,
     },

@@ -1,6 +1,8 @@
 import type {
   AuthorizeRequestCredentialOffer,
   CredentialListQuery,
+  CredentialNotificationEvent,
+  CredentialNotificationResult,
   CredentialTags,
   DeleteCredentialBody,
   PaginatedCredentials,
@@ -11,6 +13,7 @@ import type {
 import type { BaseRecordAny, DcqlCredentialsForRequest } from '@credo-ts/core'
 import type {
   OpenId4VcAuthorizationCodeTokenRequestOptions,
+  OpenId4VciCredentialResponse,
   OpenId4VciPreAuthorizedTokenRequestOptions,
   OpenId4VciResolvedCredentialOffer,
   OpenId4VciTokenRequestOptions,
@@ -45,9 +48,20 @@ import {
 } from './credentialBindingResolver'
 type FilterValue = string | string[] | undefined
 
+class NotificationTimeoutError extends Error {}
+
+interface CredentialNotificationContext {
+  enabled: boolean
+  metadata: OpenId4VciResolvedCredentialOffer['metadata']
+  accessToken: string
+  dpop?: OpenId4VciTokenRequestOptions['dpop']
+}
+
 export class HolderService {
   private HOLDER_REDIRECT = process.env.HOLDER_REDIRECT ?? 'http://localhost:4001/redirect'
   private HOLDER_CLIENT_ID = process.env.HOLDER_CLIENT_ID ?? 'wallet'
+  // How long to wait for the issuer to answer an OID4VCI notification before giving up on it
+  private NOTIFICATION_TIMEOUT_MS = Number(process.env.OID4VCI_NOTIFICATION_TIMEOUT_MS) || 5000
 
   // Tags are dynamic - allow all string/string[] values
   private readonly DEFAULT_PAGE = 1
@@ -367,7 +381,7 @@ export class HolderService {
     agentReq: Req,
     resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
     options: OpenId4VciTokenRequestOptions,
-    { credentialsToRequest, tags, holderDidUrl, bindingPolicy }: RequestCredentialBody,
+    { credentialsToRequest, tags, holderDidUrl, bindingPolicy, sendNotification = true }: RequestCredentialBody,
   ) {
     const offeredIds = resolvedCredentialOffer.credentialOfferPayload.credential_configuration_ids
     const notOffered = credentialsToRequest?.filter((id) => !offeredIds.includes(id)) ?? []
@@ -395,19 +409,34 @@ export class HolderService {
       ...tokenResponse,
     })
 
+    const notificationContext: CredentialNotificationContext = {
+      enabled: sendNotification,
+      metadata: resolvedCredentialOffer.metadata,
+      accessToken: tokenResponse.accessToken,
+      dpop: credentialResponse.dpop,
+    }
+
     if (holderDidUrl && bindingPolicy !== 'prefer') {
-      assertW3cCredentialsBoundToHolderDid(
-        credentialResponse.credentials.map((response) => response.record),
-        holderDidUrl,
-      )
+      try {
+        assertW3cCredentialsBoundToHolderDid(
+          credentialResponse.credentials.map((response) => response.record),
+          holderDidUrl,
+        )
+      } catch (error) {
+        // None of the credentials is stored, so tell the issuer that each of them failed
+        await this.sendCredentialNotifications(
+          agentReq,
+          notificationContext,
+          credentialResponse.credentials.map((response) => ({ response, event: 'credential_failure' })),
+        )
+        throw error
+      }
     }
 
     const sanitizedTags = this.sanitizeTags(tags)
 
-    const storedCredentials = await Promise.all(
-      credentialResponse.credentials.map(async (response) => {
-        const credentialRecord = response.record
-
+    const results = await this.settleUntilFirstRejection(
+      credentialResponse.credentials.map(async ({ record: credentialRecord }) => {
         if (sanitizedTags && Object.keys(sanitizedTags).length > 0) {
           try {
             credentialRecord.setTags(sanitizedTags as any)
@@ -425,7 +454,7 @@ export class HolderService {
           })
         }
 
-        /* 
+        /*
         W3C V2.0 Support
         if (
           credentialRecord instanceof W3cV2CredentialRecord ||
@@ -451,7 +480,147 @@ export class HolderService {
       }),
     )
 
-    return storedCredentials as any
+    // credential_accepted for each stored credential, credential_failure for each one that could not be stored.
+    // A credential still being stored when another one failed gets no notification.
+    const notifications = await this.sendCredentialNotifications(
+      agentReq,
+      notificationContext,
+      credentialResponse.credentials.map((response, index) => ({
+        response,
+        event: results[index] && (results[index].status === 'fulfilled' ? 'credential_accepted' : 'credential_failure'),
+      })),
+    )
+
+    const rejected = results.find((result): result is PromiseRejectedResult => result?.status === 'rejected')
+    if (rejected) {
+      throw rejected.reason
+    }
+
+    return results.map((result, index) => ({
+      ...JsonTransformer.toJSON((result as PromiseFulfilledResult<BaseRecordAny>).value),
+      notification: notifications[index],
+    })) as any
+  }
+
+  /**
+   * Like `Promise.allSettled`, but returns as soon as one promise rejects, so a store that never settles
+   * cannot hold back the error of another. Promises that are still pending then are `undefined`.
+   */
+  private settleUntilFirstRejection<T>(promises: Promise<T>[]): Promise<Array<PromiseSettledResult<T> | undefined>> {
+    const results: Array<PromiseSettledResult<T> | undefined> = promises.map(() => undefined)
+    return new Promise((resolve) => {
+      let pending = promises.length
+      let snapshotScheduled = false
+      if (pending === 0) resolve(results)
+      promises.forEach((promise, index) => {
+        promise.then(
+          (value) => {
+            results[index] = { status: 'fulfilled', value }
+            if (--pending === 0) resolve(results)
+          },
+          (reason) => {
+            results[index] = { status: 'rejected', reason }
+            if (snapshotScheduled) return
+            snapshotScheduled = true
+            // Take the snapshot once the handlers of stores that have already settled (e.g. several that
+            // failed at once) have run, without waiting for stores still in progress. A copy, so stores
+            // that settle later do not change what the caller sees.
+            setImmediate(() => resolve([...results]))
+          },
+        )
+      })
+    })
+  }
+
+  /**
+   * Sends an OID4VCI notification to the issuer for each credential, one at a time: an issuer may record
+   * each notification on the issuance session, and parallel updates of one session can overwrite each other.
+   * A notification that is not sent is logged and reported, but never fails the request.
+   */
+  private async sendCredentialNotifications(
+    agentReq: Req,
+    context: CredentialNotificationContext,
+    credentials: Array<{ response: OpenId4VciCredentialResponse; event?: CredentialNotificationEvent }>,
+  ): Promise<CredentialNotificationResult[]> {
+    const [first, ...rest] = credentials
+    if (!first) return []
+
+    const sent = await this.sendCredentialNotification(agentReq, context, first.response, first.event)
+    if (sent.timedOut) {
+      // A timed-out call cannot be cancelled and may still reach the issuer, so a further call could
+      // update the issuance session at the same time
+      const skipped: CredentialNotificationResult = {
+        status: 'skipped',
+        reason: 'An earlier notification to this issuer timed out',
+      }
+      return [sent.result, ...rest.map(() => skipped)]
+    }
+    return [sent.result, ...(await this.sendCredentialNotifications(agentReq, context, rest))]
+  }
+
+  private async sendCredentialNotification(
+    agentReq: Req,
+    { enabled, metadata, accessToken, dpop }: CredentialNotificationContext,
+    { notificationId, credentialConfigurationId }: OpenId4VciCredentialResponse,
+    event: CredentialNotificationEvent | undefined,
+  ): Promise<{ result: CredentialNotificationResult; timedOut: boolean }> {
+    const skipped = (reason: string) => ({ result: { status: 'skipped', reason } as const, timedOut: false })
+    if (!enabled) return skipped('sendNotification is false')
+    if (!event) return skipped('The credential was still being stored when another one failed')
+    if (!metadata.credentialIssuer.notification_endpoint) return skipped('Issuer metadata has no notification_endpoint')
+    if (!notificationId) return skipped('Credential response has no notification_id')
+
+    try {
+      await this.withTimeout(
+        agentReq.agent.modules.openid4vc.holder.sendNotification({
+          metadata,
+          accessToken,
+          dpop,
+          notificationId,
+          notificationEvent: event,
+        }),
+        this.NOTIFICATION_TIMEOUT_MS,
+        `No answer from the issuer within ${this.NOTIFICATION_TIMEOUT_MS} ms`,
+      )
+      return { result: { status: 'sent', event }, timedOut: false }
+    } catch (error) {
+      const reason = this.notificationErrorReason(error)
+      agentReq.agent.config.logger.warn(
+        `[OpenId4VCI] Failed to send '${event}' notification to the issuer for '${credentialConfigurationId}': ${reason}`,
+        { notificationId, credentialIssuer: metadata.credentialIssuer.credential_issuer },
+      )
+      return { result: { status: 'failed', event, reason }, timedOut: error instanceof NotificationTimeoutError }
+    }
+  }
+
+  /**
+   * The error message, plus the issuer's HTTP status and OAuth error code when the issuer
+   * rejected the notification (e.g. `HTTP 400 invalid_notification_id`).
+   */
+  private notificationErrorReason(error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    const { response } = (error ?? {}) as {
+      response?: {
+        response?: { status?: number }
+        notificationErrorResponseResult?: { success: boolean; data?: { error?: string } }
+      }
+    }
+    const status = response?.response?.status
+    const code = response?.notificationErrorResponseResult?.data?.error
+    const detail = [status && `HTTP ${status}`, code].filter(Boolean).join(' ')
+    return detail ? `${message}: ${detail}` : message
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new NotificationTimeoutError(message)), timeoutMs)
+    })
+    try {
+      return await Promise.race([promise, timeout])
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
   private async initiateAuthorization(
