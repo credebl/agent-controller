@@ -38,6 +38,7 @@ import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
 import { KeyImportEnvelopeError } from '../../utils/keyImport/jwe'
+import { assertPlaintextKeyImportAllowed } from '../../utils/keyImport/plaintextGate'
 import {
   agentBindingFor,
   consumeImportSession,
@@ -49,6 +50,7 @@ import {
   type KeyImportMethod,
 } from '../../utils/keyImport/session'
 import { needsNodeKms, NODE_KMS_BACKEND, selectKmsBackendForJwk } from '../../utils/kms/backend'
+import { describeDidKms } from '../../utils/kms/didKms'
 import {
   OPENBAO_KMS_BACKEND,
   openBaoBackendForCreate,
@@ -92,6 +94,36 @@ export class DidController extends Controller {
       return { ...resolveResult, didDocument: resolveResult.didDocument.toJSON() }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
+   * Reports which KMS backend (Askar, Node or OpenBao) stores the keys of a DID this agent created or imported.
+   * Read-only. A DID the agent holds no keys for returns `kmsBackend: null` and no keys.
+   * @param did Decentralized Identifier
+   */
+  @Get('/:did/kms')
+  public async getDidKms(@Request() request: Req, @Path('did') did: Did) {
+    try {
+      return { did, ...(await describeDidKms(request.agent, did)) }
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /** Indy results nest the DID in `didState`, every other method returns it at the top level. */
+  private didOf(result: { did?: string; didState?: { did?: string } } | undefined): string | undefined {
+    return result?.did ?? result?.didState?.did
+  }
+
+  /** The key storage details added to a created DID. They never fail the request that created the DID. */
+  private async describeKmsOf(agent: AgentType, did?: string) {
+    if (!did) return {}
+    try {
+      return await describeDidKms(agent, did)
+    } catch (error) {
+      agent.config.logger.warn(`Unable to read the KMS backend of ${did}`, { error })
+      return {}
     }
   }
 
@@ -198,33 +230,11 @@ export class DidController extends Controller {
           throw new BadRequestError(`Invalid method: ${didOptions.method}`)
       }
 
-      didRes = { ...result }
+      didRes = { ...result, ...(await this.describeKmsOf(request.agent, this.didOf(result))) }
 
       return didRes
     } catch (error) {
       throw ErrorHandlingService.handle(error)
-    }
-  }
-
-  private plaintextKeyImportAllowed(): boolean {
-    return ['1', 'true', 'yes', 'on'].includes((process.env.ALLOW_PLAINTEXT_KEY_IMPORT ?? '').trim().toLowerCase())
-  }
-
-  /**
-   * Plaintext key import is a migration only escape hatch. The production API only accepts `encryptedKey`, so a key
-   * cannot be read from request bodies, validation errors, gateway logs or the NATS payload.
-   */
-  private assertPlaintextKeyImportAllowed(options: {
-    privateKey?: string
-    privateKeyJwk?: Record<string, unknown>
-    passphrase?: string
-    privatekey?: string
-  }): void {
-    if (this.plaintextKeyImportAllowed()) return
-    if (options.privateKey || options.privateKeyJwk || options.passphrase || options.privatekey) {
-      throw new BadRequestError(
-        'Plaintext private key import is disabled. Request a key import session from POST /dids/import/session and send the encryptedKey envelope instead.',
-      )
     }
   }
 
@@ -233,7 +243,7 @@ export class DidController extends Controller {
    * single use and expires quickly, so the ciphertext can safely transit the platform.
    */
   private resolveImportKeyMaterial(agent: AgentType, didOptions: DidCreate): DidCreate {
-    this.assertPlaintextKeyImportAllowed(didOptions)
+    assertPlaintextKeyImportAllowed(didOptions)
 
     // An existing did:key is imported by resolving its DID document, which would silently drop the private key. Reject
     // the combination before an encrypted envelope consumes its single-use session.
@@ -315,7 +325,7 @@ export class DidController extends Controller {
   }
 
   private resolveX509KeyMaterial(agent: AgentType, options: DidX509ImportOptionsDto): DidX509ImportOptionsDto {
-    this.assertPlaintextKeyImportAllowed(options)
+    assertPlaintextKeyImportAllowed(options)
 
     if (!options.encryptedKey) {
       if (!options.privateKey) throw new BadRequestError('privateKey or encryptedKey is required')
@@ -1123,7 +1133,8 @@ export class DidController extends Controller {
   public async importDidX509(@Request() request: Req, @Body() options: DidX509ImportOptionsDto) {
     try {
       const resolvedOptions = this.resolveX509KeyMaterial(request.agent, options)
-      return await didX509Service.importDidX509(request.agent, resolvedOptions)
+      const imported = await didX509Service.importDidX509(request.agent, resolvedOptions)
+      return { ...imported, ...(await this.describeKmsOf(request.agent, imported.did)) }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }

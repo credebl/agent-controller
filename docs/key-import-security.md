@@ -1,7 +1,7 @@
 # Encrypted DID key import
 
-This document describes how CREDEBL imports an existing private key for `did:key`, `did:web` and `did:x509`
-without letting the key travel in plaintext through the API gateway, NATS, the agent service, the agent's HTTP
+This document describes how CREDEBL imports an existing private key for `did:key`, `did:web`, `did:polygon`,
+`did:x509` and X.509 certificates (`POST /x509/import`) without letting the key travel in plaintext through the API gateway, NATS, the agent service, the agent's HTTP
 layer or any log.
 
 The same protocol is used by Studio, by any browser client and by non-browser API clients and CLIs. The only
@@ -49,7 +49,7 @@ organization's DID list contains the new DID.
 { "method": "key" }
 ```
 
-`method` is `key`, `web`, `x509` or `polygon`. The response is:
+`method` is `key`, `web`, `x509`, `polygon` or `x509-certificate`. The response is:
 
 ```json
 {
@@ -106,6 +106,27 @@ supported. The legacy plaintext `privatekey` field of the create DID request is 
 ```json
 { "privateKey": "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d" }
 ```
+
+For the X.509 certificate import (`POST /x509/import`) the session is created with method `x509-certificate` and
+the payload is exactly the key that was previously sent as plaintext `privateKey` (PEM or base64 DER). A
+`privateKeyJwk` or `passphrase` is not supported for this method and is rejected with a 400. The envelope is bound
+to that method, so an envelope created for `x509`, `key`, `web` or `polygon` cannot be used for the certificate
+import and the other way around:
+
+```json
+{ "privateKey": "-----BEGIN PRIVATE KEY-----\n…" }
+```
+
+```json
+{
+  "certificate": "<certificate>",
+  "keyType": "P-256",
+  "encryptedKey": { "sessionId": "…", "jwe": "…" }
+}
+```
+
+The plaintext `privateKey` field of `POST /x509/import` is deprecated and rejected unless
+`ALLOW_PLAINTEXT_KEY_IMPORT=true`; sending it together with `encryptedKey` is rejected.
 
 The agent verifies that the authenticated header matches the stored session:
 
@@ -195,7 +216,8 @@ credential flow does not change.
 
 ## Plaintext removal and compatibility
 
-The plaintext fields `privateKey`, `privateKeyJwk`, `passphrase` and the did:polygon `privatekey` are treated
+The plaintext fields `privateKey`, `privateKeyJwk`, `passphrase` and the did:polygon `privatekey` (including the
+`privateKey` of `POST /x509/import`) are treated
 differently by each layer:
 
 - The platform gateway hides them from its OpenAPI document (`@ApiHideProperty`).
