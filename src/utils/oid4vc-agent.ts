@@ -32,6 +32,7 @@ import { SignerMethod } from '../enums/enum'
 import { validateAuthConfig } from './auth'
 import { checkX509Certificates, processIsoImages } from './helpers'
 import { TsLogger } from './logger'
+import { buildMdocValidityInfo } from './mdocValidity'
 import { bindW3cCredentialSubject } from './w3cCredentialSubject'
 
 const logger = new TsLogger(LogLevel.Info)
@@ -348,9 +349,13 @@ function handleMsoMdocFormat(
     throw new Error(`'doctype' not found in credential configuration,`)
   }
 
-  const parsedCertificate = X509Service.parseCertificate(agentContext, {
-    encodedCertificate: issuerx509certificate[0],
-  })
+  // The document signer certificate comes first and signs with the given key. Any intermediate and root certificates
+  // that follow go into the credential too, so a holder can build the chain up to a certificate it trusts instead of
+  // needing the document signer's direct issuer in its trust list.
+  const parsedChain = issuerx509certificate.map((encodedCertificate) =>
+    X509Service.parseCertificate(agentContext, { encodedCertificate }),
+  )
+  const parsedCertificate = parsedChain[0]
 
   parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
   const updatedNamespaces = processIsoImages(credential.payload.namespaces)
@@ -359,14 +364,10 @@ function handleMsoMdocFormat(
     type: 'credentials',
     format: ClaimFormat.MsoMdoc,
     credentials: holderBinding.keys.map((holderBindingDetails: any) => ({
-      issuerCertificate: parsedCertificate as any,
+      issuerCertificate: (parsedChain.length > 1 ? parsedChain : parsedCertificate) as any,
       holderKey: holderBindingDetails.jwk,
       ...credential.payload,
-      validityInfo: {
-        signed: credential.payload.validityInfo.signed ? new Date(credential.payload.validityInfo.signed) : new Date(),
-        validFrom: new Date(credential.payload.validityInfo.validFrom),
-        validUntil: new Date(credential.payload.validityInfo.validUntil),
-      },
+      validityInfo: buildMdocValidityInfo(credential.payload.validityInfo),
       docType: credentialConfiguration.doctype,
     })),
   } satisfies OpenId4VciSignMdocCredentials
@@ -385,13 +386,15 @@ function handleSdJwtDcFormat(
 ) {
   const disclosureFramePayload =
     credential.disclosureFrame && Object.keys(credential.disclosureFrame).length > 0 ? credential.disclosureFrame : {}
-  //Taking leaf certifcate from chain as issuer certificate, if not provided explicitly taking AGENT_HTTP_URL as issuer
-  let parsedCertificate: any
+  // The first certificate is the issuer's own and signs with the given key. Any intermediate and root certificates that
+  // follow go into the credential too, so a holder can build the chain up to a certificate it trusts instead of needing
+  // the issuer's direct issuer in its trust list.
+  let parsedChain: any[] | undefined
   if (!issuerDidVerificationMethod && issuerx509certificate && issuerx509certificate.length > 0) {
-    parsedCertificate = X509Service.parseCertificate(agentContext, {
-      encodedCertificate: issuerx509certificate[0],
-    })
-    parsedCertificate.publicJwk.keyId = credential.signerOptions.keyId
+    parsedChain = issuerx509certificate.map((encodedCertificate) =>
+      X509Service.parseCertificate(agentContext, { encodedCertificate }),
+    )
+    parsedChain[0].publicJwk.keyId = credential.signerOptions.keyId
   } else if (!issuerDidVerificationMethod) {
     throw new Error(`issuerx509certificate is not provided for credential ${credentialConfigurationId}`)
   }
@@ -418,7 +421,7 @@ function handleSdJwtDcFormat(
           }
         : {
             method: 'x5c',
-            x5c: [parsedCertificate],
+            x5c: parsedChain,
           },
       disclosureFrame: disclosureFramePayload,
     })),
