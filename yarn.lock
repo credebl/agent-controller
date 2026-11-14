@@ -1711,6 +1711,13 @@
   dependencies:
     "@opentelemetry/api" "^1.3.0"
 
+"@opentelemetry/api-logs@0.222.0":
+  version "0.222.0"
+  resolved "https://registry.yarnpkg.com/@opentelemetry/api-logs/-/api-logs-0.222.0.tgz#317519a857d01e16e1b0731e23f118c843023457"
+  integrity sha512-9mb1If+IF6u0ZVXkHQ6ogEae5HwA6ajIVUgpSDQyRASxft6BSXHvBvPooRle3yFN/fKnCdSOnuu0OC3PLcF6+g==
+  dependencies:
+    "@opentelemetry/api" "^1.3.0"
+
 "@opentelemetry/api@^1.3.0", "@opentelemetry/api@^1.9.0":
   version "1.9.1"
   resolved "https://registry.yarnpkg.com/@opentelemetry/api/-/api-1.9.1.tgz#c1b0346de336ba55af2d5a7970882037baedec05"
@@ -1733,6 +1740,13 @@
   version "2.10.0"
   resolved "https://registry.yarnpkg.com/@opentelemetry/core/-/core-2.10.0.tgz#aa77f7138e74ba5399d5f3bb0deade0c168f00b2"
   integrity sha512-/wNZ8twnEQQA4HoHu22+vcsdru6pWPWxW+7w+FlxT6Id7PE/WIbZmVKkte+PF72e0F2dnImFeHD2syyE1Mw6MQ==
+  dependencies:
+    "@opentelemetry/semantic-conventions" "^1.29.0"
+
+"@opentelemetry/core@2.11.0":
+  version "2.11.0"
+  resolved "https://registry.yarnpkg.com/@opentelemetry/core/-/core-2.11.0.tgz#97849d3808bba652568b7d53e20c9fc38bcb7c49"
+  integrity sha512-7YP44XH0tV6+Mb54x2YGf84i7yi+31MBZlE8JwvozkxyTvXbSp10X7cI7YE49ChJ3shMJoBmCJF3+1QFBJctGA==
   dependencies:
     "@opentelemetry/semantic-conventions" "^1.29.0"
 
@@ -1857,13 +1871,13 @@
     "@opentelemetry/instrumentation" "^0.221.0"
     "@opentelemetry/semantic-conventions" "^1.27.0"
 
-"@opentelemetry/instrumentation-http@^0.221.0":
-  version "0.221.0"
-  resolved "https://registry.yarnpkg.com/@opentelemetry/instrumentation-http/-/instrumentation-http-0.221.0.tgz#c5954894143a43353cbc658dc6ab5e7b6a404ada"
-  integrity sha512-oIP91CPIANuYr09tGFElPFKAh6JUar+awJf1kBRYlaeo9b0gDwZHEB2zBfFlvdNFHm0wAVutMZODVi5smKT30g==
+"@opentelemetry/instrumentation-http@^0.222.0":
+  version "0.222.0"
+  resolved "https://registry.yarnpkg.com/@opentelemetry/instrumentation-http/-/instrumentation-http-0.222.0.tgz#92ebd019670759051750d1725e7e31b0dd07e908"
+  integrity sha512-HhMHW32LyGzIJEmUElxaML4oUe6JiCq0Hvjt/Awxb60SlMsSFetFLFjed45g/0wrPr1n7z+xW+x1B/584WBAkg==
   dependencies:
-    "@opentelemetry/core" "2.10.0"
-    "@opentelemetry/instrumentation" "0.221.0"
+    "@opentelemetry/core" "2.11.0"
+    "@opentelemetry/instrumentation" "0.222.0"
     "@opentelemetry/semantic-conventions" "^1.29.0"
     forwarded-parse "2.1.2"
 
@@ -1881,6 +1895,15 @@
   integrity sha512-cCk80Z/iRDf/5gfsKMB4f74LqVA5yKETB/9ojPzVW/6/f70iu89nJvGxsFCxx4XfSohaOofkU19kiYm84AiAlw==
   dependencies:
     "@opentelemetry/api-logs" "0.221.0"
+    import-in-the-middle "^3.0.0"
+    require-in-the-middle "^8.0.0"
+
+"@opentelemetry/instrumentation@0.222.0":
+  version "0.222.0"
+  resolved "https://registry.yarnpkg.com/@opentelemetry/instrumentation/-/instrumentation-0.222.0.tgz#a463a615c77e84615438c9a0f76390d179f4221a"
+  integrity sha512-fhbRDuAgzPKpq1k5+hX3uS+3QAYNca0on0Ngot/R8dDsQtuFaADeZnG2uSgxABuvcI7S2phAaRhbct9jieeKZw==
+  dependencies:
+    "@opentelemetry/api-logs" "0.222.0"
     import-in-the-middle "^3.0.0"
     require-in-the-middle "^8.0.0"
 
