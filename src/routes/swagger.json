@@ -6270,7 +6270,7 @@
 	},
 	"info": {
 		"title": "agent-controller",
-		"version": "2.3.2",
+		"version": "2.3.3-rc.1",
 		"description": "Rest endpoint wrapper for using your agent over HTTP",
 		"license": {
 			"name": "Apache-2.0"
