@@ -2,7 +2,7 @@
 
 Release date: 2026-11-17 · Previous release: v2.3.2 · Status: **release candidate, not for production**
 
-This is a release candidate. It is paired with CREDEBL platform `v2.3.0-rc.3` and is tested with it on a development environment before `v2.3.3` is released. The full list of changes is in [CHANGELOG.md](CHANGELOG.md).
+This is a release candidate. It is paired with CREDEBL platform `v2.3.0-rc.6` and is tested with it on a development environment before `v2.3.3` is released. The full list of changes is in [CHANGELOG.md](CHANGELOG.md).
 
 - **Image:** `ghcr.io/credebl/credo-controller:v2.3.3-rc.1`. The `latest` tag is not moved for a release candidate; it stays on `v2.3.2` until `v2.3.3` is released.
 - **Git tag:** `v2.3.3-rc.1`, published as a GitHub prerelease.

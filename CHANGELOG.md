@@ -2,7 +2,7 @@
 
 ## [2.3.3-rc.1](https://github.com/credebl/agent-controller/compare/v2.3.2...v2.3.3-rc.1) (2026-11-17)
 
-Release candidate, paired with CREDEBL platform `v2.3.0-rc.3`.
+Release candidate, paired with CREDEBL platform `v2.3.0-rc.6`.
 
 ### Behaviour changes
 
