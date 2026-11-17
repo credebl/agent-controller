@@ -8,6 +8,14 @@ Configuration and rollback semantics are in [`openbao.md`](./openbao.md). Seal, 
 rotation prohibitions are in the plugin's
 [`docs/seal.md`](https://github.com/sovio-id/credo-openbao-kms/blob/main/docs/seal.md).
 
+## Live integration suite (local only)
+
+[`e2e/openbao-did-web`](../e2e/openbao-did-web/README.md) contains a real agent + real OpenBao integration suite for
+the did:web/did:key encrypted key-import path. It is excluded from `yarn test` and CI (`testPathIgnorePatterns` in
+`jest.config.base.ts`) and only runs through `yarn test:integration` with `OPENBAO_INTEGRATION=1`. Start the stack as
+described in its README; the mocked regression coverage stays in
+`src/controllers/did/__tests__/writeDidWeb.test.ts`.
+
 ## Merge record
 
 | Component         | PR                                                      | Merged `main` commit                                                                     |
