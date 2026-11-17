@@ -1,5 +1,114 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- **oid4vc holder:** `POST /openid4vc/holder/request-credential` sends OID4VCI notifications to the issuer's `notification_endpoint` for each credential response that has a `notification_id`: `credential_accepted` once the credential is stored, and `credential_failure` when it cannot be stored or fails the holder DID binding check. A failed store still fails the request; a notification that cannot be sent is logged and never fails it.
+  - Notifications are sent one at a time, after all credentials are stored, so an issuer that records them on the issuance session cannot lose one to a concurrent update.
+  - Each returned credential has a `notification` field: `{ status: "sent", event }`, `{ status: "skipped", reason }` (no `notification_endpoint`, no `notification_id`, or turned off) or `{ status: "failed", event, reason }`. The reason includes the issuer's HTTP status and error code, e.g. `HTTP 400 invalid_notification_id`.
+  - An issuer that does not answer within `OID4VCI_NOTIFICATION_TIMEOUT_MS` (default 5000) is reported as `failed`, and no further notifications are sent for that offer, since the timed-out call may still reach the issuer.
+  - When a credential cannot be stored, the request fails without waiting for the other stores to finish; a credential still being stored then gets no notification.
+  - Turn notifications off with `sendNotification: false` in the request body.
+
+### API
+
+- OpenAPI: `RequestCredentialBody` gains `sendNotification` (default `true`). Each credential returned by `request-credential` gains `notification`; the record fields are unchanged.
+- **oid4vc issuer:** issuers advertise a `notification_endpoint` (`{baseUrl}/{issuerId}/notification`) and return a `notification_id` with each credential response (OpenID4VCI 1.0 §11). A wallet notification (`credential_accepted`, `credential_failure` or `credential_deleted`) is checked against the access token of the session that issued the `notification_id`, recorded on the issuance session (`notifications[]`), and posted to the issuance webhook topic `/openid4vc-issuance`: the session record, whose state is unchanged, plus a `notification` object (`notificationId`, `credentialConfigurationId`, `event`, `eventDescription?`, `receivedAt`). It is also sent on the web socket. Webhooks posted on a state change also carry `notifications[]`. Set `OID4VCI_NOTIFICATION_ENDPOINT_ENABLED=false` to turn the endpoint off.
+  - A repeated identical notification (same `notification_id`, `event` and `event_description`) returns 204 without being recorded or posted again.
+  - Credential and deferred credential responses save the issuance session under the same per-session lock as notifications and keep notifications stored in the meantime, so neither overwrites the other. The lock is per process: with several controller instances serving the same wallet, route all requests for an issuance session to one instance.
+  - **Limitation:** the endpoint needs the session's access token, which expires after `OID4VCI_ACCESS_TOKEN_EXPIRY` (default 3600 s), and the controller issues no refresh token. A wallet can therefore report `credential_deleted` only within that time; later deletions are not received. Raise `OID4VCI_ACCESS_TOKEN_EXPIRY` if issuers need a longer window.
+
+### Dependencies
+
+- The `@credo-ts/openid4vc` 0.7.4 patch adds the issuer notification endpoint from openwallet-foundation/credo-ts#3215, which is not released yet. The existing changes in the patch are kept. Remove this part of the patch once a Credo release includes it.
+
+## [2.3.2](https://github.com/credebl/agent-controller/compare/v2.3.1...v2.3.2) (2026-11-04)
+
+### Features
+
+- **did:web:** `POST /dids/write` with `method: web` accepts `verificationMethodType` (`Ed25519VerificationKey2018` by default, or `Ed25519VerificationKey2020`, which publishes `publicKeyMultibase` with the `ed25519-2020/v1` context).
+- **JSON-LD signing follows the key type:** OID4VCI `ldp_vc` issuance and DCQL / Presentation Exchange `ldp_vp` presentations use `Ed25519Signature2020` for an `Ed25519VerificationKey2020` key and `Ed25519Signature2018` for an `Ed25519VerificationKey2018` key (Credo picked the 2018 suite for every Ed25519 key, which rejects a 2020 key). `did:key` keeps signing with `Ed25519Signature2018`.
+- **oid4vc holder:** with `holderDidUrl` and `bindingPolicy: require`, a W3C credential whose `credentialSubject` is not the holder DID returns 422 and is not stored.
+
+### Bug Fixes
+
+- **oid4vc issuer:** the `credentialSubject.id` of `ldp_vc` and `jwt_vc_json(-ld)` credentials is the holder's bare DID (`did:web:example.com`), not the verification method of the proof key (`did:web:example.com#key-1`). A subject `id` in the offer payload must name the same DID; otherwise the credential request fails, as the holder could not present it.
+- **oid4vc holder:** an `ldp_vc` configuration that lists JWA algorithms (`EdDSA`) in `proof_signing_alg_values_supported` is accepted; Credo only looked for signature suite names there (`Ed25519Signature2018`). Suite names still work.
+- **oid4vc verifier:** a DCQL `ldp_vc` query whose `meta.type_values` are not expanded JSON-LD type IRIs (`MyCredential` instead of `https://example.org/vocab#MyCredential`) returns 400; wallets could never match it.
+- **sign raw data:** the key of a DID whose verification method only has `publicKeyMultibase` is found.
+
+### Behaviour changes
+
+- Consumers that compare `credentialSubject.id` of newly issued W3C credentials with a verification method URL now receive the bare DID. Credo verifiers accept both.
+
+### Security
+
+- `joi` 17.13.8 → 17.13.9 (high), `follow-redirects` 1.16.1 → 1.16.2 (high) and `@hapi/content` 6.0.2 → 6.0.3 (high), as lockfile updates within existing ranges
+
+## [2.3.1](https://github.com/credebl/agent-controller/compare/v2.3.0...v2.3.1) (2026-11-04)
+
+### Features
+
+- **oid4vc holder:** `POST /openid4vc/holder/request-credential` accepts optional `holderDidUrl` (a verification method, or a DID to use its first authentication key) and `bindingPolicy` (`require` by default, or `prefer`), so credentials can be bound to an existing DID of the tenant instead of a new key. Without `holderDidUrl` nothing changes.
+- **w3c verify:** `/agent/credential/verify` accepts `trustedIssuers`, a list of issuers to accept such as `[{ "method": "did", "issuance": "did:web:issuer.example" }]` (Credo 0.7.4); an empty list trusts no issuer.
+
+### Bug Fixes
+
+- **oid4vc holder:** `credentialsToRequest` is now honoured (all offered configurations were requested before); ids that are not in the offer return 400.
+- **oid4vc holder:** with `bindingPolicy: require`, a holder DID that the issuer cannot bind to (DID method, `jwt` proof type, key attestations or signature algorithm) is rejected before the token request, so the pre-authorized code and transaction code are not used up; with `prefer`, those credentials fall back to a new key. A malformed `holderDidUrl`, or a DID or verification method that is not in the tenant, returns 400 under either policy.
+
+### Dependencies
+
+- Credo `0.7.0` → `0.7.4` (all `@credo-ts/*` packages and `resolutions`; `@credo-ts/push-notifications` stays at `^0.7.1`, its latest release). Storage version is unchanged (0.5), so existing wallets open without migration.
+- patch-package patches regenerated for 0.7.4; the core patch drops the `defaultDocumentLoader` exports that Credo now provides.
+
+### Security
+
+- `body-parser` 1.20.8 → 1.20.9 and 2.3.0 → 2.4.0, `decode-uri-component` 0.5.0 → 0.5.1, `qs` 6.16.0 → 6.16.2 / 6.17.1, `fast-uri` 3.1.8 → 3.1.9 (lockfile only, within existing ranges)
+
+### API
+
+- OpenAPI: `RequestCredentialBody` gains `holderDidUrl` and `bindingPolicy`, and `credentialsToRequest` is optional. Credo 0.7.4 renames proof schemas used by `/agent/credential/verify` (`DataIntegrityProof` → `AnonCredsW3cCredentialProof`); request and response shapes are unchanged.
+
+## [2.3.0](https://github.com/credebl/agent-controller/compare/v2.2.0...v2.3.0) (2026-10-30)
+
+### Features
+
+- W3C JSON-LD credential issuance, presentation, sign and verify
+- **oid4vc:** `ldp_vc` support for W3C JSON-LD credentials
+- **dcql:** DCQL JSON-LD credential verification
+- **holder:** pagination, search and filters on the credential list endpoints `GET /openid4vc/holder/sd-jwt-vcs`, `/mdoc-vcs` and `/w3c-vcs` (`q`, `page`, `pageSize`, `credentialType`, `vct`, `docType`, `types`), and optional `tags` on credential requests ([#458](https://github.com/credebl/agent-controller/pull/458))
+- support X.509 certificate chains and fix mdoc date encoding
+
+### Bug Fixes
+
+- allow `vc+sd-jwt` issuance by routing `SdJwtVc` to the sd-jwt signing path ([#454](https://github.com/credebl/agent-controller/pull/454))
+- **dcql:** resolve `ldp_vc` query filtering and JSON-LD serialization errors
+- release tenant sessions after proof events
+- repair Jest configuration so `yarn test` runs again
+- resolve data type issues in `handleMsoMdocFormat`
+- enhance W3C VC 2.0 detection and prevent crashes on empty `x5c`
+
+### Security
+
+- bump `undici` pin 6.24.0 → 6.29.1 (fixes multiple DoS, header/CRLF injection and cookie handling advisories)
+- bump `flatted` pin 3.4.0 → 3.4.2, pin `ts-deepmerge` to 8.0.0 and `ngrok`'s `uuid` to 11.1.1
+- CI workflow now runs `yarn test`, declares `permissions: contents: read` and installs with `--frozen-lockfile --ignore-scripts` (patches applied explicitly)
+- Dockerfile pins `yarn` (1.22.22) and `patch-package` (8.0.1)
+- dependency bumps across `axios`, `protobufjs`, `tar`, `ws`, `form-data`, `nanoid`, `fast-uri` and others
+
+### Refactors, Build and Docs
+
+- rename patch files for Windows compatibility ([#422](https://github.com/credebl/agent-controller/pull/422))
+- message type added for mediator message forwarding
+- Docker base image bumped to Node 26.8.1
+- Dependabot configuration added; README rewritten (Agent Controller naming, setup, wallet connection-pool docs)
+- project renamed to `agent-controller` in `package.json`, the OpenAPI title, `compass.yml`, issue templates, CI and Jest display name; the Docker image, ECS task definitions and telemetry names keep the legacy `credo-controller` name for now
+- `package.json` / `swagger.json` version aligned to 2.3.0 (was 2.1.3)
+
+> Releases before 2.3.0 were not recorded here. The entries below are inherited from the upstream `aries-framework-javascript-ext` REST package.
+
 ### [0.9.4](https://www.github.com/hyperledger/aries-framework-javascript-ext/compare/rest-v0.9.3...rest-v0.9.4) (2022-10-07)
 
 ### Features

@@ -7,6 +7,17 @@
       "credo-controller/*": ["src"]
     }
   },
-  "include": ["./.eslintrc.js", "./jest.config.ts", "./jest.config.base.ts", "types", "tests", "samples", "src", "bin"],
+  "include": [
+    "./.eslintrc.js",
+    "./jest.config.ts",
+    "./jest.config.base.ts",
+    "./jest.integration.config.ts",
+    "types",
+    "tests",
+    "samples",
+    "src",
+    "bin",
+    "e2e"
+  ],
   "exclude": ["node_modules", "build"]
 }

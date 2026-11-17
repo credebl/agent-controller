@@ -1,4 +1,5 @@
 import type { AriesRestConfig } from './cliAgent.js'
+import type { OpenBaoKmsConfig } from './utils/kms/openBao.js'
 
 import dotenv from 'dotenv'
 import yargs from 'yargs'
@@ -7,6 +8,19 @@ import { hideBin } from 'yargs/helpers'
 dotenv.config()
 
 import { runRestAgent } from './cliAgent.js'
+
+function envBoolean(name: string, defaultValue = false): boolean {
+  const value = process.env[name]
+  if (value === undefined || value.trim() === '') return defaultValue
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase())
+}
+
+function envNumber(name: string, defaultValue: number): number {
+  const value = process.env[name]
+  if (!value) return defaultValue
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : defaultValue
+}
 
 interface IndyLedger {
   genesisTransactions: string
@@ -48,6 +62,22 @@ interface Parsed {
   fileServerToken?: string
   apiKey?: string
   updateJwtSecret?: boolean
+  'openbao-enabled': boolean
+  'openbao-write-enabled': boolean
+  'openbao-address'?: string
+  'openbao-token'?: string
+  'openbao-role-id'?: string
+  'openbao-secret-id'?: string
+  'openbao-secret-id-file'?: string
+  'openbao-auth-mount': string
+  'openbao-namespace'?: string
+  'openbao-transit-mount': string
+  'openbao-kv-mount'?: string
+  'openbao-deployment-id'?: string
+  'openbao-timeout-ms': number
+  'openbao-health-check': boolean
+  'openbao-did-key-enabled': boolean
+  'openbao-did-web-enabled': boolean
 }
 
 interface InboundTransport {
@@ -168,9 +198,66 @@ async function parseArguments(): Promise<Parsed> {
       boolean: true,
       default: process.env.UPDATE_JWT_SECRET === 'true',
     })
+    .option('openbao-enabled', {
+      boolean: true,
+      default: envBoolean('OPENBAO_ENABLED'),
+      description: 'Register the optional OpenBao KMS backend. Askar stays the default backend.',
+    })
+    .option('openbao-write-enabled', {
+      boolean: true,
+      default: envBoolean('OPENBAO_WRITE_ENABLED', true),
+      description: 'Allow OpenBao to create/import/delete keys. Set false for rollback.',
+    })
+    .option('openbao-address', { string: true, default: process.env.OPENBAO_ADDRESS })
+    .option('openbao-token', { string: true, default: process.env.OPENBAO_TOKEN })
+    .option('openbao-role-id', { string: true, default: process.env.OPENBAO_ROLE_ID })
+    .option('openbao-secret-id', { string: true, default: process.env.OPENBAO_SECRET_ID })
+    .option('openbao-secret-id-file', { string: true, default: process.env.OPENBAO_SECRET_ID_FILE })
+    .option('openbao-auth-mount', { string: true, default: process.env.OPENBAO_AUTH_MOUNT || 'approle' })
+    .option('openbao-namespace', { string: true, default: process.env.OPENBAO_NAMESPACE })
+    .option('openbao-transit-mount', { string: true, default: process.env.OPENBAO_TRANSIT_MOUNT || 'transit' })
+    .option('openbao-kv-mount', { string: true, default: process.env.OPENBAO_KV_MOUNT })
+    .option('openbao-deployment-id', { string: true, default: process.env.OPENBAO_DEPLOYMENT_ID })
+    .option('openbao-timeout-ms', { number: true, default: envNumber('OPENBAO_TIMEOUT_MS', 10_000) })
+    .option('openbao-health-check', {
+      boolean: true,
+      default: envBoolean('OPENBAO_HEALTH_CHECK', true),
+      description: 'Fail startup when OpenBao is sealed or unreachable.',
+    })
+    .option('openbao-did-key-enabled', {
+      boolean: true,
+      default: envBoolean('OPENBAO_DID_KEY_ENABLED'),
+      description: 'Opt in to creating/importing did:key keys in OpenBao.',
+    })
+    .option('openbao-did-web-enabled', {
+      boolean: true,
+      default: envBoolean('OPENBAO_DID_WEB_ENABLED'),
+      description: 'Opt in to importing did:web keys in OpenBao.',
+    })
     .config()
     .env('AFJ_REST')
     .parseAsync() as Promise<Parsed>
+}
+
+function openBaoConfigFromParsed(parsed: Parsed): OpenBaoKmsConfig {
+  return {
+    enabled: parsed['openbao-enabled'],
+    writeEnabled: parsed['openbao-write-enabled'],
+    ...(parsed['openbao-address'] ? { address: parsed['openbao-address'] } : {}),
+    ...(parsed['openbao-token'] ? { token: parsed['openbao-token'] } : {}),
+    ...(parsed['openbao-role-id'] ? { roleId: parsed['openbao-role-id'] } : {}),
+    ...(parsed['openbao-secret-id'] ? { secretId: parsed['openbao-secret-id'] } : {}),
+    ...(parsed['openbao-secret-id-file'] ? { secretIdFile: parsed['openbao-secret-id-file'] } : {}),
+    authMount: parsed['openbao-auth-mount'],
+    ...(parsed['openbao-namespace'] ? { namespace: parsed['openbao-namespace'] } : {}),
+    transitMount: parsed['openbao-transit-mount'],
+    ...(parsed['openbao-kv-mount'] ? { kvMount: parsed['openbao-kv-mount'] } : {}),
+    ...(parsed['openbao-deployment-id'] ? { deploymentId: parsed['openbao-deployment-id'] } : {}),
+    timeoutMs: parsed['openbao-timeout-ms'],
+    healthCheck: parsed['openbao-health-check'],
+    didKeyEnabled: parsed['openbao-did-key-enabled'],
+    didWebEnabled: parsed['openbao-did-web-enabled'],
+  }
 }
 
 export async function runCliServer() {
@@ -216,5 +303,6 @@ export async function runCliServer() {
     fileServerToken: parsed.fileServerToken,
     apiKey: parsed['apiKey'],
     updateJwtSecret: parsed['updateJwtSecret'],
+    openBaoConfig: openBaoConfigFromParsed(parsed),
   } as AriesRestConfig)
 }

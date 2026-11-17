@@ -6,9 +6,12 @@ on:
   push:
     branches: [main, develop]
 
+permissions:
+  contents: read
+
 concurrency:
   # Cancel previous runs that are not completed yet
-  group: credo-controller-${{ github.ref }}-${{ github.repository }}-${{ github.event_name }}
+  group: agent-controller-${{ github.ref }}-${{ github.repository }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -16,8 +19,10 @@ jobs:
     runs-on: ubuntu-24.04
     name: Validate
     steps:
-      - name: Checkout credo-controller
+      - name: Checkout agent-controller
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Setup node v20
         uses: actions/setup-node@v7
@@ -26,7 +31,10 @@ jobs:
           cache: 'yarn'
 
       - name: Install dependencies
-        run: yarn install
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Apply patches
+        run: yarn patch-package
 
       - name: Linting
         run: yarn lint
@@ -36,3 +44,6 @@ jobs:
 
       - name: Compile
         run: yarn check-types
+
+      - name: Test
+        run: yarn test

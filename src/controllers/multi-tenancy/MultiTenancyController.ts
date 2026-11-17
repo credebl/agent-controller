@@ -101,6 +101,9 @@ export class MultiTenancyController extends Controller {
   ) {
     try {
       const agent = request.agent as Agent<RestMultiTenantAgentModules>
+      // Purge the tenant's OpenBao keys before the tenant record, so a failure leaves a retryable tenant instead of
+      // orphaned keys. This is a no-op when OpenBao is disabled or in rollback (read-only) mode.
+      await agent.modules.openBao.purgeTenant(tenantId)
       const deleteTenant = await agent.modules.tenants.deleteTenantById(tenantId)
       return JsonTransformer.toJSON(deleteTenant)
     } catch (error) {

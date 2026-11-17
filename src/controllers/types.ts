@@ -326,9 +326,136 @@ export interface DidCreate {
   role?: string
   endorserDid?: string
   didDocument?: DidDocument
+  /**
+   * @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Send the did:polygon key inside `encryptedKey`.
+   *
+   * Hex encoded secp256k1 private key for `did:polygon`.
+   */
   privatekey?: string
+  /**
+   * @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead.
+   *
+   * Existing private key to import for `did:key` and `did:web`: PEM (PKCS#8, SEC1 or PKCS#1, optionally encrypted)
+   * or base64 DER (PKCS#8). `privateKeyJwk` is the JWK equivalent. When either is supplied, `keyType` and `seed` are
+   * ignored and the key material determines the DID.
+   */
+  privateKey?: string
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead. */
+  privateKeyJwk?: Record<string, unknown>
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Send the passphrase inside `encryptedKey`. */
+  passphrase?: string
+  /**
+   * Private key material encrypted to a single-use import session (see `POST /dids/import/session`). This is the only
+   * accepted way to import an existing `did:key`, `did:web` or `did:polygon` key in production.
+   */
+  encryptedKey?: KeyImportEncryptedKey
   endpoint?: string
+  /**
+   * Verification method type of the Ed25519 key in a new `did:web` document. Defaults to
+   * `Ed25519VerificationKey2018`. `Ed25519VerificationKey2020` publishes `publicKeyMultibase` and signs
+   * JSON-LD credentials and presentations with `Ed25519Signature2020`.
+   */
+  verificationMethodType?: Ed25519VerificationMethodType
 }
+
+/** An encrypted private key envelope bound to a single use import session. */
+export interface KeyImportEncryptedKey {
+  /** Id returned by `POST /dids/import/session`. */
+  sessionId: string
+  /** Compact JWE containing the private key material. */
+  jwe: string
+}
+
+export interface KeyImportSessionRequest {
+  /** DID method the key will be imported for. */
+  method: string
+}
+
+export interface KeyImportSessionResponse {
+  sessionId: string
+  kid: string
+  method: string
+  /** ISO 8601 expiry of the session. */
+  expiresAt: string
+  alg: string
+  enc: string
+  /** Public key the client encrypts the private key material to. */
+  publicKeyJwk: Record<string, unknown>
+  /** Protected header the client must use for the JWE, it binds the envelope to this session. */
+  protectedHeader: Record<string, unknown>
+}
+
+/** One private key of an imported did:web document, bound to the verification method the authority published it for. */
+export interface DidWebImportKey {
+  /**
+   * Id of a verification method in `didDocument`. It can be absolute (`did:web:example.com#key-1`) or relative
+   * (`#key-1`) to the imported DID.
+   * @example "did:web:gov-agency.example.com#authority-signing-key"
+   */
+  verificationMethodId: string
+
+  /**
+   * Private key material encrypted to a single-use import session (see `POST /dids/import/session` with method `web`).
+   * Each key needs its own session.
+   */
+  encryptedKey?: KeyImportEncryptedKey
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead. */
+  privateKey?: string
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead. */
+  privateKeyJwk?: Record<string, unknown>
+  /** @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Send the passphrase inside `encryptedKey`. */
+  passphrase?: string
+}
+
+/**
+ * Imports a `did:web` identity created and hosted by an external authority (for example a government agency). Unlike
+ * `POST /dids/write`, the supplied DID document is stored verbatim instead of being regenerated from a domain.
+ */
+export interface DidWebImportOptions {
+  /**
+   * The authority's DID.
+   * @example "did:web:gov-agency.example.com"
+   */
+  did: string
+
+  /**
+   * The DID document as published by the authority. When omitted it is resolved over the network instead.
+   */
+  didDocument?: Record<string, unknown>
+
+  /** Private keys to import. Verification methods without a key stay in the document as public-only entries. */
+  keys: DidWebImportKey[]
+
+  /**
+   * Import the supplied `didDocument` even when it cannot be resolved over the network (air-gapped or private
+   * deployments). Without this flag a supplied document is compared with the published document and rejected on a
+   * mismatch.
+   */
+  allowUnresolvedDocument?: boolean
+
+  /**
+   * Rebind an existing imported DID to a different document or key. Without it, re-importing the same document and
+   * keys is idempotent but a different binding is rejected.
+   */
+  replace?: boolean
+}
+
+export interface DidWebImportedKey {
+  /** Verification method id exactly as it appears in the imported document. */
+  verificationMethodId: string
+  /** Id of the private key in the agent's KMS. */
+  keyId: string
+  /** Backend that holds the key: `askar`, `node` or `openbao`. */
+  backend: string
+}
+
+export interface DidWebImportResponse {
+  did: string
+  didDocument: Record<string, unknown>
+  keys: DidWebImportedKey[]
+}
+
+export type Ed25519VerificationMethodType = 'Ed25519VerificationKey2018' | 'Ed25519VerificationKey2020'
 
 export interface CreateTenantOptions {
   config: Omit<CustomTenantConfig, 'walletConfig'>
@@ -447,10 +574,23 @@ export interface credentialPayloadToSign {
   method: string
   credential: jsonLdCredentialOptions // TODO: add support for other credential format
 }
-export interface SafeW3cJsonLdVerifyCredentialOptions extends W3cJsonLdVerifyCredentialOptions {
+/** A DID trusted to issue the credential being verified (Credo's `TrustedIssuerDid`). */
+export interface TrustedIssuerDidOption {
+  method: 'did'
+  /** The trusted issuer DID */
+  issuance: string
+}
+
+// Credo 0.7.4 also accepts a callback for trustedIssuers, which tsoa cannot model; only the list is exposed
+export interface SafeW3cJsonLdVerifyCredentialOptions extends Omit<W3cJsonLdVerifyCredentialOptions, 'trustedIssuers'> {
   // Ommited due to issues with TSOA
   // FIXME: Check type
   proof: SingleOrArray<any | DataIntegrityProofOptions>
+  /**
+   * Issuer DIDs to accept. When set, verification fails for a credential from any other DID;
+   * an empty list trusts no issuer.
+   */
+  trustedIssuers?: TrustedIssuerDidOption[]
 }
 
 export type ExtensibleW3cCredentialSubject = W3cCredentialSubject & {
@@ -497,6 +637,14 @@ export interface X509ImportCertificateOptionsDto {
 
 export const supportedKeyTypesDID: Record<DidMethod, readonly { kty: string; crv: string }[]> = {
   [DidMethod.Indy]: [{ kty: 'OKP', crv: 'Ed25519' }],
+
+  // RSA keys are supported as well but are not described by a curve
+  [DidMethod.X509]: [
+    { kty: 'OKP', crv: 'Ed25519' },
+    { kty: 'EC', crv: 'P-256' },
+    { kty: 'EC', crv: 'P-384' },
+    { kty: 'EC', crv: 'P-521' },
+  ],
 
   [DidMethod.Peer]: [
     { kty: 'OKP', crv: 'Ed25519' },

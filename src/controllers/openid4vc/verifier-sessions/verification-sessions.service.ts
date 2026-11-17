@@ -12,6 +12,7 @@ import { Request as Req } from 'express'
 import { injectable } from 'tsyringe'
 
 import { SignerMethod } from '../../../enums'
+import { assertDcqlLdpVcTypeValuesExpanded } from '../../../utils/dcql'
 import {
   CreateAuthorizationRequest,
   OpenId4VCDCQLVerificationSessionRecord,
@@ -104,6 +105,7 @@ export class VerificationSessionsService {
     if (!dto.presentationExchange && !dto.dcql) {
       throw new Error('Either presentationExchange or dcql must be provided')
     }
+    if (dto.dcql) assertDcqlLdpVcTypeValuesExpanded(dto.dcql)
   }
 
   public async findVerificationSessionsByQuery(

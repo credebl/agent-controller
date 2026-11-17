@@ -16,6 +16,7 @@ export enum DidMethod {
   Web = 'web',
   Polygon = 'polygon',
   Peer = 'peer',
+  X509 = 'x509',
 }
 
 export enum NetworkName {

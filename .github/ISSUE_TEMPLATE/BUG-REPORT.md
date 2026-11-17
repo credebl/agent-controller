@@ -1,6 +1,6 @@
 ## 🧾 Preliminary Checks
 
-- [ ] I have searched [existing issues](https://github.com/credebl/credo-controller/issues) and [pull requests](https://github.com/credebl/credo-controller/pulls) for duplicates.
+- [ ] I have searched [existing issues](https://github.com/credebl/agent-controller/issues) and [pull requests](https://github.com/credebl/agent-controller/pulls) for duplicates.
 - [ ] I'm willing to create a PR fixing this issue. (if applicable).
 
 ---

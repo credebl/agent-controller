@@ -1,8 +1,8 @@
 import type { AgentContext, DocumentLoader } from '@credo-ts/core'
-import type { DocumentLoaderResult } from '@credo-ts/core/build/modules/vc/data-integrity/jsonldUtil.mjs'
 
-import { CredoError } from '@credo-ts/core'
-import { defaultDocumentLoader } from '@credo-ts/core/build/modules/vc/data-integrity/libraries/documentLoader.mjs'
+import { CredoError, defaultDocumentLoader } from '@credo-ts/core'
+
+type DocumentLoaderResult = Awaited<ReturnType<DocumentLoader>>
 
 /**
  * Check if URL belongs to CREDEBL schema domain
