@@ -99,6 +99,20 @@ describe('Indy ledger guard', () => {
     expect(() => assertAnonCredsIdentifiersServed(noIndyAgent() as never, [undefined])).not.toThrow()
   })
 
+  it('leaves lastIndex of global or sticky registry expressions unchanged', () => {
+    const globalWeb = { supportedIdentifier: /^did:web:/g }
+    const stickyIndy = { supportedIdentifier: /did:indy:/y, [INDY_LEDGER_NOT_CONFIGURED_REGISTRY_MARKER]: true }
+    const agent = agentWith({ registries: [globalWeb, stickyIndy], didMethods: ['web'] })
+
+    expect(() => assertAnonCredsIdentifiersServed(agent as never, ['did:web:example.com'])).not.toThrow()
+    expect(globalWeb.supportedIdentifier.lastIndex).toBe(0)
+    // Credo's own selection, which runs next, still matches.
+    expect(globalWeb.supportedIdentifier.test('did:web:example.com')).toBe(true)
+
+    expect(() => assertAnonCredsIdentifiersServed(agent as never, [indyIssuer])).toThrow(IndyLedgerNotConfiguredError)
+    expect(stickyIndy.supportedIdentifier.lastIndex).toBe(0)
+  })
+
   it('keeps the 501 through ErrorHandlingService', () => {
     let handled: unknown
     try {

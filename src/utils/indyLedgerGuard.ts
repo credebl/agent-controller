@@ -46,9 +46,24 @@ export function assertAnonCredsIdentifiersServed(agent: AgentLike, identifiers: 
 
   for (const identifier of identifiers) {
     if (!identifier) continue
-    const registry = registries.find((candidate) => candidate.supportedIdentifier.test(identifier))
+    const registry = registries.find((candidate) =>
+      matchesWithoutSideEffects(candidate.supportedIdentifier, identifier),
+    )
     if (registry?.[INDY_LEDGER_NOT_CONFIGURED_REGISTRY_MARKER]) {
       throw new IndyLedgerNotConfiguredError(INDY_LEDGER_NOT_CONFIGURED)
     }
+  }
+}
+
+/**
+ * `RegExp.test` advances `lastIndex` on global and sticky expressions. Credo tests the same expression again when it
+ * selects the registry, so restore `lastIndex` to leave that selection unchanged.
+ */
+function matchesWithoutSideEffects(expression: RegExp, identifier: string): boolean {
+  const { lastIndex } = expression
+  try {
+    return expression.test(identifier)
+  } finally {
+    expression.lastIndex = lastIndex
   }
 }
