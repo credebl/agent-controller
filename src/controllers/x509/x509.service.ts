@@ -20,6 +20,7 @@ import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } 
 import { selectKmsBackendForCreate, selectKmsBackendForJwk } from '../../utils/kms/backend'
 
 import { pemToRawPrivateKey } from './crypto-util'
+import { normalizeDistinguishedName } from './distinguishedName'
 import { type X509CreateCertificateOptionsDto } from './x509.types'
 
 class x509Service {
@@ -138,9 +139,9 @@ class x509Service {
       authorityKey: Kms.PublicJwk.fromPublicJwk(authorityKeyID),
       subjectPublicKey: subjectPublicKeyID ? Kms.PublicJwk.fromPublicJwk(subjectPublicKeyID) : undefined,
       serialNumber: options.serialNumber,
-      issuer: options.issuer,
+      issuer: normalizeDistinguishedName(options.issuer),
       extensions: options.extensions,
-      subject: options.subject,
+      subject: normalizeDistinguishedName(options.subject),
       validity: options.validity,
     })
 
