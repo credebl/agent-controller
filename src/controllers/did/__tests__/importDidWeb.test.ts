@@ -14,6 +14,7 @@ jest.mock('@sovio-id/credo-openbao-kms', () => ({
 }))
 
 jest.mock('../../../cliAgent', () => ({ RestMultiTenantAgentModules: {} }))
+jest.mock('../../../utils/kms/nodeKms', () => ({ NodeKeyRepository: class {} }))
 
 jest.mock('@credo-ts/core', () => require('./didWebTestMocks').credoCoreMock())
 
