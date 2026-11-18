@@ -199,11 +199,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "KeyImportEncryptedKey": {
+        "dataType": "refObject",
+        "properties": {
+            "sessionId": {"dataType":"string","required":true},
+            "jwe": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "X509ImportCertificateOptionsDto": {
         "dataType": "refObject",
         "properties": {
             "certificate": {"dataType":"string","required":true},
             "privateKey": {"dataType":"string"},
+            "encryptedKey": {"ref":"KeyImportEncryptedKey"},
             "keyType": {"dataType":"any","required":true},
         },
         "additionalProperties": false,
@@ -1431,6 +1441,21 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"string","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidKmsBackend": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"ref":"KmsBackendName"},{"dataType":"enum","enums":["mixed"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidKeyKms": {
+        "dataType": "refObject",
+        "properties": {
+            "didDocumentRelativeKeyId": {"dataType":"string","required":true},
+            "kmsKeyId": {"dataType":"string","required":true},
+            "kmsBackend": {"ref":"KmsBackendName","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "KeyImportSessionResponse": {
         "dataType": "refObject",
         "properties": {
@@ -1457,15 +1482,6 @@ const models: TsoaRoute.Models = {
     "KeyAlgorithm": {
         "dataType": "refEnum",
         "enums": ["a128gcm","a256gcm","a128cbchs256","a256cbchs512","a128kw","a256kw","bls12381g1","bls12381g2","c20p","xc20p","ed25519","x25519","k256","p256","p384"],
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "KeyImportEncryptedKey": {
-        "dataType": "refObject",
-        "properties": {
-            "sessionId": {"dataType":"string","required":true},
-            "jwe": {"dataType":"string","required":true},
-        },
-        "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Ed25519VerificationMethodType": {
@@ -1536,17 +1552,6 @@ const models: TsoaRoute.Models = {
             "keys": {"dataType":"array","array":{"dataType":"refObject","ref":"DidWebImportKey"},"required":true},
             "allowUnresolvedDocument": {"dataType":"boolean"},
             "replace": {"dataType":"boolean"},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DidX509ImportResponse": {
-        "dataType": "refObject",
-        "properties": {
-            "did": {"dataType":"string","required":true},
-            "didDocument": {"ref":"Record_string.unknown_","required":true},
-            "keyId": {"dataType":"string","required":true},
-            "verificationMethodId": {"dataType":"string","required":true},
         },
         "additionalProperties": false,
     },
@@ -4895,6 +4900,43 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'getDidRecordByDid',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsDidController_getDidKms: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                did: {"in":"path","name":"did","required":true,"ref":"Did"},
+        };
+        app.get('/dids/:did/kms',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(DidController)),
+            ...(fetchMiddlewares<RequestHandler>(DidController.prototype.getDidKms)),
+
+            async function DidController_getDidKms(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsDidController_getDidKms, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<DidController>(DidController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getDidKms',
                 controller,
                 response,
                 next,

@@ -16,9 +16,9 @@ import {
  * the returned public key, and posts the envelope back. Sessions are single use and expire quickly so a captured
  * envelope cannot be replayed.
  */
-export type KeyImportMethod = 'key' | 'web' | 'x509' | 'polygon'
+export type KeyImportMethod = 'key' | 'web' | 'x509' | 'polygon' | 'x509-certificate'
 
-export const KEY_IMPORT_METHODS: readonly KeyImportMethod[] = ['key', 'web', 'x509', 'polygon']
+export const KEY_IMPORT_METHODS: readonly KeyImportMethod[] = ['key', 'web', 'x509', 'polygon', 'x509-certificate']
 
 const DEFAULT_SESSION_TTL_MS = 5 * 60 * 1000
 const MAX_ACTIVE_SESSIONS = 1_000

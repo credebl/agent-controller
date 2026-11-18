@@ -20,6 +20,7 @@ jest.mock('@sovio-id/credo-openbao-kms', () => ({
 }))
 
 jest.mock('../../../cliAgent', () => ({ RestMultiTenantAgentModules: {} }))
+jest.mock('../../../utils/kms/nodeKms', () => ({ NodeKeyRepository: class {} }))
 
 jest.mock('@credo-ts/core', () => {
   // did:web publishes Ed25519 keys as Ed25519VerificationKey2018/2020 and EC / RSA keys as JsonWebKey2020; the two
@@ -141,6 +142,7 @@ describe('DidController.writeDid for did:web with an encrypted key', () => {
 
     return {
       context: { contextCorrelationId: 'tenant-1' },
+      config: { logger: { warn: jest.fn() } },
       kms: { importKey: kmsImportKey },
       dids: { import: didsImport },
     }

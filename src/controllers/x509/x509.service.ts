@@ -15,11 +15,21 @@ import {
 } from '@credo-ts/core'
 import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
+import { BadRequestError } from '../../errors'
 import { keyAlgorithmToCurve } from '../../utils/constant'
 import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } from '../../utils/helpers'
+import { KeyImportEnvelopeError } from '../../utils/keyImport/jwe'
+import { assertPlaintextKeyImportAllowed } from '../../utils/keyImport/plaintextGate'
+import {
+  agentBindingFor,
+  consumeImportSession,
+  KeyImportSessionError,
+  type KeyImportKeyMaterial,
+} from '../../utils/keyImport/session'
 import { selectKmsBackendForCreate, selectKmsBackendForJwk } from '../../utils/kms/backend'
 
 import { pemToRawPrivateKey } from './crypto-util'
+import { normalizeDistinguishedName } from './distinguishedName'
 import { type X509CreateCertificateOptionsDto } from './x509.types'
 
 class x509Service {
@@ -138,9 +148,9 @@ class x509Service {
       authorityKey: Kms.PublicJwk.fromPublicJwk(authorityKeyID),
       subjectPublicKey: subjectPublicKeyID ? Kms.PublicJwk.fromPublicJwk(subjectPublicKeyID) : undefined,
       serialNumber: options.serialNumber,
-      issuer: options.issuer,
+      issuer: normalizeDistinguishedName(options.issuer),
       extensions: options.extensions,
-      subject: options.subject,
+      subject: normalizeDistinguishedName(options.subject),
       validity: options.validity,
     })
 
@@ -149,11 +159,51 @@ class x509Service {
     return { publicCertificateBase64: issuerCertificate, keyId: authorityKeyKmsId, kmsBackend }
   }
 
+  /**
+   * Returns the private key for a certificate import. The key comes either from an encrypted envelope bound to this
+   * agent and the `x509-certificate` method, or from the deprecated plaintext field when that is explicitly enabled.
+   */
+  private resolveCertificatePrivateKey(agent: Req['agent'], options: X509ImportCertificateOptionsDto): string {
+    assertPlaintextKeyImportAllowed(options)
+
+    if (!options.encryptedKey) {
+      if (!options.privateKey) throw new BadRequestError('privateKey or encryptedKey is required')
+      return options.privateKey
+    }
+    if (options.privateKey) {
+      throw new BadRequestError('Provide either encryptedKey or plaintext key material, not both')
+    }
+    if (!options.encryptedKey.sessionId || typeof options.encryptedKey.jwe !== 'string') {
+      throw new BadRequestError('encryptedKey.sessionId and encryptedKey.jwe are required')
+    }
+
+    let material: KeyImportKeyMaterial
+    try {
+      material = consumeImportSession({
+        sessionId: options.encryptedKey.sessionId,
+        jwe: options.encryptedKey.jwe,
+        agentBinding: agentBindingFor(agent),
+        method: 'x509-certificate',
+      })
+    } catch (error) {
+      if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
+
+    if (material.privateKeyJwk || material.passphrase) {
+      throw new BadRequestError('Only privateKey is supported in the encrypted payload for certificate import')
+    }
+    if (!material.privateKey) throw new BadRequestError('The decrypted key payload does not contain a private key')
+    return material.privateKey
+  }
+
   public async ImportX509Certificates(agentReq: Req, options: X509ImportCertificateOptionsDto) {
     const agent = agentReq.agent
-    if (!options.privateKey) throw new Error('[ImportX509Certificates] privateKey is required')
+    const plaintextPrivateKey = this.resolveCertificatePrivateKey(agent, options)
     agent.config.logger.debug(`Start validating keys`)
-    const secretHexKey = await pemToRawPrivateKey(options.privateKey)
+    const secretHexKey = await pemToRawPrivateKey(plaintextPrivateKey)
     const privateKey = TypedArrayEncoder.fromHex(secretHexKey)
 
     agent.config.logger.debug(`Decode certificate`)
