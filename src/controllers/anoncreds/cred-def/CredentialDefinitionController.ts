@@ -11,7 +11,7 @@ import { CredentialEnum, EndorserMode, SchemaError, SCOPES } from '../../../enum
 import ErrorHandlingService from '../../../errorHandlingService'
 import { ENDORSER_DID_NOT_PRESENT } from '../../../errorMessages'
 import { BadRequestError, InternalServerError, NotFoundError } from '../../../errors/errors'
-import { assertIndyLedgerConfigured } from '../../../utils/indyLedgerGuard'
+import { assertAnonCredsIdentifiersServed } from '../../../utils/indyLedgerGuard'
 import { CredentialDefinitionExample, CredentialDefinitionId } from '../../examples'
 import {
   CredentialDefinitionStates,
@@ -38,7 +38,7 @@ export class CredentialDefinitionController extends Controller {
     @Path('credentialDefinitionId') credentialDefinitionId: CredentialDefinitionId,
   ): Promise<GetCredentialDefinitionReturn> {
     try {
-      assertIndyLedgerConfigured(request.agent)
+      assertAnonCredsIdentifiersServed(request.agent, [credentialDefinitionId])
       const credentialDefinitionResult =
         await request.agent.modules.anoncreds.getCredentialDefinition(credentialDefinitionId)
 
@@ -84,7 +84,12 @@ export class CredentialDefinitionController extends Controller {
     },
   ): Promise<RegisterCredentialDefinitionReturn | CredentialDefinitionStates> {
     try {
-      assertIndyLedgerConfigured(request.agent)
+      // Checked before Credo creates the credential definition keys: the issuer id picks the registry that publishes
+      // it and the schema id the one the schema is read from.
+      assertAnonCredsIdentifiersServed(request.agent, [
+        credentialDefinitionRequest.issuerId,
+        credentialDefinitionRequest.schemaId,
+      ])
       const { issuerId, schemaId, tag, endorse, endorserDid } = credentialDefinitionRequest
       credentialDefinitionRequest.endorse = credentialDefinitionRequest.endorse
         ? credentialDefinitionRequest.endorse

@@ -243,10 +243,12 @@ describe('DidController.writeDid for did:indy without an Indy ledger', () => {
     const agent = {
       context: { contextCorrelationId: 'tenant-1' },
       config: { logger: { warn: jest.fn() } },
-      // No `indyVdr` module: the agent was started without an Indy ledger.
-      dependencyManager: { registeredModules: { askar: {}, dids: {} } },
       kms: { createKey: kmsCreateKey },
-      dids: { create: didsCreate },
+      // No did:indy registrar: the agent was started without an Indy ledger.
+      dids: {
+        create: didsCreate,
+        config: { registrars: [{ supportedMethods: ['key'] }, { supportedMethods: ['web'] }] },
+      },
     }
 
     const error = await controller

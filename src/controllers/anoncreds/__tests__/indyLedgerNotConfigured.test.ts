@@ -27,16 +27,28 @@ jest.mock('../../../cliAgent', () => ({}))
 import ErrorHandlingService from '../../../errorHandlingService'
 import { BaseError, IndyLedgerNotConfiguredError } from '../../../errors/errors'
 import {
-  assertIndyLedgerConfigured,
+  assertAnonCredsIdentifiersServed,
+  assertIndyDidRegistrar,
+  hasIndyDidRegistrar,
   INDY_LEDGER_NOT_CONFIGURED,
-  isIndyLedgerConfigured,
+  INDY_LEDGER_NOT_CONFIGURED_REGISTRY_MARKER,
 } from '../../../utils/indyLedgerGuard'
 import { CredentialDefinitionController } from '../cred-def/CredentialDefinitionController'
 import { SchemaController } from '../schema/SchemaController'
 
-/** A root or tenant agent. Tenant agents share the root's `registeredModules`, so one shape covers both. */
-function agentWithModules(registeredModules: Record<string, unknown>) {
+// Simplified identifier patterns; the real ones come from @credo-ts/anoncreds.
+const indyIdentifier = /^did:indy:|^[a-zA-Z0-9]{21,22}:[234]:/
+const placeholderIndyRegistry = {
+  supportedIdentifier: indyIdentifier,
+  [INDY_LEDGER_NOT_CONFIGURED_REGISTRY_MARKER]: true,
+}
+const indyRegistry = { supportedIdentifier: indyIdentifier }
+const webRegistry = { supportedIdentifier: /^did:web:/ }
+
+/** A root or tenant agent; both expose the same `dids` and `anoncreds` config. */
+function agentWith({ registries, didMethods }: { registries: object[]; didMethods: string[] }) {
   const anoncreds = {
+    config: { registries },
     getSchema: jest.fn(async (schemaId: string) => ({ schemaId, schema: {}, resolutionMetadata: {} })),
     registerSchema: jest.fn(async () => ({ schemaState: { state: 'wait' } })),
     getCredentialDefinition: jest.fn(async (credentialDefinitionId: string) => ({
@@ -46,11 +58,18 @@ function agentWithModules(registeredModules: Record<string, unknown>) {
     })),
     registerCredentialDefinition: jest.fn(async () => ({ credentialDefinitionState: { state: 'wait' } })),
   }
-  return { dependencyManager: { registeredModules }, modules: { anoncreds } }
+  const registrars = didMethods.map((method) => ({ supportedMethods: [method] }))
+  return { dids: { config: { registrars } }, modules: { anoncreds } }
 }
 
-const noIndyAgent = () => agentWithModules({ askar: {}, anoncreds: {}, dids: {} })
-const indyAgent = () => agentWithModules({ askar: {}, indyVdr: {}, anoncreds: {}, dids: {} })
+// As started by this controller without a ledger, and an embedder's agent with a did:web AnonCreds registry.
+const noIndyAgent = () => agentWith({ registries: [placeholderIndyRegistry], didMethods: ['key', 'web'] })
+const webOnlyAgent = () => agentWith({ registries: [webRegistry], didMethods: ['web'] })
+const indyAgent = () => agentWith({ registries: [indyRegistry], didMethods: ['indy', 'key', 'web'] })
+
+const indyIssuer = 'did:indy:bcovrin:testnet:LjgpST2rjsoxYegQDRm7EL'
+const indySchemaId = 'LjgpST2rjsoxYegQDRm7EL:2:schema:1.0'
+const indyCredDefId = 'LjgpST2rjsoxYegQDRm7EL:3:CL:10:default'
 
 async function expectIndyNotConfigured(promise: Promise<unknown>) {
   const error = await promise.then(
@@ -62,15 +81,22 @@ async function expectIndyNotConfigured(promise: Promise<unknown>) {
 }
 
 describe('Indy ledger guard', () => {
-  it('detects the Indy VDR module on root and tenant agents', () => {
-    expect(isIndyLedgerConfigured(indyAgent() as never)).toBe(true)
-    expect(isIndyLedgerConfigured(noIndyAgent() as never)).toBe(false)
+  it('looks for a did:indy registrar, whatever key the Indy module is registered under', () => {
+    expect(hasIndyDidRegistrar(indyAgent() as never)).toBe(true)
+    expect(hasIndyDidRegistrar(noIndyAgent() as never)).toBe(false)
+    expect(() => assertIndyDidRegistrar(indyAgent() as never)).not.toThrow()
+    expect(() => assertIndyDidRegistrar(noIndyAgent() as never)).toThrow(IndyLedgerNotConfiguredError)
+    expect(INDY_LEDGER_NOT_CONFIGURED).toBe('Indy ledger is not configured')
   })
 
-  it('throws a 501 "Indy ledger is not configured" error without Indy', () => {
-    expect(() => assertIndyLedgerConfigured(indyAgent() as never)).not.toThrow()
-    expect(() => assertIndyLedgerConfigured(noIndyAgent() as never)).toThrow(IndyLedgerNotConfiguredError)
-    expect(INDY_LEDGER_NOT_CONFIGURED).toBe('Indy ledger is not configured')
+  it('rejects only identifiers the placeholder registry would serve', () => {
+    expect(() => assertAnonCredsIdentifiersServed(noIndyAgent() as never, [indyIssuer])).toThrow(
+      IndyLedgerNotConfiguredError,
+    )
+    expect(() => assertAnonCredsIdentifiersServed(noIndyAgent() as never, ['did:web:example.com'])).not.toThrow()
+    expect(() => assertAnonCredsIdentifiersServed(indyAgent() as never, [indyIssuer, indySchemaId])).not.toThrow()
+    expect(() => assertAnonCredsIdentifiersServed(webOnlyAgent() as never, ['did:web:example.com'])).not.toThrow()
+    expect(() => assertAnonCredsIdentifiersServed(noIndyAgent() as never, [undefined])).not.toThrow()
   })
 
   it('keeps the 501 through ErrorHandlingService', () => {
@@ -95,7 +121,7 @@ describe('AnonCreds routes without an Indy ledger', () => {
       schemaController.createSchema(
         { agent } as never,
         {
-          issuerId: 'did:indy:bcovrin:testnet:LjgpST2rjsoxYegQDRm7EL',
+          issuerId: indyIssuer,
           name: 'schema',
           version: '1.0',
           attributes: ['name'],
@@ -108,9 +134,7 @@ describe('AnonCreds routes without an Indy ledger', () => {
   it('GET /anoncreds/schemas/:id answers 501', async () => {
     const agent = noIndyAgent()
 
-    await expectIndyNotConfigured(
-      schemaController.getSchemaById({ agent } as never, 'LjgpST2rjsoxYegQDRm7EL:2:schema:1.0' as never),
-    )
+    await expectIndyNotConfigured(schemaController.getSchemaById({ agent } as never, indySchemaId as never))
     expect(agent.modules.anoncreds.getSchema).not.toHaveBeenCalled()
   })
 
@@ -121,8 +145,8 @@ describe('AnonCreds routes without an Indy ledger', () => {
       credentialDefinitionController.createCredentialDefinition(
         { agent } as never,
         {
-          issuerId: 'did:indy:bcovrin:testnet:LjgpST2rjsoxYegQDRm7EL',
-          schemaId: 'LjgpST2rjsoxYegQDRm7EL:2:schema:1.0',
+          issuerId: indyIssuer,
+          schemaId: indySchemaId,
           tag: 'default',
         } as never,
       ),
@@ -134,10 +158,7 @@ describe('AnonCreds routes without an Indy ledger', () => {
     const agent = noIndyAgent()
 
     await expectIndyNotConfigured(
-      credentialDefinitionController.getCredentialDefinitionById(
-        { agent } as never,
-        'LjgpST2rjsoxYegQDRm7EL:3:CL:10:default' as never,
-      ),
+      credentialDefinitionController.getCredentialDefinitionById({ agent } as never, indyCredDefId as never),
     )
     expect(agent.modules.anoncreds.getCredentialDefinition).not.toHaveBeenCalled()
   })
@@ -145,15 +166,65 @@ describe('AnonCreds routes without an Indy ledger', () => {
   it('still reaches the registry when an Indy ledger is configured', async () => {
     const agent = indyAgent()
 
-    await schemaController.getSchemaById({ agent } as never, 'LjgpST2rjsoxYegQDRm7EL:2:schema:1.0' as never)
+    await schemaController.getSchemaById({ agent } as never, indySchemaId as never)
+    await credentialDefinitionController.getCredentialDefinitionById({ agent } as never, indyCredDefId as never)
+
+    expect(agent.modules.anoncreds.getSchema).toHaveBeenCalledWith(indySchemaId)
+    expect(agent.modules.anoncreds.getCredentialDefinition).toHaveBeenCalledWith(indyCredDefId)
+  })
+
+  it('lets a non-Indy registry serve schemas and credential definitions without an Indy ledger', async () => {
+    const agent = webOnlyAgent()
+    const webIssuer = 'did:web:example.com'
+
+    await schemaController.getSchemaById({ agent } as never, 'did:web:example.com/schema' as never)
+    await schemaController.createSchema(
+      { agent } as never,
+      {
+        issuerId: webIssuer,
+        name: 'schema',
+        version: '1.0',
+        attributes: ['name'],
+        endorse: true,
+        endorserDid: webIssuer,
+      } as never,
+    )
     await credentialDefinitionController.getCredentialDefinitionById(
       { agent } as never,
-      'LjgpST2rjsoxYegQDRm7EL:3:CL:10:default' as never,
+      'did:web:example.com/creddef' as never,
+    )
+    await credentialDefinitionController.createCredentialDefinition(
+      { agent } as never,
+      {
+        issuerId: webIssuer,
+        schemaId: 'did:web:example.com/schema',
+        tag: 'default',
+        endorse: true,
+        endorserDid: webIssuer,
+      } as never,
     )
 
-    expect(agent.modules.anoncreds.getSchema).toHaveBeenCalledWith('LjgpST2rjsoxYegQDRm7EL:2:schema:1.0')
-    expect(agent.modules.anoncreds.getCredentialDefinition).toHaveBeenCalledWith(
-      'LjgpST2rjsoxYegQDRm7EL:3:CL:10:default',
+    expect(agent.modules.anoncreds.getSchema).toHaveBeenCalled()
+    expect(agent.modules.anoncreds.registerSchema).toHaveBeenCalled()
+    expect(agent.modules.anoncreds.getCredentialDefinition).toHaveBeenCalled()
+    expect(agent.modules.anoncreds.registerCredentialDefinition).toHaveBeenCalled()
+  })
+
+  it('answers 501 for a credential definition on an Indy schema even with a non-Indy issuer', async () => {
+    const agent = noIndyAgent()
+
+    await expectIndyNotConfigured(
+      credentialDefinitionController.createCredentialDefinition(
+        { agent } as never,
+        {
+          issuerId: 'did:web:example.com',
+          schemaId: indySchemaId,
+          tag: 'default',
+          endorse: true,
+          endorserDid: 'did:web:example.com',
+        } as never,
+      ),
     )
+    expect(agent.modules.anoncreds.registerCredentialDefinition).not.toHaveBeenCalled()
   })
 })

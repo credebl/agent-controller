@@ -48,17 +48,21 @@ DIDComm AnonCreds formats, and it requires at least one registry. A placeholder 
 claims the same Indy identifiers and answers every lookup or write with "Indy ledger is not configured", so DIDComm
 flows that need an Indy object fail with that message instead of "no registry found".
 
-Routes that need Indy answer **501** with `{"message": "Indy ledger is not configured"}`:
+Requests that need Indy answer **501** with `{"message": "Indy ledger is not configured"}`, before anything is
+created or stored:
 
-| Route                                        | Notes                              |
-| -------------------------------------------- | ---------------------------------- |
-| `POST /dids/write` with `method: indy`       | Other DID methods are not affected |
-| `POST /anoncreds/schemas`                    |                                    |
-| `GET /anoncreds/schemas/{schemaId}`          |                                    |
-| `POST /anoncreds/credential-definitions`     |                                    |
-| `GET /anoncreds/credential-definitions/{id}` |                                    |
+| Route                                        | Answers 501 when                                   |
+| -------------------------------------------- | -------------------------------------------------- |
+| `POST /dids/write` with `method: indy`       | the agent has no `did:indy` registrar              |
+| `POST /anoncreds/schemas`                    | `issuerId` is an Indy identifier                   |
+| `GET /anoncreds/schemas/{schemaId}`          | `schemaId` is an Indy identifier                   |
+| `POST /anoncreds/credential-definitions`     | `issuerId` or `schemaId` is an Indy identifier     |
+| `GET /anoncreds/credential-definitions/{id}` | the credential definition id is an Indy identifier |
 
-Resolving a `did:indy` DID returns the usual "no did resolver registered for did method indy" error. Polygon schemas
+The AnonCreds checks follow the registry Credo would pick for the identifier, so an agent embedded with
+`startServer` that registers another AnonCreds registry keeps using it for that registry's identifiers.
+
+Resolving a `did:indy` DID answers 404 with the usual "No did resolver registered for did method indy" message. Polygon schemas
 (`/polygon/...`) do not use the AnonCreds registry and keep working.
 
 Multi-tenant agents behave the same: tenants share the root agent's modules.

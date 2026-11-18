@@ -63,10 +63,8 @@ describe('resolveIndyNetworks', () => {
   it('turns Indy off when no ledger and no BCOVRIN_TEST_GENESIS are configured', async () => {
     const fetchLedger = fakeFetch()
 
-    await expect(resolveIndyNetworks({ indyLedger: [], bcovrinTestGenesis: undefined, fetchLedger })).resolves.toBe(
-      undefined,
-    )
-    await expect(resolveIndyNetworks({ bcovrinTestGenesis: undefined, fetchLedger })).resolves.toBe(undefined)
+    await expect(resolveIndyNetworks({ indyLedger: [], bcovrinTestGenesis: '', fetchLedger })).resolves.toBe(undefined)
+    await expect(resolveIndyNetworks({ bcovrinTestGenesis: '', fetchLedger })).resolves.toBe(undefined)
     await expect(resolveIndyNetworks({ indyLedger: [], bcovrinTestGenesis: '  ', fetchLedger })).resolves.toBe(
       undefined,
     )
@@ -129,9 +127,9 @@ describe('resolveIndyNetworks', () => {
   })
 
   it('indyEnabled=true without any ledger fails startup with a clear message', async () => {
-    await expect(
-      resolveIndyNetworks({ indyLedger: [], bcovrinTestGenesis: undefined, indyEnabled: true }),
-    ).rejects.toThrow(/no Indy ledger is configured/)
+    await expect(resolveIndyNetworks({ indyLedger: [], bcovrinTestGenesis: '', indyEnabled: true })).rejects.toThrow(
+      /no Indy ledger is configured/,
+    )
   })
 
   it('indyEnabled=true with a ledger behaves like the default', async () => {
@@ -210,6 +208,28 @@ describe('IndyLedgerNotConfiguredAnonCredsRegistry', () => {
     })
     await expect(registry.registerRevocationStatusList()).resolves.toMatchObject({
       revocationStatusListState: { state: 'failed' },
+    })
+  })
+})
+
+describe('IndyLedgerNotConfiguredAnonCredsRegistry results', () => {
+  it('carries the marker the route guard looks for', () => {
+    expect(new IndyLedgerNotConfiguredAnonCredsRegistry().indyLedgerNotConfigured).toBe(true)
+  })
+
+  it('returns a fresh object on every call', async () => {
+    const registry = new IndyLedgerNotConfiguredAnonCredsRegistry()
+
+    const first = await registry.registerSchema()
+    ;(first.schemaState as { reason: string }).reason = 'changed by a caller'
+    const firstLookup = await registry.getSchema({} as never, 'LjgpST2rjsoxYegQDRm7EL:2:name:1.0')
+    firstLookup.resolutionMetadata.message = 'changed by a caller'
+
+    await expect(registry.registerSchema()).resolves.toMatchObject({
+      schemaState: { reason: 'Indy ledger is not configured' },
+    })
+    await expect(registry.getSchema({} as never, 'LjgpST2rjsoxYegQDRm7EL:2:name:1.0')).resolves.toMatchObject({
+      resolutionMetadata: { message: 'Indy ledger is not configured' },
     })
   })
 })

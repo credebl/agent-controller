@@ -31,7 +31,7 @@ import axios from 'axios'
 
 import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network, NetworkName } from '../enums'
 
-import { INDY_LEDGER_NOT_CONFIGURED } from './indyLedgerGuard'
+import { INDY_LEDGER_NOT_CONFIGURED, INDY_LEDGER_NOT_CONFIGURED_REGISTRY_MARKER } from './indyLedgerGuard'
 
 export interface IndyLedgerConfig {
   genesisTransactions: string
@@ -157,27 +157,35 @@ export class IndyLedgerNotConfiguredAnonCredsRegistry implements AnonCredsRegist
   public readonly methodName = 'indy'
   public readonly supportedIdentifier = indyAnonCredsIdentifierRegex
   public readonly allowsCaching = false
+  /** Lets controllers recognise this registry and answer 501 before calling it. */
+  public readonly [INDY_LEDGER_NOT_CONFIGURED_REGISTRY_MARKER] = true
 
-  private readonly resolutionMetadata = { error: 'unsupportedAnonCredsMethod', message: INDY_LEDGER_NOT_CONFIGURED }
-  private readonly failedState = { state: 'failed' as const, reason: INDY_LEDGER_NOT_CONFIGURED }
+  // Fresh objects on every call, so a caller that changes its result cannot change the next caller's.
+  private resolutionMetadata() {
+    return { error: 'unsupportedAnonCredsMethod', message: INDY_LEDGER_NOT_CONFIGURED }
+  }
+
+  private failedState() {
+    return { state: 'failed' as const, reason: INDY_LEDGER_NOT_CONFIGURED }
+  }
 
   public async getSchema(_agentContext: unknown, schemaId: string): Promise<GetSchemaReturn> {
-    return { schemaId, resolutionMetadata: this.resolutionMetadata, schemaMetadata: {} }
+    return { schemaId, resolutionMetadata: this.resolutionMetadata(), schemaMetadata: {} }
   }
 
   public async registerSchema(): Promise<RegisterSchemaReturn> {
-    return { schemaState: this.failedState, schemaMetadata: {}, registrationMetadata: {} }
+    return { schemaState: this.failedState(), schemaMetadata: {}, registrationMetadata: {} }
   }
 
   public async getCredentialDefinition(
     _agentContext: unknown,
     credentialDefinitionId: string,
   ): Promise<GetCredentialDefinitionReturn> {
-    return { credentialDefinitionId, resolutionMetadata: this.resolutionMetadata, credentialDefinitionMetadata: {} }
+    return { credentialDefinitionId, resolutionMetadata: this.resolutionMetadata(), credentialDefinitionMetadata: {} }
   }
 
   public async registerCredentialDefinition(): Promise<RegisterCredentialDefinitionReturn> {
-    return { credentialDefinitionState: this.failedState, credentialDefinitionMetadata: {}, registrationMetadata: {} }
+    return { credentialDefinitionState: this.failedState(), credentialDefinitionMetadata: {}, registrationMetadata: {} }
   }
 
   public async getRevocationRegistryDefinition(
@@ -186,25 +194,25 @@ export class IndyLedgerNotConfiguredAnonCredsRegistry implements AnonCredsRegist
   ): Promise<GetRevocationRegistryDefinitionReturn> {
     return {
       revocationRegistryDefinitionId,
-      resolutionMetadata: this.resolutionMetadata,
+      resolutionMetadata: this.resolutionMetadata(),
       revocationRegistryDefinitionMetadata: {},
     }
   }
 
   public async registerRevocationRegistryDefinition(): Promise<RegisterRevocationRegistryDefinitionReturn> {
     return {
-      revocationRegistryDefinitionState: this.failedState,
+      revocationRegistryDefinitionState: this.failedState(),
       revocationRegistryDefinitionMetadata: {},
       registrationMetadata: {},
     }
   }
 
   public async getRevocationStatusList(): Promise<GetRevocationStatusListReturn> {
-    return { resolutionMetadata: this.resolutionMetadata, revocationStatusListMetadata: {} }
+    return { resolutionMetadata: this.resolutionMetadata(), revocationStatusListMetadata: {} }
   }
 
   public async registerRevocationStatusList(): Promise<RegisterRevocationStatusListReturn> {
-    return { revocationStatusListState: this.failedState, revocationStatusListMetadata: {}, registrationMetadata: {} }
+    return { revocationStatusListState: this.failedState(), revocationStatusListMetadata: {}, registrationMetadata: {} }
   }
 }
 

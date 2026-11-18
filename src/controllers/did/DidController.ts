@@ -43,7 +43,7 @@ import { BadRequestError, InternalServerError, NotFoundError } from '../../error
 import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
-import { assertIndyLedgerConfigured } from '../../utils/indyLedgerGuard'
+import { assertIndyDidRegistrar } from '../../utils/indyLedgerGuard'
 import { KeyImportEnvelopeError } from '../../utils/keyImport/jwe'
 import { assertPlaintextKeyImportAllowed } from '../../utils/keyImport/plaintextGate'
 import {
@@ -756,8 +756,8 @@ export class DidController extends Controller {
   }
 
   private async handleIndy(agent: AgentType, createDidOptions: DidCreate) {
-    // did:indy needs a ledger; without one the agent has no Indy registrar, so fail with a clear 501 up front.
-    assertIndyLedgerConfigured(agent)
+    // did:indy needs a ledger; without one the agent has no did:indy registrar, so fail with a clear 501 up front.
+    assertIndyDidRegistrar(agent)
     let result
     if (!createDidOptions.keyType) {
       throw new BadRequestError('keyType is required')

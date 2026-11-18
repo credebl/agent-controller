@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -14,7 +15,12 @@ const repoRoot = resolve(__dirname, '..', '..')
 const adminPort = Number(process.env.NO_INDY_LEDGER_ADMIN_PORT ?? 4311)
 const didcommPort = Number(process.env.NO_INDY_LEDGER_DIDCOMM_PORT ?? 4312)
 const agentUrl = `http://127.0.0.1:${adminPort}`
-const apiKey = 'no-indy-ledger-api-key-16'
+// Unique per run, so a token probe can never be answered by another run that owns the same port.
+const apiKey = `no-indy-ledger-${randomBytes(16).toString('hex')}`
+// Real-shaped Indy identifiers, so the placeholder AnonCreds registry claims them as the Indy registry would.
+const indyDid = 'did:indy:bcovrin:testnet:LjgpST2rjsoxYegQDRm7EL'
+const indySchemaId = 'LjgpST2rjsoxYegQDRm7EL:2:schema:1.0'
+const indyCredDefId = 'LjgpST2rjsoxYegQDRm7EL:3:CL:10:default'
 
 async function call(path: string, init: { method?: string; token?: string; body?: unknown } = {}) {
   const response = await fetch(`${agentUrl}${path}`, {
@@ -100,14 +106,25 @@ describeLive('agent-controller without an Indy ledger', () => {
         const token = await call('/agent/token', { method: 'POST', token: apiKey })
         if (token.status === 200) {
           rootToken = token.body.token as string
-          return
+          break
         }
       } catch {
         // not listening yet
       }
       await new Promise((resolveWait) => setTimeout(resolveWait, 500))
     }
-    throw new Error(`agent did not start within 90s:\n${output}`)
+    if (!rootToken) throw new Error(`agent did not start within 90s:\n${output}`)
+
+    // Every test below needs a tenant, so create it here: selecting a single test with -t must still work.
+    const tenant = await call('/multi-tenancy/create-tenant', {
+      method: 'POST',
+      token: rootToken,
+      body: { config: { label: 'no-indy-tenant' } },
+    })
+    if (tenant.status !== 200 || typeof tenant.body.token !== 'string') {
+      throw new Error(`could not create a tenant: ${tenant.status} ${JSON.stringify(tenant.body)}`)
+    }
+    tenantToken = tenant.body.token
   }, 120_000)
 
   afterAll(async () => {
@@ -126,15 +143,11 @@ describeLive('agent-controller without an Indy ledger', () => {
     expect(output).not.toContain('IndyVdrError')
   })
 
-  it('creates a tenant and a did:web', async () => {
-    const tenant = await call('/multi-tenancy/create-tenant', {
-      method: 'POST',
-      token: rootToken,
-      body: { config: { label: 'no-indy-tenant' } },
-    })
-    expect(tenant.status).toBe(200)
-    tenantToken = tenant.body.token as string
+  it('creates a tenant', () => {
+    expect(tenantToken).toEqual(expect.any(String))
+  })
 
+  it('creates a did:web', async () => {
     const didWeb = await call('/dids/write', {
       method: 'POST',
       token: tenantToken,
@@ -155,18 +168,18 @@ describeLive('agent-controller without an Indy ledger', () => {
       'POST /anoncreds/schemas',
       '/anoncreds/schemas',
       'POST',
-      { issuerId: 'did:indy:bcovrin:testnet:abc', name: 's', version: '1.0', attributes: ['a'] },
+      { issuerId: indyDid, name: 'schema', version: '1.0', attributes: ['name'] },
     ],
-    ['GET /anoncreds/schemas/:id', '/anoncreds/schemas/abc:2:s:1.0', 'GET', undefined],
+    ['GET /anoncreds/schemas/:id', `/anoncreds/schemas/${indySchemaId}`, 'GET', undefined],
     [
       'POST /anoncreds/credential-definitions',
       '/anoncreds/credential-definitions',
       'POST',
-      { issuerId: 'did:indy:bcovrin:testnet:abc', schemaId: 'abc:2:s:1.0', tag: 'default' },
+      { issuerId: indyDid, schemaId: indySchemaId, tag: 'default' },
     ],
     [
       'GET /anoncreds/credential-definitions/:id',
-      '/anoncreds/credential-definitions/abc:3:CL:1:default',
+      `/anoncreds/credential-definitions/${indyCredDefId}`,
       'GET',
       undefined,
     ],
@@ -176,10 +189,9 @@ describeLive('agent-controller without an Indy ledger', () => {
     expect(result.body.message).toBe('Indy ledger is not configured')
   })
 
-  it('reports did:indy as an unsupported method instead of crashing', async () => {
-    const result = await call(`/dids/${encodeURIComponent('did:indy:bcovrin:testnet:abc')}/resolve`, {
-      token: tenantToken,
-    })
-    expect(result.status).toBeLessThan(500)
+  it('reports did:indy as having no resolver instead of crashing', async () => {
+    const result = await call(`/dids/${encodeURIComponent(indyDid)}/resolve`, { token: tenantToken })
+    expect(result.status).toBe(404)
+    expect(String(result.body.message)).toContain('No did resolver registered for did method indy')
   })
 })

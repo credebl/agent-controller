@@ -8,6 +8,7 @@ import { hideBin } from 'yargs/helpers'
 dotenv.config()
 
 import { runRestAgent } from './cliAgent.js'
+import { unsetBlankEnv } from './utils/config.js'
 
 function envBoolean(name: string, defaultValue = false): boolean {
   const value = process.env[name]
@@ -89,6 +90,9 @@ interface InboundTransport {
 type Transports = 'http' | 'ws'
 
 async function parseArguments(): Promise<Parsed> {
+  // A blank AFJ_REST_INDY_ENABLED= must not turn Indy off; explicit `false` and --no-indy-enabled still do.
+  unsetBlankEnv(['AFJ_REST_INDY_ENABLED'])
+
   return yargs(hideBin(process.argv))
     .command('start', 'Start Credo Rest agent')
     .option('label', { alias: 'l', string: true, demandOption: true })

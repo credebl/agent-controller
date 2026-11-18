@@ -7,7 +7,7 @@ import { CredentialEnum, EndorserMode, SchemaError, SCOPES } from '../../../enum
 import ErrorHandlingService from '../../../errorHandlingService'
 import { ENDORSER_DID_NOT_PRESENT } from '../../../errorMessages'
 import { BadRequestError, InternalServerError, NotFoundError } from '../../../errors/errors'
-import { assertIndyLedgerConfigured } from '../../../utils/indyLedgerGuard'
+import { assertAnonCredsIdentifiersServed } from '../../../utils/indyLedgerGuard'
 import { CreateSchemaSuccessful, SchemaExample, SchemaId } from '../../examples'
 import { CreateSchemaInput, RegisterSchemaReturn, SchemaResponseDTO } from '../../types'
 
@@ -33,7 +33,7 @@ export class SchemaController extends Controller {
     @Path('schemaId') schemaId: SchemaId,
   ): Promise<SchemaResponseDTO> {
     try {
-      assertIndyLedgerConfigured(request.agent)
+      assertAnonCredsIdentifiersServed(request.agent, [schemaId])
       const schemBySchemaId = await request.agent.modules.anoncreds.getSchema(schemaId)
 
       if (
@@ -70,7 +70,8 @@ export class SchemaController extends Controller {
     @Body() schema: CreateSchemaInput,
   ): Promise<RegisterSchemaReturn | RegisterSchemaReturnStateFinished> {
     try {
-      assertIndyLedgerConfigured(request.agent)
+      // The issuer id picks the registry; a non-Indy registry may serve it, an Indy id without a ledger cannot.
+      assertAnonCredsIdentifiersServed(request.agent, [schema.issuerId])
       const { issuerId, name, version, attributes } = schema
 
       const schemaPayload = {
