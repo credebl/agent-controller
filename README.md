@@ -225,9 +225,13 @@ The agent can be configured in three ways:
 2. **JSON config file**: When providing a lot of configuration options, pass a JSON file with `--config`. All properties should use camelCase for the key names. See [samples/cliConfig.json](samples/cliConfig.json) for a complete example.
 3. **Environment variables**: All properties are prefixed with `AFJ_REST` and use UPPER_SNAKE_CASE (e.g. `AFJ_REST_WALLET_KEY=my-secret-key ./bin/afj-rest.js start ...`).
 
+The Indy ledger is optional: with an empty `indyLedger` and no `BCOVRIN_TEST_GENESIS`, the agent starts without Indy and
+never contacts an Indy pool. See [Optional Indy ledger](docs/indy-ledger.md).
+
 ## Guides
 
 - [did:x509: import a CA issued certificate chain as a DID](docs/did-x509.md)
+- [Optional Indy ledger: running without Indy](docs/indy-ledger.md)
 - [Optional OpenBao KMS: configuration, key routing, and rollback](docs/openbao.md)
 - [OpenBao KMS end-to-end checklist](docs/openbao-e2e.md)
 

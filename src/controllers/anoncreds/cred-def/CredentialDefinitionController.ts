@@ -11,6 +11,7 @@ import { CredentialEnum, EndorserMode, SchemaError, SCOPES } from '../../../enum
 import ErrorHandlingService from '../../../errorHandlingService'
 import { ENDORSER_DID_NOT_PRESENT } from '../../../errorMessages'
 import { BadRequestError, InternalServerError, NotFoundError } from '../../../errors/errors'
+import { assertIndyLedgerConfigured } from '../../../utils/indyLedgerGuard'
 import { CredentialDefinitionExample, CredentialDefinitionId } from '../../examples'
 import {
   CredentialDefinitionStates,
@@ -30,12 +31,14 @@ export class CredentialDefinitionController extends Controller {
    * @returns CredDef
    */
   @Example(CredentialDefinitionExample)
+  @Response(501, 'Indy ledger is not configured')
   @Get('/:credentialDefinitionId')
   public async getCredentialDefinitionById(
     @Request() request: Req,
     @Path('credentialDefinitionId') credentialDefinitionId: CredentialDefinitionId,
   ): Promise<GetCredentialDefinitionReturn> {
     try {
+      assertIndyLedgerConfigured(request.agent)
       const credentialDefinitionResult =
         await request.agent.modules.anoncreds.getCredentialDefinition(credentialDefinitionId)
 
@@ -67,6 +70,7 @@ export class CredentialDefinitionController extends Controller {
   @Example(CredentialDefinitionExample)
   @Response(200, 'Action required')
   @Response(202, 'Wait for action to complete')
+  @Response(501, 'Indy ledger is not configured')
   @Post('/')
   public async createCredentialDefinition(
     @Request() request: Req,
@@ -80,6 +84,7 @@ export class CredentialDefinitionController extends Controller {
     },
   ): Promise<RegisterCredentialDefinitionReturn | CredentialDefinitionStates> {
     try {
+      assertIndyLedgerConfigured(request.agent)
       const { issuerId, schemaId, tag, endorse, endorserDid } = credentialDefinitionRequest
       credentialDefinitionRequest.endorse = credentialDefinitionRequest.endorse
         ? credentialDefinitionRequest.endorse

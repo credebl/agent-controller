@@ -234,3 +234,30 @@ describe('DidController.writeDid for did:web with an encrypted key', () => {
     ).toEqual({ privateKeyJwk: ed25519PrivateJwk })
   })
 })
+
+describe('DidController.writeDid for did:indy without an Indy ledger', () => {
+  it('answers 501 "Indy ledger is not configured" before touching keys or the ledger', async () => {
+    const controller = new DidController()
+    const kmsCreateKey = jest.fn()
+    const didsCreate = jest.fn()
+    const agent = {
+      context: { contextCorrelationId: 'tenant-1' },
+      config: { logger: { warn: jest.fn() } },
+      // No `indyVdr` module: the agent was started without an Indy ledger.
+      dependencyManager: { registeredModules: { askar: {}, dids: {} } },
+      kms: { createKey: kmsCreateKey },
+      dids: { create: didsCreate },
+    }
+
+    const error = await controller
+      .writeDid({ agent } as never, { method: 'indy', network: 'bcovrin:testnet', keyType: 'ed25519' } as never)
+      .then(
+        () => undefined,
+        (thrown: unknown) => thrown,
+      )
+
+    expect(error).toMatchObject({ statusCode: 501, message: 'Indy ledger is not configured' })
+    expect(kmsCreateKey).not.toHaveBeenCalled()
+    expect(didsCreate).not.toHaveBeenCalled()
+  })
+})

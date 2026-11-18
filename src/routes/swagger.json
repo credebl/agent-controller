@@ -10327,6 +10327,9 @@
 								}
 							}
 						}
+					},
+					"501": {
+						"description": "Indy ledger is not configured"
 					}
 				},
 				"description": "Did nym registration",
@@ -10824,6 +10827,9 @@
 								}
 							}
 						}
+					},
+					"501": {
+						"description": "Indy ledger is not configured"
 					}
 				},
 				"description": "Get schema by schemaId",
@@ -10887,6 +10893,9 @@
 								}
 							}
 						}
+					},
+					"501": {
+						"description": "Indy ledger is not configured"
 					}
 				},
 				"description": "Create schema",
@@ -10963,6 +10972,9 @@
 								}
 							}
 						}
+					},
+					"501": {
+						"description": "Indy ledger is not configured"
 					}
 				},
 				"description": "Retrieve credential definition by credential definition id",
@@ -11048,6 +11060,9 @@
 					},
 					"202": {
 						"description": "Wait for action to complete"
+					},
+					"501": {
+						"description": "Indy ledger is not configured"
 					}
 				},
 				"description": "Creates a new credential definition.",
