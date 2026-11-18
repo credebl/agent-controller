@@ -169,50 +169,62 @@ export class IndyLedgerNotConfiguredAnonCredsRegistry implements AnonCredsRegist
     return { state: 'failed' as const, reason: INDY_LEDGER_NOT_CONFIGURED }
   }
 
-  public async getSchema(_agentContext: unknown, schemaId: string): Promise<GetSchemaReturn> {
-    return { schemaId, resolutionMetadata: this.resolutionMetadata(), schemaMetadata: {} }
+  public getSchema(_agentContext: unknown, schemaId: string): Promise<GetSchemaReturn> {
+    return Promise.resolve({ schemaId, resolutionMetadata: this.resolutionMetadata(), schemaMetadata: {} })
   }
 
-  public async registerSchema(): Promise<RegisterSchemaReturn> {
-    return { schemaState: this.failedState(), schemaMetadata: {}, registrationMetadata: {} }
+  public registerSchema(): Promise<RegisterSchemaReturn> {
+    return Promise.resolve({ schemaState: this.failedState(), schemaMetadata: {}, registrationMetadata: {} })
   }
 
-  public async getCredentialDefinition(
+  public getCredentialDefinition(
     _agentContext: unknown,
     credentialDefinitionId: string,
   ): Promise<GetCredentialDefinitionReturn> {
-    return { credentialDefinitionId, resolutionMetadata: this.resolutionMetadata(), credentialDefinitionMetadata: {} }
+    return Promise.resolve({
+      credentialDefinitionId,
+      resolutionMetadata: this.resolutionMetadata(),
+      credentialDefinitionMetadata: {},
+    })
   }
 
-  public async registerCredentialDefinition(): Promise<RegisterCredentialDefinitionReturn> {
-    return { credentialDefinitionState: this.failedState(), credentialDefinitionMetadata: {}, registrationMetadata: {} }
+  public registerCredentialDefinition(): Promise<RegisterCredentialDefinitionReturn> {
+    return Promise.resolve({
+      credentialDefinitionState: this.failedState(),
+      credentialDefinitionMetadata: {},
+      registrationMetadata: {},
+    })
   }
 
-  public async getRevocationRegistryDefinition(
+  public getRevocationRegistryDefinition(
     _agentContext: unknown,
     revocationRegistryDefinitionId: string,
   ): Promise<GetRevocationRegistryDefinitionReturn> {
-    return {
+    return Promise.resolve({
       revocationRegistryDefinitionId,
       resolutionMetadata: this.resolutionMetadata(),
       revocationRegistryDefinitionMetadata: {},
-    }
+    })
   }
 
-  public async registerRevocationRegistryDefinition(): Promise<RegisterRevocationRegistryDefinitionReturn> {
-    return {
+  public registerRevocationRegistryDefinition(): Promise<RegisterRevocationRegistryDefinitionReturn> {
+    return Promise.resolve({
       revocationRegistryDefinitionState: this.failedState(),
       revocationRegistryDefinitionMetadata: {},
       registrationMetadata: {},
-    }
+    })
   }
 
-  public async getRevocationStatusList(): Promise<GetRevocationStatusListReturn> {
-    return { resolutionMetadata: this.resolutionMetadata(), revocationStatusListMetadata: {} }
+  public getRevocationStatusList(): Promise<GetRevocationStatusListReturn> {
+    return Promise.resolve({ resolutionMetadata: this.resolutionMetadata(), revocationStatusListMetadata: {} })
   }
 
-  public async registerRevocationStatusList(): Promise<RegisterRevocationStatusListReturn> {
-    return { revocationStatusListState: this.failedState(), revocationStatusListMetadata: {}, registrationMetadata: {} }
+  public registerRevocationStatusList(): Promise<RegisterRevocationStatusListReturn> {
+    return Promise.resolve({
+      revocationStatusListState: this.failedState(),
+      revocationStatusListMetadata: {},
+      registrationMetadata: {},
+    })
   }
 }
 
