@@ -5637,14 +5637,17 @@
 			"RevokeBitstringCredentialOptions": {
 				"properties": {
 					"listId": {
-						"type": "string"
+						"type": "string",
+						"description": "Identifier of the published bitstring status list."
 					},
 					"index": {
 						"type": "number",
-						"format": "double"
+						"format": "double",
+						"description": "Zero-based status index of the credential to revoke."
 					},
 					"issuerDid": {
-						"type": "string"
+						"type": "string",
+						"description": "DID that issued the status list credential."
 					}
 				},
 				"required": [

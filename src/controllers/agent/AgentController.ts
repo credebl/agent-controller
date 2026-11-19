@@ -274,7 +274,7 @@ export class AgentController extends Controller {
       }
 
       const status = await verifyBitstringStatus(request.agent.context, credential)
-      const verified = signedCred.isValid && status.verified
+      const verified = signedCred.isValid && status.verified && !status.revoked
 
       return {
         ...signedCred,

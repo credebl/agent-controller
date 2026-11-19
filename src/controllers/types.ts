@@ -226,8 +226,11 @@ export interface AcceptCredentialRequestOptions {
 }
 
 export interface RevokeBitstringCredentialOptions {
+  /** Identifier of the published bitstring status list. */
   listId: string
+  /** Zero-based status index of the credential to revoke. */
   index: number
+  /** DID that issued the status list credential. */
   issuerDid: string
 }
 
