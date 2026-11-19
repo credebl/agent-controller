@@ -15,7 +15,7 @@ jest.mock('@credo-ts/core', () => ({
   },
 }))
 
-jest.mock('@credebl/credo-ts-openbao', () => ({
+jest.mock('@sovio-id/credo-openbao-kms', () => ({
   AppRoleAuth: class {},
   FetchOpenBaoClient: class {},
   OpenBaoKeyManagementService: class {},

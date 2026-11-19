@@ -1,13 +1,13 @@
 import type { DependencyManager, Kms, Module } from '@credo-ts/core'
 
+import { inject, injectable, Kms as CredoKms, TypedArrayEncoder } from '@credo-ts/core'
 import {
   AppRoleAuth,
   FetchOpenBaoClient,
   OpenBaoKeyManagementService,
   StaticTokenAuth,
   type AuthProvider,
-} from '@credebl/credo-ts-openbao'
-import { inject, injectable, Kms as CredoKms, TypedArrayEncoder } from '@credo-ts/core'
+} from '@sovio-id/credo-openbao-kms'
 import { createPrivateKey, createPublicKey, type JsonWebKey } from 'node:crypto'
 
 /**

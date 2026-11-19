@@ -7,8 +7,6 @@ coverage
 .DS_Store
 logs.txt
 *.tgz
-# Vendored build of @credebl/credo-ts-openbao until the package is published to npm
-!vendor/credo-ts-openbao/*.tgz
 
 # dotenv environment variable files
 .env

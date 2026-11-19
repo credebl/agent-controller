@@ -1,22 +1,32 @@
 diff --git a/node_modules/@credo-ts/openid4vc/build/index.d.mts b/node_modules/@credo-ts/openid4vc/build/index.d.mts
-index d646f23..d25cacc 100644
+index d646f23..7ab265d 100644
 --- a/node_modules/@credo-ts/openid4vc/build/index.d.mts
 +++ b/node_modules/@credo-ts/openid4vc/build/index.d.mts
-@@ -9,6 +9,7 @@ import { OpenId4VcIssuanceSessionState } from "./openid4vc-issuer/OpenId4VcIssua
- import { OpenId4VcIssuanceSessionAuthorization, OpenId4VcIssuanceSessionChainedIdentity, OpenId4VcIssuanceSessionDpop, OpenId4VcIssuanceSessionPkce, OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionWalletAttestation } from "./openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.mjs";
+@@ -6,9 +6,10 @@ import { OpenId4VciKeyAttestationLevel, keyAttestationLevelSatisfies } from "./s
+ import { OpenId4VcJwtIssuer, OpenId4VcJwtIssuerDid, OpenId4VcJwtIssuerEncoded, OpenId4VcJwtIssuerJwk, OpenId4VcJwtIssuerJwkEncoded, OpenId4VcJwtIssuerX5c, OpenId4VcJwtIssuerX5cEncoded } from "./shared/models/OpenId4VcJwtIssuer.mjs";
+ import { OpenId4VciAccessTokenResponse, OpenId4VciCredentialConfigurationSupported, OpenId4VciCredentialConfigurationSupportedWithFormats, OpenId4VciCredentialConfigurationsSupported, OpenId4VciCredentialConfigurationsSupportedWithFormats, OpenId4VciCredentialIssuerMetadata, OpenId4VciCredentialIssuerMetadataDisplay, OpenId4VciCredentialOfferPayload, OpenId4VciCredentialRequest, OpenId4VciCredentialRequestFormatSpecific, OpenId4VciCredentialRequestWithFormats, OpenId4VciDeferredCredentialRequest, OpenId4VciMetadata, OpenId4VciParsedCredentialRequest, OpenId4VciTxCode, OpenId4VpAuthorizationRequestPayload, OpenId4VpAuthorizationResponsePayload, OpenId4VpVerifiedAuthorizationRequest, Openid4vpAuthorizationRequest, authorizationCodeGrantIdentifier, preAuthorizedCodeGrantIdentifier } from "./shared/models/index.mjs";
+ import { OpenId4VcIssuanceSessionState } from "./openid4vc-issuer/OpenId4VcIssuanceSessionState.mjs";
+-import { OpenId4VcIssuanceSessionAuthorization, OpenId4VcIssuanceSessionChainedIdentity, OpenId4VcIssuanceSessionDpop, OpenId4VcIssuanceSessionPkce, OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionWalletAttestation } from "./openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.mjs";
++import { OpenId4VcIssuanceSessionAuthorization, OpenId4VcIssuanceSessionChainedIdentity, OpenId4VcIssuanceSessionDpop, OpenId4VcIssuanceSessionNotification, OpenId4VcIssuanceSessionNotificationEvent, OpenId4VcIssuanceSessionPkce, OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionWalletAttestation } from "./openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.mjs";
  import { OpenId4VcIssuanceSessionRepository } from "./openid4vc-issuer/repository/OpenId4VcIssuanceSessionRepository.mjs";
  import { OpenId4VcIssuerRecord, OpenId4VcIssuerRecordProps, OpenId4VcIssuerRecordSignedMetadata, OpenId4VcIssuerRecordTags } from "./openid4vc-issuer/repository/OpenId4VcIssuerRecord.mjs";
 +import { OpenId4VcIssuerRepository } from "./openid4vc-issuer/repository/OpenId4VcIssuerRepository.mjs";
  import { dynamicOid4vciClientAuthentication, getOid4vcCallbacks, getOid4vcDecryptJweCallback, getOid4vcEncryptJweCallback, getOid4vcJwtSignCallback, getOid4vcJwtVerifyCallback } from "./shared/callbacks.mjs";
  import { getAllowedAndRequestedScopeValues, getCredentialConfigurationsSupportedForScopes, getOfferedCredentials, getRequestedCredentialConfigurationsForScope, getScopesFromCredentialConfigurationsSupported } from "./shared/issuerMetadataUtils.mjs";
  import { OpenId4VcVerificationTypeOauth2ClientAttestation, OpenId4VcVerificationTypeOauth2SecuredAuthorizationRequest, OpenId4VcVerificationTypeOid4VpCredential, OpenId4VcVerificationTypeOpenId4VciCredentialIssuerMetadata, OpenId4VcVerificationTypeOpenId4VciKeyAttestation, OpenId4VcVerificationTypes } from "./shared/OpenId4VcTrustedIssuersVerificationTypes.mjs";
-@@ -41,4 +42,4 @@ import { OpenId4VcIssuerModule } from "./openid4vc-issuer/OpenId4VcIssuerModule.
+@@ -36,9 +37,9 @@ import { OpenId4VcHolderModule } from "./openid4vc-holder/OpenId4VcHolderModule.
+ import "./openid4vc-holder/index.mjs";
+ import { OpenId4VcIssuerService } from "./openid4vc-issuer/OpenId4VcIssuerService.mjs";
+ import { OpenId4VcIssuerApi } from "./openid4vc-issuer/OpenId4VcIssuerApi.mjs";
+-import { OpenId4VcIssuanceSessionStateChangedEvent, OpenId4VcIssuerEvents } from "./openid4vc-issuer/OpenId4VcIssuerEvents.mjs";
++import { OpenId4VcIssuanceSessionNotificationReceivedEvent, OpenId4VcIssuanceSessionStateChangedEvent, OpenId4VcIssuerEvents } from "./openid4vc-issuer/OpenId4VcIssuerEvents.mjs";
+ import { OpenId4VcIssuerModule } from "./openid4vc-issuer/OpenId4VcIssuerModule.mjs";
  import "./openid4vc-issuer/index.mjs";
  import { OpenId4VcApi } from "./OpenId4VcApi.mjs";
  import { OpenId4VcModule } from "./OpenId4VcModule.mjs";
 -export { DefaultOpenId4VcVerificationSessionRecordTags, DefaultOpenId4VcVerifierRecordTags, OpenId4VcApi, OpenId4VcAuthorizationCodeTokenRequestOptions, OpenId4VcCredentialHolderAttestationBinding, OpenId4VcCredentialHolderBinding, OpenId4VcCredentialHolderDidBinding, OpenId4VcCredentialHolderJwkBinding, OpenId4VcHolderApi, OpenId4VcHolderModule, type OpenId4VcIssuanceSessionAuthorization, type OpenId4VcIssuanceSessionChainedIdentity, type OpenId4VcIssuanceSessionDpop, type OpenId4VcIssuanceSessionPkce, type OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, type OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionState, OpenId4VcIssuanceSessionStateChangedEvent, type OpenId4VcIssuanceSessionWalletAttestation, OpenId4VcIssuerApi, OpenId4VcIssuerEvents, OpenId4VcIssuerModule, OpenId4VcIssuerModuleConfig, OpenId4VcIssuerModuleConfigOptions, OpenId4VcIssuerRecord, type OpenId4VcIssuerRecordProps, type OpenId4VcIssuerRecordSignedMetadata, type OpenId4VcIssuerRecordTags, OpenId4VcIssuerService, OpenId4VcJwtIssuer, OpenId4VcJwtIssuerDid, OpenId4VcJwtIssuerEncoded, OpenId4VcJwtIssuerJwk, OpenId4VcJwtIssuerJwkEncoded, OpenId4VcJwtIssuerX5c, OpenId4VcJwtIssuerX5cEncoded, OpenId4VcModule, OpenId4VcModuleConfig, OpenId4VcModuleConfigOptions, OpenId4VcParseAndVerifyAuthorizationResponseOptions, OpenId4VcUpdateIssuerOptions, OpenId4VcUpdateIssuerRecordOptions, OpenId4VcUpdateVerifierRecordOptions, OpenId4VcVerificationSessionRecord, OpenId4VcVerificationSessionRecordProps, OpenId4VcVerificationSessionRecordTags, OpenId4VcVerificationSessionRepository, OpenId4VcVerificationSessionState, OpenId4VcVerificationSessionStateChangedEvent, OpenId4VcVerificationTypeOauth2ClientAttestation, OpenId4VcVerificationTypeOauth2SecuredAuthorizationRequest, OpenId4VcVerificationTypeOid4VpCredential, OpenId4VcVerificationTypeOpenId4VciCredentialIssuerMetadata, OpenId4VcVerificationTypeOpenId4VciKeyAttestation, OpenId4VcVerificationTypes, OpenId4VcVerifierApi, OpenId4VcVerifierEvents, OpenId4VcVerifierModule, OpenId4VcVerifierModuleConfig, OpenId4VcVerifierModuleConfigOptions, OpenId4VcVerifierRecord, OpenId4VcVerifierRecordProps, OpenId4VcVerifierRecordTags, OpenId4VcVerifierRepository, OpenId4VciAcceptCredentialOfferOptions, OpenId4VciAccessTokenResponse, OpenId4VciAuthCodeFlowOptions, OpenId4VciAuthorizationCodeFlowConfig, OpenId4VciAuthorizationFlow, OpenId4VciAuthorizationServerClientAuthenticationClientSecret, OpenId4VciAuthorizationServerConfig, OpenId4VciBatchCredentialIssuanceOptions, OpenId4VciChainedAuthorizationServerConfig, OpenId4VciCreateCredentialOfferOptions, OpenId4VciCreateCredentialResponseOptions, OpenId4VciCreateDeferredCredentialResponseOptions, OpenId4VciCreateIssuerOptions, OpenId4VciCreateStatelessCredentialOfferOptions, OpenId4VciCredentialBindingOptions, OpenId4VciCredentialBindingResolver, OpenId4VciCredentialConfigurationSupported, OpenId4VciCredentialConfigurationSupportedWithFormats, OpenId4VciCredentialConfigurationsSupported, OpenId4VciCredentialConfigurationsSupportedWithFormats, OpenId4VciCredentialFormatProfile, OpenId4VciCredentialIssuerMetadata, OpenId4VciCredentialIssuerMetadataDisplay, OpenId4VciCredentialOfferPayload, OpenId4VciCredentialRequest, OpenId4VciCredentialRequestAuthorization, OpenId4VciCredentialRequestFormatSpecific, OpenId4VciCredentialRequestOptions, OpenId4VciCredentialRequestToCredentialMapper, OpenId4VciCredentialRequestToCredentialMapperOptions, OpenId4VciCredentialRequestWithFormats, OpenId4VciCredentialResponse, OpenId4VciDeferredCredentialRequest, OpenId4VciDeferredCredentialRequestOptions, OpenId4VciDeferredCredentialRequestToCredentialMapper, OpenId4VciDeferredCredentialRequestToCredentialMapperOptions, OpenId4VciDeferredCredentialResponse, OpenId4VciDeferredCredentials, OpenId4VciDirectAuthorizationServerConfig, OpenId4VciDpopRequestOptions, OpenId4VciDynamicIssuanceAuthorizationFlow, OpenId4VciDynamicIssuanceDpop, OpenId4VciDynamicIssuanceSessionOptions, OpenId4VciDynamicIssuanceWalletAttestation, OpenId4VciGetChainedAuthorizationRequestParameters, OpenId4VciGetDynamicIssuanceSession, OpenId4VciGetDynamicIssuanceSessionAuthorizationOptions, OpenId4VciGetDynamicIssuanceSessionCredentialOptions, OpenId4VciGetDynamicIssuanceSessionOptions, OpenId4VciGetVerificationSession, OpenId4VciGetVerificationSessionForIssuanceSessionAuthorization, OpenId4VciHolderService, OpenId4VciKeyAttestationLevel, OpenId4VciMetadata, OpenId4VciNotificationEvent, OpenId4VciParsedCredentialRequest, OpenId4VciPreAuthorizedCodeFlowConfig, OpenId4VciPreAuthorizedTokenRequestOptions, OpenId4VciProofOfPossessionProofTypes, OpenId4VciProofOfPossessionRequirements, OpenId4VciProofOfPressionProofTypes, OpenId4VciRequestTokenResponse, OpenId4VciResolvedAuthorizationRequest, OpenId4VciResolvedCredentialOffer, OpenId4VciRetrieveAuthorizationCodeUsingPresentationOptions, OpenId4VciSendNotificationOptions, OpenId4VciSignCredentials, OpenId4VciSignMdocCredentials, OpenId4VciSignSdJwtCredentials, OpenId4VciSignW3cCredentials, OpenId4VciSignW3cV2Credentials, OpenId4VciSupportedCredentialFormats, OpenId4VciTokenRefreshOptions, OpenId4VciTokenRequestOptions, OpenId4VciTxCode, OpenId4VciVersion, OpenId4VpAcceptAuthorizationRequestOptions, OpenId4VpAuthorizationRequestPayload, OpenId4VpAuthorizationResponsePayload, OpenId4VpCreateAuthorizationRequestOptions, OpenId4VpCreateAuthorizationRequestReturn, OpenId4VpCreateVerifierOptions, OpenId4VpHolderService, OpenId4VpResolvedAuthorizationRequest, OpenId4VpVerifiedAuthorizationRequest, OpenId4VpVerifiedAuthorizationResponse, OpenId4VpVerifiedAuthorizationResponseDcql, OpenId4VpVerifiedAuthorizationResponsePresentationExchange, OpenId4VpVerifiedAuthorizationResponseTransactionData, OpenId4VpVerifierClientMetadata, OpenId4VpVerifierService, OpenId4VpVerifyAuthorizationResponseOptions, OpenId4VpVersion, type Openid4vpAuthorizationRequest, ParsedTransactionDataEntry, ResolveOpenId4VpAuthorizationRequestOptions, ResponseMode, VerifiedOpenId4VcCredentialHolderBinding, authorizationCodeGrantIdentifier, dynamicOid4vciClientAuthentication, getAllowedAndRequestedScopeValues, getCredentialConfigurationsSupportedForScopes, getOfferedCredentials, getOid4vcCallbacks, getOid4vcDecryptJweCallback, getOid4vcEncryptJweCallback, getOid4vcJwtSignCallback, getOid4vcJwtVerifyCallback, getRequestedCredentialConfigurationsForScope, getScopesFromCredentialConfigurationsSupported, keyAttestationLevelSatisfies, openId4VciSupportedCredentialFormats, preAuthorizedCodeGrantIdentifier };
 \ No newline at end of file
-+export { DefaultOpenId4VcVerificationSessionRecordTags, DefaultOpenId4VcVerifierRecordTags, OpenId4VcApi, OpenId4VcAuthorizationCodeTokenRequestOptions, OpenId4VcCredentialHolderAttestationBinding, OpenId4VcCredentialHolderBinding, OpenId4VcCredentialHolderDidBinding, OpenId4VcCredentialHolderJwkBinding, OpenId4VcHolderApi, OpenId4VcHolderModule, type OpenId4VcIssuanceSessionAuthorization, type OpenId4VcIssuanceSessionChainedIdentity, type OpenId4VcIssuanceSessionDpop, type OpenId4VcIssuanceSessionPkce, type OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, type OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionState, OpenId4VcIssuanceSessionStateChangedEvent, type OpenId4VcIssuanceSessionWalletAttestation, OpenId4VcIssuerApi, OpenId4VcIssuerEvents, OpenId4VcIssuerModule, OpenId4VcIssuerModuleConfig, OpenId4VcIssuerModuleConfigOptions, OpenId4VcIssuerRecord, OpenId4VcIssuerRepository, type OpenId4VcIssuerRecordProps, type OpenId4VcIssuerRecordSignedMetadata, type OpenId4VcIssuerRecordTags, OpenId4VcIssuerService, OpenId4VcJwtIssuer, OpenId4VcJwtIssuerDid, OpenId4VcJwtIssuerEncoded, OpenId4VcJwtIssuerJwk, OpenId4VcJwtIssuerJwkEncoded, OpenId4VcJwtIssuerX5c, OpenId4VcJwtIssuerX5cEncoded, OpenId4VcModule, OpenId4VcModuleConfig, OpenId4VcModuleConfigOptions, OpenId4VcParseAndVerifyAuthorizationResponseOptions, OpenId4VcUpdateIssuerOptions, OpenId4VcUpdateIssuerRecordOptions, OpenId4VcUpdateVerifierRecordOptions, OpenId4VcVerificationSessionRecord, OpenId4VcVerificationSessionRecordProps, OpenId4VcVerificationSessionRecordTags, OpenId4VcVerificationSessionRepository, OpenId4VcVerificationSessionState, OpenId4VcVerificationSessionStateChangedEvent, OpenId4VcVerificationTypeOauth2ClientAttestation, OpenId4VcVerificationTypeOauth2SecuredAuthorizationRequest, OpenId4VcVerificationTypeOid4VpCredential, OpenId4VcVerificationTypeOpenId4VciCredentialIssuerMetadata, OpenId4VcVerificationTypeOpenId4VciKeyAttestation, OpenId4VcVerificationTypes, OpenId4VcVerifierApi, OpenId4VcVerifierEvents, OpenId4VcVerifierModule, OpenId4VcVerifierModuleConfig, OpenId4VcVerifierModuleConfigOptions, OpenId4VcVerifierRecord, OpenId4VcVerifierRecordProps, OpenId4VcVerifierRecordTags, OpenId4VcVerifierRepository, OpenId4VciAcceptCredentialOfferOptions, OpenId4VciAccessTokenResponse, OpenId4VciAuthCodeFlowOptions, OpenId4VciAuthorizationCodeFlowConfig, OpenId4VciAuthorizationFlow, OpenId4VciAuthorizationServerClientAuthenticationClientSecret, OpenId4VciAuthorizationServerConfig, OpenId4VciBatchCredentialIssuanceOptions, OpenId4VciChainedAuthorizationServerConfig, OpenId4VciCreateCredentialOfferOptions, OpenId4VciCreateCredentialResponseOptions, OpenId4VciCreateDeferredCredentialResponseOptions, OpenId4VciCreateIssuerOptions, OpenId4VciCreateStatelessCredentialOfferOptions, OpenId4VciCredentialBindingOptions, OpenId4VciCredentialBindingResolver, OpenId4VciCredentialConfigurationSupported, OpenId4VciCredentialConfigurationSupportedWithFormats, OpenId4VciCredentialConfigurationsSupported, OpenId4VciCredentialConfigurationsSupportedWithFormats, OpenId4VciCredentialFormatProfile, OpenId4VciCredentialIssuerMetadata, OpenId4VciCredentialIssuerMetadataDisplay, OpenId4VciCredentialOfferPayload, OpenId4VciCredentialRequest, OpenId4VciCredentialRequestAuthorization, OpenId4VciCredentialRequestFormatSpecific, OpenId4VciCredentialRequestOptions, OpenId4VciCredentialRequestToCredentialMapper, OpenId4VciCredentialRequestToCredentialMapperOptions, OpenId4VciCredentialRequestWithFormats, OpenId4VciCredentialResponse, OpenId4VciDeferredCredentialRequest, OpenId4VciDeferredCredentialRequestOptions, OpenId4VciDeferredCredentialRequestToCredentialMapper, OpenId4VciDeferredCredentialRequestToCredentialMapperOptions, OpenId4VciDeferredCredentialResponse, OpenId4VciDeferredCredentials, OpenId4VciDirectAuthorizationServerConfig, OpenId4VciDpopRequestOptions, OpenId4VciDynamicIssuanceAuthorizationFlow, OpenId4VciDynamicIssuanceDpop, OpenId4VciDynamicIssuanceSessionOptions, OpenId4VciDynamicIssuanceWalletAttestation, OpenId4VciGetChainedAuthorizationRequestParameters, OpenId4VciGetDynamicIssuanceSession, OpenId4VciGetDynamicIssuanceSessionAuthorizationOptions, OpenId4VciGetDynamicIssuanceSessionCredentialOptions, OpenId4VciGetDynamicIssuanceSessionOptions, OpenId4VciGetVerificationSession, OpenId4VciGetVerificationSessionForIssuanceSessionAuthorization, OpenId4VciHolderService, OpenId4VciKeyAttestationLevel, OpenId4VciMetadata, OpenId4VciNotificationEvent, OpenId4VciParsedCredentialRequest, OpenId4VciPreAuthorizedCodeFlowConfig, OpenId4VciPreAuthorizedTokenRequestOptions, OpenId4VciProofOfPossessionProofTypes, OpenId4VciProofOfPossessionRequirements, OpenId4VciProofOfPressionProofTypes, OpenId4VciRequestTokenResponse, OpenId4VciResolvedAuthorizationRequest, OpenId4VciResolvedCredentialOffer, OpenId4VciRetrieveAuthorizationCodeUsingPresentationOptions, OpenId4VciSendNotificationOptions, OpenId4VciSignCredentials, OpenId4VciSignMdocCredentials, OpenId4VciSignSdJwtCredentials, OpenId4VciSignW3cCredentials, OpenId4VciSignW3cV2Credentials, OpenId4VciSupportedCredentialFormats, OpenId4VciTokenRefreshOptions, OpenId4VciTokenRequestOptions, OpenId4VciTxCode, OpenId4VciVersion, OpenId4VpAcceptAuthorizationRequestOptions, OpenId4VpAuthorizationRequestPayload, OpenId4VpAuthorizationResponsePayload, OpenId4VpCreateAuthorizationRequestOptions, OpenId4VpCreateAuthorizationRequestReturn, OpenId4VpCreateVerifierOptions, OpenId4VpHolderService, OpenId4VpResolvedAuthorizationRequest, OpenId4VpVerifiedAuthorizationRequest, OpenId4VpVerifiedAuthorizationResponse, OpenId4VpVerifiedAuthorizationResponseDcql, OpenId4VpVerifiedAuthorizationResponsePresentationExchange, OpenId4VpVerifiedAuthorizationResponseTransactionData, OpenId4VpVerifierClientMetadata, OpenId4VpVerifierService, OpenId4VpVerifyAuthorizationResponseOptions, OpenId4VpVersion, type Openid4vpAuthorizationRequest, ParsedTransactionDataEntry, ResolveOpenId4VpAuthorizationRequestOptions, ResponseMode, VerifiedOpenId4VcCredentialHolderBinding, authorizationCodeGrantIdentifier, dynamicOid4vciClientAuthentication, getAllowedAndRequestedScopeValues, getCredentialConfigurationsSupportedForScopes, getOfferedCredentials, getOid4vcCallbacks, getOid4vcDecryptJweCallback, getOid4vcEncryptJweCallback, getOid4vcJwtSignCallback, getOid4vcJwtVerifyCallback, getRequestedCredentialConfigurationsForScope, getScopesFromCredentialConfigurationsSupported, keyAttestationLevelSatisfies, openId4VciSupportedCredentialFormats, preAuthorizedCodeGrantIdentifier };
++export { DefaultOpenId4VcVerificationSessionRecordTags, DefaultOpenId4VcVerifierRecordTags, OpenId4VcApi, OpenId4VcAuthorizationCodeTokenRequestOptions, OpenId4VcCredentialHolderAttestationBinding, OpenId4VcCredentialHolderBinding, OpenId4VcCredentialHolderDidBinding, OpenId4VcCredentialHolderJwkBinding, OpenId4VcHolderApi, OpenId4VcHolderModule, type OpenId4VcIssuanceSessionAuthorization, type OpenId4VcIssuanceSessionChainedIdentity, type OpenId4VcIssuanceSessionDpop, type OpenId4VcIssuanceSessionNotification, type OpenId4VcIssuanceSessionNotificationEvent, type OpenId4VcIssuanceSessionPkce, type OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, type OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionState, OpenId4VcIssuanceSessionNotificationReceivedEvent, OpenId4VcIssuanceSessionStateChangedEvent, type OpenId4VcIssuanceSessionWalletAttestation, OpenId4VcIssuerApi, OpenId4VcIssuerEvents, OpenId4VcIssuerModule, OpenId4VcIssuerModuleConfig, OpenId4VcIssuerModuleConfigOptions, OpenId4VcIssuerRecord, OpenId4VcIssuerRepository, type OpenId4VcIssuerRecordProps, type OpenId4VcIssuerRecordSignedMetadata, type OpenId4VcIssuerRecordTags, OpenId4VcIssuerService, OpenId4VcJwtIssuer, OpenId4VcJwtIssuerDid, OpenId4VcJwtIssuerEncoded, OpenId4VcJwtIssuerJwk, OpenId4VcJwtIssuerJwkEncoded, OpenId4VcJwtIssuerX5c, OpenId4VcJwtIssuerX5cEncoded, OpenId4VcModule, OpenId4VcModuleConfig, OpenId4VcModuleConfigOptions, OpenId4VcParseAndVerifyAuthorizationResponseOptions, OpenId4VcUpdateIssuerOptions, OpenId4VcUpdateIssuerRecordOptions, OpenId4VcUpdateVerifierRecordOptions, OpenId4VcVerificationSessionRecord, OpenId4VcVerificationSessionRecordProps, OpenId4VcVerificationSessionRecordTags, OpenId4VcVerificationSessionRepository, OpenId4VcVerificationSessionState, OpenId4VcVerificationSessionStateChangedEvent, OpenId4VcVerificationTypeOauth2ClientAttestation, OpenId4VcVerificationTypeOauth2SecuredAuthorizationRequest, OpenId4VcVerificationTypeOid4VpCredential, OpenId4VcVerificationTypeOpenId4VciCredentialIssuerMetadata, OpenId4VcVerificationTypeOpenId4VciKeyAttestation, OpenId4VcVerificationTypes, OpenId4VcVerifierApi, OpenId4VcVerifierEvents, OpenId4VcVerifierModule, OpenId4VcVerifierModuleConfig, OpenId4VcVerifierModuleConfigOptions, OpenId4VcVerifierRecord, OpenId4VcVerifierRecordProps, OpenId4VcVerifierRecordTags, OpenId4VcVerifierRepository, OpenId4VciAcceptCredentialOfferOptions, OpenId4VciAccessTokenResponse, OpenId4VciAuthCodeFlowOptions, OpenId4VciAuthorizationCodeFlowConfig, OpenId4VciAuthorizationFlow, OpenId4VciAuthorizationServerClientAuthenticationClientSecret, OpenId4VciAuthorizationServerConfig, OpenId4VciBatchCredentialIssuanceOptions, OpenId4VciChainedAuthorizationServerConfig, OpenId4VciCreateCredentialOfferOptions, OpenId4VciCreateCredentialResponseOptions, OpenId4VciCreateDeferredCredentialResponseOptions, OpenId4VciCreateIssuerOptions, OpenId4VciCreateStatelessCredentialOfferOptions, OpenId4VciCredentialBindingOptions, OpenId4VciCredentialBindingResolver, OpenId4VciCredentialConfigurationSupported, OpenId4VciCredentialConfigurationSupportedWithFormats, OpenId4VciCredentialConfigurationsSupported, OpenId4VciCredentialConfigurationsSupportedWithFormats, OpenId4VciCredentialFormatProfile, OpenId4VciCredentialIssuerMetadata, OpenId4VciCredentialIssuerMetadataDisplay, OpenId4VciCredentialOfferPayload, OpenId4VciCredentialRequest, OpenId4VciCredentialRequestAuthorization, OpenId4VciCredentialRequestFormatSpecific, OpenId4VciCredentialRequestOptions, OpenId4VciCredentialRequestToCredentialMapper, OpenId4VciCredentialRequestToCredentialMapperOptions, OpenId4VciCredentialRequestWithFormats, OpenId4VciCredentialResponse, OpenId4VciDeferredCredentialRequest, OpenId4VciDeferredCredentialRequestOptions, OpenId4VciDeferredCredentialRequestToCredentialMapper, OpenId4VciDeferredCredentialRequestToCredentialMapperOptions, OpenId4VciDeferredCredentialResponse, OpenId4VciDeferredCredentials, OpenId4VciDirectAuthorizationServerConfig, OpenId4VciDpopRequestOptions, OpenId4VciDynamicIssuanceAuthorizationFlow, OpenId4VciDynamicIssuanceDpop, OpenId4VciDynamicIssuanceSessionOptions, OpenId4VciDynamicIssuanceWalletAttestation, OpenId4VciGetChainedAuthorizationRequestParameters, OpenId4VciGetDynamicIssuanceSession, OpenId4VciGetDynamicIssuanceSessionAuthorizationOptions, OpenId4VciGetDynamicIssuanceSessionCredentialOptions, OpenId4VciGetDynamicIssuanceSessionOptions, OpenId4VciGetVerificationSession, OpenId4VciGetVerificationSessionForIssuanceSessionAuthorization, OpenId4VciHolderService, OpenId4VciKeyAttestationLevel, OpenId4VciMetadata, OpenId4VciNotificationEvent, OpenId4VciParsedCredentialRequest, OpenId4VciPreAuthorizedCodeFlowConfig, OpenId4VciPreAuthorizedTokenRequestOptions, OpenId4VciProofOfPossessionProofTypes, OpenId4VciProofOfPossessionRequirements, OpenId4VciProofOfPressionProofTypes, OpenId4VciRequestTokenResponse, OpenId4VciResolvedAuthorizationRequest, OpenId4VciResolvedCredentialOffer, OpenId4VciRetrieveAuthorizationCodeUsingPresentationOptions, OpenId4VciSendNotificationOptions, OpenId4VciSignCredentials, OpenId4VciSignMdocCredentials, OpenId4VciSignSdJwtCredentials, OpenId4VciSignW3cCredentials, OpenId4VciSignW3cV2Credentials, OpenId4VciSupportedCredentialFormats, OpenId4VciTokenRefreshOptions, OpenId4VciTokenRequestOptions, OpenId4VciTxCode, OpenId4VciVersion, OpenId4VpAcceptAuthorizationRequestOptions, OpenId4VpAuthorizationRequestPayload, OpenId4VpAuthorizationResponsePayload, OpenId4VpCreateAuthorizationRequestOptions, OpenId4VpCreateAuthorizationRequestReturn, OpenId4VpCreateVerifierOptions, OpenId4VpHolderService, OpenId4VpResolvedAuthorizationRequest, OpenId4VpVerifiedAuthorizationRequest, OpenId4VpVerifiedAuthorizationResponse, OpenId4VpVerifiedAuthorizationResponseDcql, OpenId4VpVerifiedAuthorizationResponsePresentationExchange, OpenId4VpVerifiedAuthorizationResponseTransactionData, OpenId4VpVerifierClientMetadata, OpenId4VpVerifierService, OpenId4VpVerifyAuthorizationResponseOptions, OpenId4VpVersion, type Openid4vpAuthorizationRequest, ParsedTransactionDataEntry, ResolveOpenId4VpAuthorizationRequestOptions, ResponseMode, VerifiedOpenId4VcCredentialHolderBinding, authorizationCodeGrantIdentifier, dynamicOid4vciClientAuthentication, getAllowedAndRequestedScopeValues, getCredentialConfigurationsSupportedForScopes, getOfferedCredentials, getOid4vcCallbacks, getOid4vcDecryptJweCallback, getOid4vcEncryptJweCallback, getOid4vcJwtSignCallback, getOid4vcJwtVerifyCallback, getRequestedCredentialConfigurationsForScope, getScopesFromCredentialConfigurationsSupported, keyAttestationLevelSatisfies, openId4VciSupportedCredentialFormats, preAuthorizedCodeGrantIdentifier };
 \ No newline at end of file
 diff --git a/node_modules/@credo-ts/openid4vc/build/index.mjs b/node_modules/@credo-ts/openid4vc/build/index.mjs
 index 49796e0..2077f54 100644
@@ -55,8 +65,201 @@ index fbe85f1..85e8688 100644
  						} catch {
  							return false;
  						}
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerApi.d.mts b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerApi.d.mts
+index 7e7b74b..53915cd 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerApi.d.mts
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerApi.d.mts
+@@ -93,6 +93,7 @@ export declare class OpenId4VcIssuerApi {
+         } | undefined;
+       }[] | undefined;
+       nonce_endpoint: string;
++      notification_endpoint: string | undefined;
+       batch_credential_issuance: {
+         batch_size: number;
+       } | undefined;
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerEvents.d.mts b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerEvents.d.mts
+index 985b5c8..6eb2bcf 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerEvents.d.mts
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerEvents.d.mts
+@@ -1,10 +1,11 @@
+ import { OpenId4VcIssuanceSessionState } from "./OpenId4VcIssuanceSessionState.mjs";
+-import { OpenId4VcIssuanceSessionRecord } from "./repository/OpenId4VcIssuanceSessionRecord.mjs";
++import { OpenId4VcIssuanceSessionNotification, OpenId4VcIssuanceSessionNotificationEvent, OpenId4VcIssuanceSessionRecord } from "./repository/OpenId4VcIssuanceSessionRecord.mjs";
+ import "./repository/index.mjs";
+ import { BaseEvent } from "@credo-ts/core";
+ //#region src/openid4vc-issuer/OpenId4VcIssuerEvents.d.ts
+ export declare enum OpenId4VcIssuerEvents {
+-  IssuanceSessionStateChanged = "OpenId4VcIssuer.IssuanceSessionStateChanged"
++  IssuanceSessionStateChanged = "OpenId4VcIssuer.IssuanceSessionStateChanged",
++  IssuanceSessionNotificationReceived = "OpenId4VcIssuer.IssuanceSessionNotificationReceived"
+ }
+ export interface OpenId4VcIssuanceSessionStateChangedEvent extends BaseEvent {
+   type: typeof OpenId4VcIssuerEvents.IssuanceSessionStateChanged;
+@@ -13,5 +14,12 @@ export interface OpenId4VcIssuanceSessionStateChangedEvent extends BaseEvent {
+     previousState: OpenId4VcIssuanceSessionState | null;
+   };
+ }
++export interface OpenId4VcIssuanceSessionNotificationReceivedEvent extends BaseEvent {
++  type: typeof OpenId4VcIssuerEvents.IssuanceSessionNotificationReceived;
++  payload: {
++    issuanceSession: OpenId4VcIssuanceSessionRecord;
++    notification: Omit<OpenId4VcIssuanceSessionNotification, 'events'> & OpenId4VcIssuanceSessionNotificationEvent;
++  };
++}
+ //#endregion
+ //# sourceMappingURL=OpenId4VcIssuerEvents.d.mts.map
+\ No newline at end of file
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerEvents.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerEvents.mjs
+index 1ee2234..8495abf 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerEvents.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerEvents.mjs
+@@ -1,6 +1,7 @@
+ //#region src/openid4vc-issuer/OpenId4VcIssuerEvents.ts
+ let OpenId4VcIssuerEvents = /* @__PURE__ */ function(OpenId4VcIssuerEvents) {
+ 	OpenId4VcIssuerEvents["IssuanceSessionStateChanged"] = "OpenId4VcIssuer.IssuanceSessionStateChanged";
++	OpenId4VcIssuerEvents["IssuanceSessionNotificationReceived"] = "OpenId4VcIssuer.IssuanceSessionNotificationReceived";
+ 	return OpenId4VcIssuerEvents;
+ }({});
+ //#endregion
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModule.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModule.mjs
+index 6ad4513..401ad26 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModule.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModule.mjs
+@@ -20,6 +20,7 @@ import { configureDeferredCredentialEndpoint } from "./router/deferredCredential
+ import { configureIssuerMetadataEndpoint } from "./router/issuerMetadataEndpoint.mjs";
+ import { configureJwksEndpoint } from "./router/jwksEndpoint.mjs";
+ import { configureNonceEndpoint } from "./router/nonceEndpoint.mjs";
++import { configureNotificationEndpoint } from "./router/notificationEndpoint.mjs";
+ import { configureRedirectEndpoint } from "./router/redirectEndpoint.mjs";
+ import "./router/index.mjs";
+ import { joinUriParts } from "@credo-ts/core";
+@@ -129,6 +130,7 @@ var OpenId4VcIssuerModule = class {
+ 		configureClientAttestationChallengeEndpoint(issuerEndpointsRouter, this.config);
+ 		configureCredentialEndpoint(issuerEndpointsRouter, this.config);
+ 		configureDeferredCredentialEndpoint(issuerEndpointsRouter, this.config);
++		if (this.config.notificationEndpointEnabled) configureNotificationEndpoint(issuerEndpointsRouter, this.config);
+ 		configurePushedAuthorizationRequestEndpoint(issuerEndpointsRouter, this.config);
+ 		configureAuthorizationEndpoint(issuerEndpointsRouter, this.config);
+ 		configureRedirectEndpoint(issuerEndpointsRouter, this.config);
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModuleConfig.d.mts b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModuleConfig.d.mts
+index 60acd65..c654e1b 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModuleConfig.d.mts
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModuleConfig.d.mts
+@@ -181,6 +181,16 @@ export interface InternalOpenId4VcIssuerModuleConfigOptions {
+    * issuance, or external authorization server flow.
+    */
+   getDynamicIssuanceSession?: OpenId4VciGetDynamicIssuanceSession;
++  /**
++   * Whether to expose the OpenID4VCI notification endpoint. When enabled, the endpoint is advertised as
++   * `notification_endpoint` in the credential issuer metadata, and every credential response that contains
++   * credentials includes a `notification_id` the wallet can use to report `credential_accepted`,
++   * `credential_failure` or `credential_deleted`. Received notifications are stored on the issuance session
++   * and emitted as {@link OpenId4VcIssuerEvents.IssuanceSessionNotificationReceived} events.
++   *
++   * @default true
++   */
++  notificationEndpointEnabled?: boolean;
+   /**
+    * Custom the paths used for endpoints
+    */
+@@ -209,6 +219,10 @@ export interface InternalOpenId4VcIssuerModuleConfigOptions {
+      * @default /deferred-credential
+      */
+     deferredCredential?: string;
++    /**
++     * @default /notification
++     */
++    notification?: string;
+     /**
+      * @default /token
+      */
+@@ -406,6 +420,14 @@ export declare class OpenId4VcIssuerModuleConfig {
+    * @default /deferred-credential
+    */
+   get deferredCredentialEndpointPath(): string;
++  /**
++   * @default /notification
++   */
++  get notificationEndpointPath(): string;
++  /**
++   * @default true
++   */
++  get notificationEndpointEnabled(): boolean;
+   /**
+    * @default /token
+    */
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModuleConfig.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModuleConfig.mjs
+index 605e96b..09e893d 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModuleConfig.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerModuleConfig.mjs
+@@ -213,6 +213,18 @@ var OpenId4VcIssuerModuleConfig = class {
+ 		return this.options.endpoints?.deferredCredential ?? "/deferred-credential";
+ 	}
+ 	/**
++	* @default /notification
++	*/
++	get notificationEndpointPath() {
++		return this.options.endpoints?.notification ?? "/notification";
++	}
++	/**
++	* @default true
++	*/
++	get notificationEndpointEnabled() {
++		return this.options.notificationEndpointEnabled ?? true;
++	}
++	/**
+ 	* @default /token
+ 	*/
+ 	get accessTokenEndpointPath() {
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.d.mts b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.d.mts
+index c020411..87b031f 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.d.mts
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.d.mts
+@@ -11,7 +11,7 @@ import { OpenId4VcIssuerModuleConfig } from "./OpenId4VcIssuerModuleConfig.mjs";
+ import "../index.mjs";
+ import { AgentContext, Jwt, Query, QueryOptions, W3cCredentialService, W3cV2CredentialService } from "@credo-ts/core";
+ import { Jwk, Oauth2AuthorizationServer, Oauth2Client, Oauth2ResourceServer, PkceCodeChallengeMethod, SupportedClientAuthenticationMethod } from "@openid4vc/oauth2";
+-import { CredentialResponse, DeferredCredentialResponse, Openid4vciIssuer, Openid4vciVersion } from "@openid4vc/openid4vci";
++import { CredentialResponse, DeferredCredentialResponse, NotificationEvent, Openid4vciIssuer, Openid4vciVersion } from "@openid4vc/openid4vci";
+ //#region src/openid4vc-issuer/OpenId4VcIssuerService.d.ts
+ /**
+  * @internal
+@@ -76,6 +76,25 @@ export declare class OpenId4VcIssuerService {
+     issuanceSession: OpenId4VcIssuanceSessionRecord;
+     deferredCredentialResponse: DeferredCredentialResponse;
+   }>;
++  /**
++   * Creates a `notification_id` for the credential(s) of a credential response and registers it on the
++   * issuance session, so the wallet can later report on the credential(s) at the notification endpoint.
++   * The caller is responsible for persisting the issuance session.
++   *
++   * Returns `undefined` if the notification endpoint is disabled.
++   */
++  private createNotificationId;
++  /**
++   * Records a notification received at the notification endpoint on the issuance session and emits an
++   * {@link OpenId4VcIssuerEvents.IssuanceSessionNotificationReceived} event. The state of the issuance
++   * session is not changed.
++   */
++  processNotification(agentContext: AgentContext, options: {
++    issuanceSession: OpenId4VcIssuanceSessionRecord;
++    notificationId: string;
++    event: NotificationEvent;
++    eventDescription?: string;
++  }): Promise<OpenId4VcIssuanceSessionRecord>;
+   private verifyCredentialRequestProofs;
+   findIssuanceSessionsByQuery(agentContext: AgentContext, query: Query<OpenId4VcIssuanceSessionRecord>, queryOptions?: QueryOptions): Promise<OpenId4VcIssuanceSessionRecord[]>;
+   findSingleIssuanceSessionByQuery(agentContext: AgentContext, query: Query<OpenId4VcIssuanceSessionRecord>): Promise<OpenId4VcIssuanceSessionRecord | null>;
+@@ -109,6 +128,7 @@ export declare class OpenId4VcIssuerService {
+         } | undefined;
+       }[] | undefined;
+       nonce_endpoint: string;
++      notification_endpoint: string | undefined;
+       batch_credential_issuance: {
+         batch_size: number;
+       } | undefined;
 diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
-index bf928c7..a3046a5 100644
+index bf928c7..1f89467 100644
 --- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
 +++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
 @@ -1,7 +1,7 @@
@@ -68,7 +271,175 @@ index bf928c7..a3046a5 100644
  import { dynamicOid4vciClientAuthentication, getOid4vcCallbacks } from "../shared/callbacks.mjs";
  import { getCredentialConfigurationsSupportedForScopes, getOfferedCredentials, getScopesFromCredentialConfigurationsSupported } from "../shared/issuerMetadataUtils.mjs";
  import "../shared/models/OpenId4VciCredentialFormatProfile.mjs";
-@@ -1159,7 +1159,8 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+@@ -19,6 +19,7 @@ import { OpenId4VcIssuanceSessionRepository } from "./repository/OpenId4VcIssuan
+ import { OpenId4VcIssuerRecord } from "./repository/OpenId4VcIssuerRecord.mjs";
+ import { OpenId4VcIssuerRepository } from "./repository/OpenId4VcIssuerRepository.mjs";
+ import "./repository/index.mjs";
++import { withIssuanceSessionLock } from "./util/issuanceSessionLock.mjs";
+ import { generateTxCode } from "./util/txCode.mjs";
+ import { ClaimFormat, CredoError, EventEmitter, JwsService, Jwt, JwtPayload, Kms, MdocApi, SdJwtVcApi, TypedArrayEncoder, W3cCredentialService, W3cV2CredentialService, injectable, joinUriParts, utils } from "@credo-ts/core";
+ import { HashAlgorithm, Oauth2AuthorizationServer, Oauth2Client, Oauth2ErrorCodes, Oauth2ResourceServer, Oauth2ServerErrorResponseError, PkceCodeChallengeMethod, SupportedClientAuthenticationMethod, authorizationCodeGrantIdentifier, calculateJwkThumbprint, preAuthorizedCodeGrantIdentifier, refreshTokenGrantIdentifier } from "@openid4vc/oauth2";
+@@ -351,15 +352,20 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 				holderBinding: verifiedCredentialRequestProofs
+ 			});
+ 			const newState = issuanceSession.state === "CredentialsPartiallyIssued" ? "CredentialsPartiallyIssued" : "CredentialRequestReceived";
+-			await this.updateExpiresAt(agentContext, issuanceSession, signOptionsOrDeferral.interval);
+-			await this.updateState(agentContext, issuanceSession, newState);
++			await withIssuanceSessionLock(agentContext, issuanceSession.id, async () => {
++				await this.mergeStoredNotifications(agentContext, issuanceSession);
++				await this.updateExpiresAt(agentContext, issuanceSession, signOptionsOrDeferral.interval);
++				await this.updateState(agentContext, issuanceSession, newState);
++			});
+ 		} else {
+ 			const credentials = await this.getSignedCredentials(agentContext, signOptionsOrDeferral, {
+ 				issuanceSession,
+ 				credentialConfiguration,
+ 				expectedLength: verifiedCredentialRequestProofs.keys.length
+ 			});
++			const notificationId = this.createNotificationId(issuanceSession, credentialConfigurationId);
+ 			credentialResponse = (await vcIssuer.createCredentialResponse({
++				notificationId,
+ 				credential: credentialRequest.proof ? credentials.credentials[0] : void 0,
+ 				credentials: credentialRequest.proofs ? issuanceSession.openId4VciVersion === "v1" || issuanceSession.openId4VciVersion === "v1.draft15" ? credentials.credentials.map((c) => ({ credential: c })) : credentials.credentials : void 0,
+ 				cNonce,
+@@ -368,7 +374,10 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 			})).credentialResponse;
+ 			issuanceSession.issuedCredentials.push(credentialConfigurationId);
+ 			const newState = issuanceSession.issuedCredentials.length >= issuanceSession.credentialOfferPayload.credential_configuration_ids.length ? "Completed" : "CredentialsPartiallyIssued";
+-			await this.updateState(agentContext, issuanceSession, newState);
++			await withIssuanceSessionLock(agentContext, issuanceSession.id, async () => {
++				await this.mergeStoredNotifications(agentContext, issuanceSession);
++				await this.updateState(agentContext, issuanceSession, newState);
++			});
+ 		}
+ 		return {
+ 			credentialResponse,
+@@ -419,24 +428,113 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 				};
+ 				return tx;
+ 			});
+-			await this.updateExpiresAt(agentContext, issuanceSession, signOptionsOrDeferral.interval);
++			await withIssuanceSessionLock(agentContext, issuanceSession.id, async () => {
++				await this.mergeStoredNotifications(agentContext, issuanceSession);
++				await this.updateExpiresAt(agentContext, issuanceSession, signOptionsOrDeferral.interval);
++			});
+ 		} else {
+ 			const credentials = await this.getSignedCredentials(agentContext, signOptionsOrDeferral, {
+ 				issuanceSession,
+ 				credentialConfiguration,
+ 				expectedLength: transaction.numberOfCredentials
+ 			});
+-			deferredCredentialResponse = (await vcIssuer.createDeferredCredentialResponse({ credentials: credentials.credentials.map((c) => ({ credential: c })) })).deferredCredentialResponse;
++			const notificationId = this.createNotificationId(issuanceSession, credentialConfigurationId);
++			deferredCredentialResponse = (await vcIssuer.createDeferredCredentialResponse({
++				notificationId,
++				credentials: credentials.credentials.map((c) => ({ credential: c }))
++			})).deferredCredentialResponse;
+ 			issuanceSession.issuedCredentials.push(credentialConfigurationId);
+ 			issuanceSession.transactions = issuanceSession.transactions?.filter((tx) => tx.transactionId !== transaction.transactionId);
+ 			const newState = issuanceSession.issuedCredentials.length >= issuanceSession.credentialOfferPayload.credential_configuration_ids.length ? "Completed" : "CredentialsPartiallyIssued";
+-			await this.updateState(agentContext, issuanceSession, newState);
++			await withIssuanceSessionLock(agentContext, issuanceSession.id, async () => {
++				await this.mergeStoredNotifications(agentContext, issuanceSession);
++				await this.updateState(agentContext, issuanceSession, newState);
++			});
+ 		}
+ 		return {
+ 			deferredCredentialResponse,
+ 			issuanceSession
+ 		};
+ 	}
++	/**
++	* Takes the notifications stored on the issuance session into the given record before it is saved, so a
++	* notification processed (or a `notification_id` registered) while this request was running is not
++	* overwritten. Events of a notification are only ever added by `processNotification`, so the stored
++	* events win. Must run under `withIssuanceSessionLock` for the same session, together with the save.
++	*/
++	async mergeStoredNotifications(agentContext, issuanceSession) {
++		const stored = await this.openId4VcIssuanceSessionRepository.getById(agentContext, issuanceSession.id);
++		const storedIds = new Set(stored.notifications.map((n) => n.notificationId));
++		const own = new Map(issuanceSession.notifications.map((n) => [n.notificationId, n]));
++		issuanceSession.notifications = [...stored.notifications.map((n) => own.has(n.notificationId) ? {
++			...own.get(n.notificationId),
++			events: n.events
++		} : n), ...issuanceSession.notifications.filter((n) => !storedIds.has(n.notificationId))];
++	}
++	/**
++	* Creates a `notification_id` for the credential(s) of a credential response and registers it on the
++	* issuance session, so the wallet can later report on the credential(s) at the notification endpoint.
++	* The caller is responsible for persisting the issuance session.
++	*
++	* Returns `undefined` if the notification endpoint is disabled.
++	*/
++	createNotificationId(issuanceSession, credentialConfigurationId) {
++		if (!this.openId4VcIssuerConfig.notificationEndpointEnabled) return void 0;
++		const notificationId = utils.uuid();
++		issuanceSession.notifications.push({
++			notificationId,
++			credentialConfigurationId,
++			events: []
++		});
++		return notificationId;
++	}
++	/**
++	* Records a notification received at the notification endpoint on the issuance session and emits an
++	* {@link OpenId4VcIssuerEvents.IssuanceSessionNotificationReceived} event. The state of the issuance
++	* session is not changed.
++	*/
++	async processNotification(agentContext, options) {
++		const { notificationId, event, eventDescription } = options;
++		const { issuanceSession, notification, notificationEvent } = await withIssuanceSessionLock(agentContext, options.issuanceSession.id, async () => {
++			const issuanceSession = await this.openId4VcIssuanceSessionRepository.getById(agentContext, options.issuanceSession.id);
++			const notification = issuanceSession.notifications.find((n) => n.notificationId === notificationId);
++			if (!notification) throw new CredoError(`Issuance session '${issuanceSession.id}' does not contain a notification with id '${notificationId}'`);
++			if (notification.events.some((e) => e.event === event && e.eventDescription === eventDescription)) return {
++				issuanceSession,
++				notification,
++				notificationEvent: void 0
++			};
++			const notificationEvent = {
++				event,
++				eventDescription,
++				receivedAt: /* @__PURE__ */ new Date()
++			};
++			notification.events.push(notificationEvent);
++			await this.openId4VcIssuanceSessionRepository.update(agentContext, issuanceSession);
++			return {
++				issuanceSession,
++				notification,
++				notificationEvent
++			};
++		});
++		if (!notificationEvent) {
++			agentContext.config.logger.debug(`Ignored repeated notification '${event}' for notification id '${notificationId}' of openid4vc issuance session ${issuanceSession.id}`);
++			return issuanceSession;
++		}
++		agentContext.config.logger.debug(`Received notification '${event}' for notification id '${notificationId}' of openid4vc issuance session ${issuanceSession.id}`);
++		agentContext.dependencyManager.resolve(EventEmitter).emit(agentContext, {
++			type: "OpenId4VcIssuer.IssuanceSessionNotificationReceived",
++			payload: {
++				issuanceSession: issuanceSession.clone(),
++				notification: {
++					notificationId,
++					credentialConfigurationId: notification.credentialConfigurationId,
++					...notificationEvent
++				}
++			}
++		});
++		return issuanceSession;
++	}
+ 	async verifyCredentialRequestProofs(agentContext, options) {
+ 		const { parsedCredentialRequest, issuer, issuanceSession, credentialConfiguration, credentialConfigurationId } = options;
+ 		const { proofs } = parsedCredentialRequest;
+@@ -742,6 +840,7 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 			authorization_servers: authorizationServers,
+ 			display: issuerRecord.display,
+ 			nonce_endpoint: joinUriParts(issuerUrl, [config.nonceEndpointPath]),
++			notification_endpoint: config.notificationEndpointEnabled ? joinUriParts(issuerUrl, [config.notificationEndpointPath]) : void 0,
+ 			batch_credential_issuance: issuerRecord.batchCredentialIssuance ? { batch_size: issuerRecord.batchCredentialIssuance.batchSize } : void 0
+ 		};
+ 		const clientAttestationAuthMethods = [...issuerRecord.clientAttestationSigningAlgValuesSupported && issuerRecord.clientAttestationPopSigningAlgValuesSupported ? [SupportedClientAuthenticationMethod.ClientAttestationJwt] : [], ...issuerRecord.clientAttestationSigningAlgValuesSupported && issuerRecord.dpopSigningAlgValuesSupported ? [SupportedClientAuthenticationMethod.ClientAttestationJwtDpop] : []];
+@@ -1159,7 +1258,8 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
  			verificationMethod: options.verificationMethod,
  			alg: publicJwk.signatureAlgorithm
  		});
@@ -78,6 +449,301 @@ index bf928c7..a3046a5 100644
  		return await this.w3cCredentialService.signCredential(agentContext, {
  			format: ClaimFormat.LdpVc,
  			credential: options.credential,
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/index.d.mts b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/index.d.mts
+index 6107f3b..ee71fce 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/index.d.mts
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/index.d.mts
+@@ -1,5 +1,5 @@
+ import { OpenId4VcIssuanceSessionState } from "./OpenId4VcIssuanceSessionState.mjs";
+-import { OpenId4VcIssuanceSessionAuthorization, OpenId4VcIssuanceSessionChainedIdentity, OpenId4VcIssuanceSessionDpop, OpenId4VcIssuanceSessionPkce, OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionWalletAttestation } from "./repository/OpenId4VcIssuanceSessionRecord.mjs";
++import { OpenId4VcIssuanceSessionAuthorization, OpenId4VcIssuanceSessionChainedIdentity, OpenId4VcIssuanceSessionDpop, OpenId4VcIssuanceSessionNotification, OpenId4VcIssuanceSessionNotificationEvent, OpenId4VcIssuanceSessionPkce, OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionWalletAttestation } from "./repository/OpenId4VcIssuanceSessionRecord.mjs";
+ import { OpenId4VcIssuanceSessionRepository } from "./repository/OpenId4VcIssuanceSessionRepository.mjs";
+ import { OpenId4VcIssuerRecord, OpenId4VcIssuerRecordProps, OpenId4VcIssuerRecordSignedMetadata, OpenId4VcIssuerRecordTags } from "./repository/OpenId4VcIssuerRecord.mjs";
+ import "./repository/index.mjs";
+@@ -7,6 +7,6 @@ import { OpenId4VcUpdateIssuerOptions, OpenId4VcUpdateIssuerRecordOptions, OpenI
+ import { OpenId4VcIssuerModuleConfig } from "./OpenId4VcIssuerModuleConfig.mjs";
+ import { OpenId4VcIssuerService } from "./OpenId4VcIssuerService.mjs";
+ import { OpenId4VcIssuerApi } from "./OpenId4VcIssuerApi.mjs";
+-import { OpenId4VcIssuanceSessionStateChangedEvent, OpenId4VcIssuerEvents } from "./OpenId4VcIssuerEvents.mjs";
++import { OpenId4VcIssuanceSessionNotificationReceivedEvent, OpenId4VcIssuanceSessionStateChangedEvent, OpenId4VcIssuerEvents } from "./OpenId4VcIssuerEvents.mjs";
+ import { OpenId4VcIssuerModule } from "./OpenId4VcIssuerModule.mjs";
+-export { type OpenId4VcIssuanceSessionAuthorization, type OpenId4VcIssuanceSessionChainedIdentity, type OpenId4VcIssuanceSessionDpop, type OpenId4VcIssuanceSessionPkce, type OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, type OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionState, OpenId4VcIssuanceSessionStateChangedEvent, type OpenId4VcIssuanceSessionWalletAttestation, OpenId4VcIssuerApi, OpenId4VcIssuerEvents, OpenId4VcIssuerModule, OpenId4VcIssuerModuleConfig, OpenId4VcIssuerRecord, type OpenId4VcIssuerRecordProps, type OpenId4VcIssuerRecordSignedMetadata, type OpenId4VcIssuerRecordTags, OpenId4VcIssuerService, OpenId4VcUpdateIssuerOptions, OpenId4VcUpdateIssuerRecordOptions, OpenId4VciAuthorizationCodeFlowConfig, OpenId4VciBatchCredentialIssuanceOptions, OpenId4VciCreateCredentialOfferOptions, OpenId4VciCreateCredentialResponseOptions, OpenId4VciCreateDeferredCredentialResponseOptions, OpenId4VciCreateIssuerOptions, OpenId4VciCreateStatelessCredentialOfferOptions, OpenId4VciCredentialRequestAuthorization, OpenId4VciCredentialRequestToCredentialMapper, OpenId4VciCredentialRequestToCredentialMapperOptions, OpenId4VciDeferredCredentialRequestToCredentialMapper, OpenId4VciDeferredCredentialRequestToCredentialMapperOptions, OpenId4VciDeferredCredentials, OpenId4VciDynamicIssuanceAuthorizationFlow, OpenId4VciDynamicIssuanceDpop, OpenId4VciDynamicIssuanceSessionOptions, OpenId4VciDynamicIssuanceWalletAttestation, OpenId4VciGetChainedAuthorizationRequestParameters, OpenId4VciGetDynamicIssuanceSession, OpenId4VciGetDynamicIssuanceSessionAuthorizationOptions, OpenId4VciGetDynamicIssuanceSessionCredentialOptions, OpenId4VciGetDynamicIssuanceSessionOptions, OpenId4VciGetVerificationSession, OpenId4VciGetVerificationSessionForIssuanceSessionAuthorization, OpenId4VciPreAuthorizedCodeFlowConfig, OpenId4VciSignCredentials, OpenId4VciSignMdocCredentials, OpenId4VciSignSdJwtCredentials, OpenId4VciSignW3cCredentials, OpenId4VciSignW3cV2Credentials, OpenId4VciVersion };
+\ No newline at end of file
++export { type OpenId4VcIssuanceSessionAuthorization, type OpenId4VcIssuanceSessionChainedIdentity, type OpenId4VcIssuanceSessionDpop, type OpenId4VcIssuanceSessionNotification, type OpenId4VcIssuanceSessionNotificationEvent, OpenId4VcIssuanceSessionNotificationReceivedEvent, type OpenId4VcIssuanceSessionPkce, type OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, type OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionState, OpenId4VcIssuanceSessionStateChangedEvent, type OpenId4VcIssuanceSessionWalletAttestation, OpenId4VcIssuerApi, OpenId4VcIssuerEvents, OpenId4VcIssuerModule, OpenId4VcIssuerModuleConfig, OpenId4VcIssuerRecord, type OpenId4VcIssuerRecordProps, type OpenId4VcIssuerRecordSignedMetadata, type OpenId4VcIssuerRecordTags, OpenId4VcIssuerService, OpenId4VcUpdateIssuerOptions, OpenId4VcUpdateIssuerRecordOptions, OpenId4VciAuthorizationCodeFlowConfig, OpenId4VciBatchCredentialIssuanceOptions, OpenId4VciCreateCredentialOfferOptions, OpenId4VciCreateCredentialResponseOptions, OpenId4VciCreateDeferredCredentialResponseOptions, OpenId4VciCreateIssuerOptions, OpenId4VciCreateStatelessCredentialOfferOptions, OpenId4VciCredentialRequestAuthorization, OpenId4VciCredentialRequestToCredentialMapper, OpenId4VciCredentialRequestToCredentialMapperOptions, OpenId4VciDeferredCredentialRequestToCredentialMapper, OpenId4VciDeferredCredentialRequestToCredentialMapperOptions, OpenId4VciDeferredCredentials, OpenId4VciDynamicIssuanceAuthorizationFlow, OpenId4VciDynamicIssuanceDpop, OpenId4VciDynamicIssuanceSessionOptions, OpenId4VciDynamicIssuanceWalletAttestation, OpenId4VciGetChainedAuthorizationRequestParameters, OpenId4VciGetDynamicIssuanceSession, OpenId4VciGetDynamicIssuanceSessionAuthorizationOptions, OpenId4VciGetDynamicIssuanceSessionCredentialOptions, OpenId4VciGetDynamicIssuanceSessionOptions, OpenId4VciGetVerificationSession, OpenId4VciGetVerificationSessionForIssuanceSessionAuthorization, OpenId4VciPreAuthorizedCodeFlowConfig, OpenId4VciSignCredentials, OpenId4VciSignMdocCredentials, OpenId4VciSignSdJwtCredentials, OpenId4VciSignW3cCredentials, OpenId4VciSignW3cV2Credentials, OpenId4VciVersion };
+\ No newline at end of file
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.d.mts b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.d.mts
+index 069a471..7ab85b6 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.d.mts
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.d.mts
+@@ -5,6 +5,7 @@ import "../../shared/index.mjs";
+ import { OpenId4VciVersion } from "../OpenId4VcIssuerServiceOptions.mjs";
+ import { BaseRecord, RecordTags, TagsBase } from "@credo-ts/core";
+ import { AccessTokenResponse, AuthorizationServerMetadata, PkceCodeChallengeMethod } from "@openid4vc/oauth2";
++import { NotificationEvent } from "@openid4vc/openid4vci";
+ //#region src/openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.d.ts
+ export interface OpenId4VcIssuanceSessionDpop {
+   /**
+@@ -140,7 +141,38 @@ export type DefaultOpenId4VcIssuanceSessionRecordTags = {
+   presentationAuthSession?: string;
+   chainedIdentityRequestUriReferenceValue?: string;
+   chainedIdentityState?: string;
++  notificationIds?: string[];
+ };
++export interface OpenId4VcIssuanceSessionNotificationEvent {
++  /**
++   * The notification event sent by the wallet.
++   */
++  event: NotificationEvent;
++  /**
++   * Optional human readable description of the event, as sent by the wallet.
++   */
++  eventDescription?: string;
++  /**
++   * When the notification was received by the issuer.
++   */
++  receivedAt: Date;
++}
++export interface OpenId4VcIssuanceSessionNotification {
++  /**
++   * The `notification_id` returned in the credential response (or deferred credential response).
++   */
++  notificationId: string;
++  /**
++   * The credential configuration of the credential(s) returned with this `notification_id`.
++   */
++  credentialConfigurationId: string;
++  /**
++   * The notification events received for this `notification_id`, in the order they were received.
++   * A wallet can send multiple events for the same `notification_id` (e.g. `credential_accepted`
++   * followed by `credential_deleted` later on).
++   */
++  events: OpenId4VcIssuanceSessionNotificationEvent[];
++}
+ export interface OpenId4VcIssuanceSessionRecordTransaction {
+   transactionId: string;
+   numberOfCredentials: number;
+@@ -230,6 +262,13 @@ export declare class OpenId4VcIssuanceSessionRecord extends BaseRecord<DefaultOp
+    * The credential transactions for deferred credentials.
+    */
+   transactions: OpenId4VcIssuanceSessionRecordTransaction[];
++  /**
++   * The notification ids handed out in credential responses of this session, and the notification
++   * events the wallet sent for them to the notification endpoint.
++   *
++   * @since 0.7.5
++   */
++  notifications: OpenId4VcIssuanceSessionNotification[];
+   /**
+    * Pre authorized code used for the issuance session. Only used when a pre-authorized credential
+    * offer is created.
+@@ -313,6 +352,7 @@ export declare class OpenId4VcIssuanceSessionRecord extends BaseRecord<DefaultOp
+     presentationAuthSession: string | undefined;
+     chainedIdentityRequestUriReferenceValue: string | undefined;
+     chainedIdentityState: string | undefined;
++    notificationIds: string[] | undefined;
+   };
+ }
+ //#endregion
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.mjs
+index 185d223..4297bf0 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/OpenId4VcIssuanceSessionRecord.mjs
+@@ -11,6 +11,7 @@ var OpenId4VcIssuanceSessionRecord = class OpenId4VcIssuanceSessionRecord extend
+ 		this.type = OpenId4VcIssuanceSessionRecord.type;
+ 		this.issuedCredentials = [];
+ 		this.transactions = [];
++		this.notifications = [];
+ 		if (props) {
+ 			this.id = props.id ?? utils.uuid();
+ 			this.createdAt = props.createdAt;
+@@ -54,7 +55,8 @@ var OpenId4VcIssuanceSessionRecord = class OpenId4VcIssuanceSessionRecord extend
+ 			authorizationSubject: this.authorization?.subject,
+ 			presentationAuthSession: this.presentation?.authSession,
+ 			chainedIdentityRequestUriReferenceValue: this.chainedIdentity?.requestUriReferenceValue,
+-			chainedIdentityState: this.chainedIdentity?.externalState
++			chainedIdentityState: this.chainedIdentity?.externalState,
++			notificationIds: this.notifications.length > 0 ? this.notifications.map((n) => n.notificationId) : void 0
+ 		};
+ 	}
+ };
+@@ -99,6 +101,31 @@ __decorate([Transform(({ type, value }) => {
+ 		return transaction;
+ 	});
+ }), __decorateMetadata("design:type", Array)], OpenId4VcIssuanceSessionRecord.prototype, "transactions", void 0);
++__decorate([Transform(({ type, value }) => {
++	if (!Array.isArray(value)) return value;
++	return value.map((notification) => {
++		if (!isJsonObject(notification) || !Array.isArray(notification.events)) return notification;
++		return {
++			...notification,
++			events: notification.events.map((event) => {
++				if (!isJsonObject(event)) return event;
++				if (type === TransformationType.PLAIN_TO_CLASS && typeof event.receivedAt === "string") return {
++					...event,
++					receivedAt: new Date(event.receivedAt)
++				};
++				if (type === TransformationType.CLASS_TO_CLASS && event.receivedAt instanceof Date) return {
++					...event,
++					receivedAt: new Date(event.receivedAt.getTime())
++				};
++				if (type === TransformationType.CLASS_TO_PLAIN && event.receivedAt instanceof Date) return {
++					...event,
++					receivedAt: event.receivedAt.toISOString()
++				};
++				return event;
++			})
++		};
++	});
++}), __decorateMetadata("design:type", Array)], OpenId4VcIssuanceSessionRecord.prototype, "notifications", void 0);
+ __decorate([Transform(({ type, value }) => {
+ 	if (type === TransformationType.PLAIN_TO_CLASS && isJsonObject(value) && typeof value.codeExpiresAt === "string") return {
+ 		...value,
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/index.d.mts b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/index.d.mts
+index f562450..ea333c5 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/index.d.mts
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/repository/index.d.mts
+@@ -1,5 +1,5 @@
+-import { DefaultOpenId4VcIssuanceSessionRecordTags, OpenId4VcIssuanceSessionAuthorization, OpenId4VcIssuanceSessionChainedIdentity, OpenId4VcIssuanceSessionDpop, OpenId4VcIssuanceSessionPkce, OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRecordProps, OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionWalletAttestation } from "./OpenId4VcIssuanceSessionRecord.mjs";
++import { DefaultOpenId4VcIssuanceSessionRecordTags, OpenId4VcIssuanceSessionAuthorization, OpenId4VcIssuanceSessionChainedIdentity, OpenId4VcIssuanceSessionDpop, OpenId4VcIssuanceSessionNotification, OpenId4VcIssuanceSessionNotificationEvent, OpenId4VcIssuanceSessionPkce, OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRecordProps, OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionWalletAttestation } from "./OpenId4VcIssuanceSessionRecord.mjs";
+ import { OpenId4VcIssuanceSessionRepository } from "./OpenId4VcIssuanceSessionRepository.mjs";
+ import { DefaultOpenId4VcIssuerRecordTags, OpenId4VcIssuerRecord, OpenId4VcIssuerRecordProps, OpenId4VcIssuerRecordSignedMetadata, OpenId4VcIssuerRecordTags } from "./OpenId4VcIssuerRecord.mjs";
+ import { OpenId4VcIssuerRepository } from "./OpenId4VcIssuerRepository.mjs";
+-export { DefaultOpenId4VcIssuanceSessionRecordTags, DefaultOpenId4VcIssuerRecordTags, OpenId4VcIssuanceSessionAuthorization, OpenId4VcIssuanceSessionChainedIdentity, OpenId4VcIssuanceSessionDpop, OpenId4VcIssuanceSessionPkce, OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRecordProps, OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionWalletAttestation, OpenId4VcIssuerRecord, OpenId4VcIssuerRecordProps, OpenId4VcIssuerRecordSignedMetadata, OpenId4VcIssuerRecordTags, OpenId4VcIssuerRepository };
+\ No newline at end of file
++export { DefaultOpenId4VcIssuanceSessionRecordTags, DefaultOpenId4VcIssuerRecordTags, OpenId4VcIssuanceSessionAuthorization, OpenId4VcIssuanceSessionChainedIdentity, OpenId4VcIssuanceSessionDpop, OpenId4VcIssuanceSessionNotification, OpenId4VcIssuanceSessionNotificationEvent, OpenId4VcIssuanceSessionPkce, OpenId4VcIssuanceSessionPresentation, OpenId4VcIssuanceSessionRecord, OpenId4VcIssuanceSessionRecordProps, OpenId4VcIssuanceSessionRecordTransaction, OpenId4VcIssuanceSessionRepository, OpenId4VcIssuanceSessionWalletAttestation, OpenId4VcIssuerRecord, OpenId4VcIssuerRecordProps, OpenId4VcIssuerRecordSignedMetadata, OpenId4VcIssuerRecordTags, OpenId4VcIssuerRepository };
+\ No newline at end of file
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/router/index.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/router/index.mjs
+index 6563f4c..7b5cd17 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/router/index.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/router/index.mjs
+@@ -10,5 +10,6 @@ import { configureDeferredCredentialEndpoint } from "./deferredCredentialEndpoin
+ import { configureIssuerMetadataEndpoint } from "./issuerMetadataEndpoint.mjs";
+ import { configureJwksEndpoint } from "./jwksEndpoint.mjs";
+ import { configureNonceEndpoint } from "./nonceEndpoint.mjs";
++import { configureNotificationEndpoint } from "./notificationEndpoint.mjs";
+ import { configureRedirectEndpoint } from "./redirectEndpoint.mjs";
+-export { configureAccessTokenEndpoint, configureAuthorizationChallengeEndpoint, configureAuthorizationEndpoint, configureClientAttestationChallengeEndpoint, configureCredentialEndpoint, configureCredentialOfferEndpoint, configureDeferredCredentialEndpoint, configureIssuerMetadataEndpoint, configureJwksEndpoint, configureNonceEndpoint, configureOAuthAuthorizationServerMetadataEndpoint, configurePushedAuthorizationRequestEndpoint, configureRedirectEndpoint };
++export { configureAccessTokenEndpoint, configureAuthorizationChallengeEndpoint, configureAuthorizationEndpoint, configureClientAttestationChallengeEndpoint, configureCredentialEndpoint, configureCredentialOfferEndpoint, configureDeferredCredentialEndpoint, configureIssuerMetadataEndpoint, configureJwksEndpoint, configureNonceEndpoint, configureNotificationEndpoint, configureOAuthAuthorizationServerMetadataEndpoint, configurePushedAuthorizationRequestEndpoint, configureRedirectEndpoint };
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/router/notificationEndpoint.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/router/notificationEndpoint.mjs
+new file mode 100644
+index 0000000..22f66ad
+--- /dev/null
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/router/notificationEndpoint.mjs
+@@ -0,0 +1,85 @@
++import { getRequestContext, sendErrorResponse, sendUnauthorizedError, sendUnknownServerErrorResponse } from "../../shared/router/context.mjs";
++import "../../shared/router/index.mjs";
++import { OpenId4VcIssuanceSessionRepository } from "../repository/OpenId4VcIssuanceSessionRepository.mjs";
++import "../repository/index.mjs";
++import { OpenId4VcIssuerService } from "../OpenId4VcIssuerService.mjs";
++import { joinUriParts } from "@credo-ts/core";
++import { Oauth2ErrorCodes, Oauth2ResourceUnauthorizedError } from "@openid4vc/oauth2";
++import { z } from "zod";
++//#region src/openid4vc-issuer/router/notificationEndpoint.ts
++const zNotificationRequest = z.object({
++	notification_id: z.string().min(1),
++	event: z.enum([
++		"credential_accepted",
++		"credential_failure",
++		"credential_deleted"
++	]),
++	event_description: z.optional(z.string())
++});
++/**
++* Whether the access token was issued for the issuance session. Mirrors how the credential endpoint
++* binds an access token to an issuance session (pre-authorized code, issuer state and subject).
++*/
++function isAccessTokenForIssuanceSession(tokenPayload, issuanceSession) {
++	const preAuthorizedCode = typeof tokenPayload["pre-authorized_code"] === "string" ? tokenPayload["pre-authorized_code"] : void 0;
++	const issuerState = typeof tokenPayload.issuer_state === "string" ? tokenPayload.issuer_state : void 0;
++	if (preAuthorizedCode && preAuthorizedCode !== issuanceSession.preAuthorizedCode) return false;
++	if (issuerState && issuerState !== issuanceSession.authorization?.issuerState) return false;
++	if (issuanceSession.authorization?.subject) return issuanceSession.authorization.subject === tokenPayload.sub;
++	return preAuthorizedCode !== void 0 || issuerState !== void 0;
++}
++function configureNotificationEndpoint(router, config) {
++	router.post(config.notificationEndpointPath, async (request, response, next) => {
++		const { agentContext, issuer } = getRequestContext(request);
++		const openId4VcIssuerService = agentContext.dependencyManager.resolve(OpenId4VcIssuerService);
++		const issuerMetadata = await openId4VcIssuerService.getIssuerMetadata(agentContext, issuer, true);
++		const resourceServer = openId4VcIssuerService.getResourceServer(agentContext, issuer, issuerMetadata);
++		const sendNotificationErrorResponse = (error, errorDescription) => sendErrorResponse(response, next, agentContext.config.logger, 400, error, errorDescription);
++		const fullRequestUrl = joinUriParts(issuerMetadata.credentialIssuer.credential_issuer, [config.notificationEndpointPath]);
++		const resourceRequestResult = await resourceServer.verifyResourceRequest({
++			authorizationServers: issuerMetadata.authorizationServers,
++			resourceServer: issuerMetadata.credentialIssuer.credential_issuer,
++			request: {
++				headers: new Headers(request.headers),
++				method: request.method,
++				url: fullRequestUrl
++			}
++		}).catch((error) => {
++			if (error instanceof Oauth2ResourceUnauthorizedError) sendUnauthorizedError(response, next, agentContext.config.logger, error, 401);
++			else sendUnknownServerErrorResponse(response, next, agentContext.config.logger, error);
++		});
++		if (!resourceRequestResult) return;
++		const { tokenPayload, scheme } = resourceRequestResult;
++		const parsedNotificationRequest = zNotificationRequest.safeParse(request.body);
++		if (!parsedNotificationRequest.success) return sendNotificationErrorResponse("invalid_notification_request", `Invalid notification request. ${parsedNotificationRequest.error.message}`);
++		const notificationRequest = parsedNotificationRequest.data;
++		try {
++			const issuanceSession = await agentContext.dependencyManager.resolve(OpenId4VcIssuanceSessionRepository).findSingleByQuery(agentContext, {
++				issuerId: issuer.issuerId,
++				notificationIds: [notificationRequest.notification_id]
++			});
++			if (!issuanceSession || !isAccessTokenForIssuanceSession(tokenPayload, issuanceSession)) {
++				agentContext.config.logger.warn(`No issuance session found for notification id '${notificationRequest.notification_id}' of issuer ${issuer.issuerId} that is bound to the access token`);
++				return sendNotificationErrorResponse("invalid_notification_id", "Unknown notification id");
++			}
++			if (issuanceSession.dpop?.required && !resourceRequestResult.dpop) return sendUnauthorizedError(response, next, agentContext.config.logger, new Oauth2ResourceUnauthorizedError("Missing required DPoP proof", {
++				scheme,
++				error: Oauth2ErrorCodes.InvalidDpopProof
++			}), 401);
++			await openId4VcIssuerService.processNotification(agentContext, {
++				issuanceSession,
++				notificationId: notificationRequest.notification_id,
++				event: notificationRequest.event,
++				eventDescription: notificationRequest.event_description
++			});
++			response.status(204).send();
++			return next();
++		} catch (error) {
++			return sendUnknownServerErrorResponse(response, next, agentContext.config.logger, error);
++		}
++	});
++}
++//#endregion
++export { configureNotificationEndpoint };
++
++//# sourceMappingURL=notificationEndpoint.mjs.map
+\ No newline at end of file
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/util/issuanceSessionLock.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/util/issuanceSessionLock.mjs
+new file mode 100644
+index 0000000..b2e3cd4
+--- /dev/null
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/util/issuanceSessionLock.mjs
+@@ -0,0 +1,21 @@
++//#region src/openid4vc-issuer/util/issuanceSessionLock.ts
++const issuanceSessionLocks = /* @__PURE__ */ new Map();
++/**
++* Runs `operation` after all operations that were queued earlier for the same issuance session
++* have settled. Serializes read-modify-write updates of an issuance session record within this process.
++*/
++async function withIssuanceSessionLock(agentContext, issuanceSessionId, operation) {
++	const key = `${agentContext.contextCorrelationId}:${issuanceSessionId}`;
++	const result = (issuanceSessionLocks.get(key) ?? Promise.resolve()).then(operation, operation);
++	const tail = result.then(() => void 0, () => void 0);
++	issuanceSessionLocks.set(key, tail);
++	try {
++		return await result;
++	} finally {
++		if (issuanceSessionLocks.get(key) === tail) issuanceSessionLocks.delete(key);
++	}
++}
++//#endregion
++export { withIssuanceSessionLock };
++
++//# sourceMappingURL=issuanceSessionLock.mjs.map
+\ No newline at end of file
 diff --git a/node_modules/@credo-ts/openid4vc/build/shared/utils.mjs b/node_modules/@credo-ts/openid4vc/build/shared/utils.mjs
 index 34b99f1..e809065 100644
 --- a/node_modules/@credo-ts/openid4vc/build/shared/utils.mjs

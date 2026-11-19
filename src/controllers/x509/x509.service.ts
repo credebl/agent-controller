@@ -15,11 +15,21 @@ import {
 } from '@credo-ts/core'
 import { KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 
+import { BadRequestError } from '../../errors'
 import { keyAlgorithmToCurve } from '../../utils/constant'
 import { generateSecretKey, getCertificateValidityForSystem, getTypeFromCurve } from '../../utils/helpers'
-import { openBaoBackendForCreate, openBaoBackendForJwk } from '../../utils/kms/openBao'
+import { KeyImportEnvelopeError } from '../../utils/keyImport/jwe'
+import { assertPlaintextKeyImportAllowed } from '../../utils/keyImport/plaintextGate'
+import {
+  agentBindingFor,
+  consumeImportSession,
+  KeyImportSessionError,
+  type KeyImportKeyMaterial,
+} from '../../utils/keyImport/session'
+import { selectKmsBackendForCreate, selectKmsBackendForJwk } from '../../utils/kms/backend'
 
 import { pemToRawPrivateKey } from './crypto-util'
+import { normalizeDistinguishedName } from './distinguishedName'
 import { type X509CreateCertificateOptionsDto } from './x509.types'
 
 class x509Service {
@@ -72,7 +82,7 @@ class x509Service {
     agent.config.logger.info('======= X.509 IACA Self Signed Certificate ===========')
     const selfSignedx509certificateBase64 = selfSignedx509certificate.toString('base64')
     agent.config.logger.debug('selfSignedx509certificateBase64', { selfSignedx509certificateBase64 })
-    return { publicCertificateBase64: selfSignedx509certificateBase64 }
+    return { publicCertificateBase64: selfSignedx509certificateBase64, kmsBackend: authorityKey.kmsBackend }
   }
 
   private async importOrCreateAuthorityKey(agent: Agent, options: X509CreateCertificateOptionsDto) {
@@ -82,21 +92,21 @@ class x509Service {
         seed: TypedArrayEncoder.fromUtf8String(options.authorityKey.seed),
       })
 
-      const backend = openBaoBackendForJwk(privateJwk)
+      const selection = selectKmsBackendForJwk(privateJwk)
       const { publicJwk } = await agent.kms.importKey({
         privateJwk,
-        ...(backend ? { backend } : {}),
+        ...(selection.backend ? { backend: selection.backend } : {}),
       })
-      return { authorityKeyID: publicJwk }
+      return { authorityKeyID: publicJwk, kmsBackend: selection.name }
     }
 
     const type = getTypeFromCurve(options.authorityKey?.keyType ?? 'P-256')
-    const backend = openBaoBackendForCreate(type)
+    const selection = selectKmsBackendForCreate(type)
     const { publicJwk, keyId } = await agent.kms.createKey({
       type,
-      ...(backend ? { backend } : {}),
+      ...(selection.backend ? { backend: selection.backend } : {}),
     })
-    return { authorityKeyID: publicJwk, authorityKeyKmsId: keyId }
+    return { authorityKeyID: publicJwk, authorityKeyKmsId: keyId, kmsBackend: selection.name }
   }
 
   private async resolveSubjectPublicKey(
@@ -111,19 +121,19 @@ class x509Service {
         type: getTypeFromCurve(subjectPublicKey.keyType ?? 'P-256'),
       }).privateJwk
 
-      const backend = openBaoBackendForJwk(privateJwk)
+      const selection = selectKmsBackendForJwk(privateJwk)
       const importedKey = await agent.kms.importKey({
         privateJwk,
-        ...(backend ? { backend } : {}),
+        ...(selection.backend ? { backend: selection.backend } : {}),
       })
       return importedKey.publicJwk
     }
 
     const type = getTypeFromCurve(subjectPublicKey.keyType ?? 'P-256')
-    const backend = openBaoBackendForCreate(type)
+    const selection = selectKmsBackendForCreate(type)
     const { publicJwk } = await agent.kms.createKey({
       type,
-      ...(backend ? { backend } : {}),
+      ...(selection.backend ? { backend: selection.backend } : {}),
     })
     return publicJwk
   }
@@ -131,29 +141,69 @@ class x509Service {
   public async createCertificate(agentReq: Req, options: X509CreateCertificateOptionsDto) {
     const agent = agentReq.agent as Agent
 
-    const { authorityKeyID, authorityKeyKmsId } = await this.importOrCreateAuthorityKey(agent, options)
+    const { authorityKeyID, authorityKeyKmsId, kmsBackend } = await this.importOrCreateAuthorityKey(agent, options)
     const subjectPublicKeyID = await this.resolveSubjectPublicKey(agent, options.subjectPublicKey)
 
     const certificate = await agent.x509.createCertificate({
       authorityKey: Kms.PublicJwk.fromPublicJwk(authorityKeyID),
       subjectPublicKey: subjectPublicKeyID ? Kms.PublicJwk.fromPublicJwk(subjectPublicKeyID) : undefined,
       serialNumber: options.serialNumber,
-      issuer: options.issuer,
+      issuer: normalizeDistinguishedName(options.issuer),
       extensions: options.extensions,
-      subject: options.subject,
+      subject: normalizeDistinguishedName(options.subject),
       validity: options.validity,
     })
 
     const issuerCertificate = certificate.toString('base64')
 
-    return { publicCertificateBase64: issuerCertificate, keyId: authorityKeyKmsId }
+    return { publicCertificateBase64: issuerCertificate, keyId: authorityKeyKmsId, kmsBackend }
+  }
+
+  /**
+   * Returns the private key for a certificate import. The key comes either from an encrypted envelope bound to this
+   * agent and the `x509-certificate` method, or from the deprecated plaintext field when that is explicitly enabled.
+   */
+  private resolveCertificatePrivateKey(agent: Req['agent'], options: X509ImportCertificateOptionsDto): string {
+    assertPlaintextKeyImportAllowed(options)
+
+    if (!options.encryptedKey) {
+      if (!options.privateKey) throw new BadRequestError('privateKey or encryptedKey is required')
+      return options.privateKey
+    }
+    if (options.privateKey) {
+      throw new BadRequestError('Provide either encryptedKey or plaintext key material, not both')
+    }
+    if (!options.encryptedKey.sessionId || typeof options.encryptedKey.jwe !== 'string') {
+      throw new BadRequestError('encryptedKey.sessionId and encryptedKey.jwe are required')
+    }
+
+    let material: KeyImportKeyMaterial
+    try {
+      material = consumeImportSession({
+        sessionId: options.encryptedKey.sessionId,
+        jwe: options.encryptedKey.jwe,
+        agentBinding: agentBindingFor(agent),
+        method: 'x509-certificate',
+      })
+    } catch (error) {
+      if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
+
+    if (material.privateKeyJwk || material.passphrase) {
+      throw new BadRequestError('Only privateKey is supported in the encrypted payload for certificate import')
+    }
+    if (!material.privateKey) throw new BadRequestError('The decrypted key payload does not contain a private key')
+    return material.privateKey
   }
 
   public async ImportX509Certificates(agentReq: Req, options: X509ImportCertificateOptionsDto) {
     const agent = agentReq.agent
-    if (!options.privateKey) throw new Error('[ImportX509Certificates] privateKey is required')
+    const plaintextPrivateKey = this.resolveCertificatePrivateKey(agent, options)
     agent.config.logger.debug(`Start validating keys`)
-    const secretHexKey = await pemToRawPrivateKey(options.privateKey)
+    const secretHexKey = await pemToRawPrivateKey(plaintextPrivateKey)
     const privateKey = TypedArrayEncoder.fromHex(secretHexKey)
 
     agent.config.logger.debug(`Decode certificate`)
@@ -162,17 +212,20 @@ class x509Service {
     })
     const issuerCertificate = parsedCertificate.toString('base64')
     let key
+    let kmsBackend = 'askar'
+
     try {
       const keyTypeInfo = getTypeFromCurve(options.keyType)
       const { privateJwk } = transformPrivateKeyToPrivateJwk({
         type: keyTypeInfo,
         privateKey,
       })
+      const selection = selectKmsBackendForJwk(privateJwk)
+      kmsBackend = selection.name
 
-      const backend = openBaoBackendForJwk(privateJwk)
       key = await agent.kms.importKey({
         privateJwk,
-        ...(backend ? { backend } : {}),
+        ...(selection.backend ? { backend: selection.backend } : {}),
       })
       if (
         parsedCertificate.publicJwk.publicKey.kty !== keyTypeInfo.kty ||
@@ -195,7 +248,7 @@ class x509Service {
       }
     }
 
-    return { issuerCertificate, keyId: key?.keyId }
+    return { issuerCertificate, keyId: key?.keyId, kmsBackend }
   }
 
   public addTrustedCertificate(
@@ -250,13 +303,14 @@ export async function createKey(agent: Agent, keyType: KeyAlgorithm) {
       type: getTypeFromCurve(normalizedCurve),
     }).privateJwk
 
-    const backend = openBaoBackendForJwk(privateJwk)
+    const selection = selectKmsBackendForJwk(privateJwk)
+    const backend = selection.backend
     const importedKey = await agent.kms.importKey({
       privateJwk,
       ...(backend ? { backend } : {}),
     })
 
-    return importedKey
+    return { ...importedKey, kmsBackend: selection.name }
   } catch (error) {
     agent.config.logger.debug(`Error while creating authorityKey`, { message: (error as CredoError).message })
     throw error
