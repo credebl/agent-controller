@@ -1,9 +1,38 @@
 # Changelog
 
-## Unreleased
+## [2.3.3-rc.1](https://github.com/credebl/agent-controller/compare/v2.3.2...v2.3.3-rc.1) (2026-11-18)
+
+Release candidate, paired with CREDEBL platform `v2.3.0-rc.6`.
+
+### Behaviour changes
+
+What existing callers may notice after upgrading from 2.3.2:
+
+- **oid4vc holder:** `POST /openid4vc/holder/request-credential` sends OID4VCI notifications to the issuer by default (`sendNotification` defaults to `true`). Send `sendNotification: false` to keep the 2.3.2 behaviour.
+- **oid4vc holder:** each credential returned by `request-credential` has a new `notification` field. Clients that validate the response strictly must allow it.
+- **did:web:** `POST /dids/write` with `method: web` validates `domain` (#484). It must be a host name with at least one dot, or `localhost`, optionally followed by a `%3A`-encoded port and `:`-separated path segments of letters, numbers, `.`, `_`, `~` or `-`. IP addresses, URLs (`https://…`), slash-separated paths, empty segments and `..` now return 400; before, they created a DID that could not be resolved. A `~` in a path segment is written as `%7E` in the DID.
+- **did:web:** `POST /dids/write` with `method: web` rejects a supplied `didDocument` with 400 and points to `POST /dids/web/import`. Before, the document was silently ignored and a new one generated from `domain`.
+- **Key import:** private keys sent in plaintext (`privateKey`, `privateKeyJwk`, `passphrase`, and the did:polygon `privatekey`) are rejected with 400 unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Send the key in `encryptedKey` from `POST /dids/import/session` instead. This covers `POST /dids/write` (did:key, did:web and **did:polygon, whose `privatekey` was required in 2.3.2**), `POST /dids/web/import` `POST /dids/x509/import` and, since #485, `POST /x509/import` (session `method: x509-certificate`).
+- **oid4vc issuer:** credential, deferred credential and notification requests save the issuance session under a per-session lock that is held per process. With several controller instances, route all requests for an issuance session to one instance (sticky sessions), or a notification and a credential response can overwrite each other.
+- **Credo patch:** the `@credo-ts/openid4vc` 0.7.4 patch carries the issuer notification endpoint from the unreleased openwallet-foundation/credo-ts#3215. Issuers advertise a `notification_endpoint` and return a `notification_id`; set `OID4VCI_NOTIFICATION_ENDPOINT_ENABLED=false` to turn the endpoint off.
+- **mDoc validity (#486):** an `mso_mdoc` credential needs `validityInfo.validFrom` and `validityInfo.validUntil`. A missing value, a value that is not a date, or a `validUntil` that is not after `validFrom` now returns 400 before signing. The `signed` date is capped at `validFrom`, so a `validFrom` in the past or present no longer makes wallets reject the mDoc.
+- **Holder error messages (#486):** a failed `resolve-credential-offer`, authorization or `request-credential` returns a plain-language reason (offer expired or already used, transaction code missing, issuer metadata not reachable, root certificate not trusted, credential not valid now), with the original error text kept at the end in brackets. Clients that match the old error text must be updated. Unknown errors are unchanged.
+- **X.509 trust list fallback (#456):** in NoAuth mode, when `TRUST_LIST_URL` cannot be reached, the agent falls back to the certificates trusted with `POST /x509/trusted`. This is **on by default when `NODE_ENV` is not `PROD`/`PRODUCTION`**, and off in production unless `ALLOW_TRUST_LIST_FALLBACK=true`. With no locally trusted certificates the original error is returned. ClientAuth mode is unchanged.
+- **Key import sessions** are kept in memory per process, are single use and expire after `KEY_IMPORT_SESSION_TTL_MS` (default 5 minutes). Send the session request and the import to the same instance.
 
 ### Features
 
+- **did:x509 import (#473):** `POST /dids/x509/import` imports a CA-issued certificate chain (PEM, PEM bundle or base64 DER, leaf first) with the leaf private key and creates a `did:x509` the agent can sign with. The DID is built from the root fingerprint and policies (default `subject:CN`), checked by resolving it against the chain, and the chain is stored with the DID record. Re-importing the same chain is idempotent. `GET /dids/x509/chain/{did}` returns the stored chain. P-256, P-384, P-521, Ed25519 and RSA keys are supported; secp256k1 returns 400. See `docs/did-x509.md`.
+  - A persistent Node KMS backend, stored in the tenant's encrypted storage, holds the keys Askar cannot (RSA, P-521). Askar stays the default.
+- **oid4vc issuer: sign SD-JWT VCs with did:x509 (#474):** `signerOptions: { method: "did", did: "did:x509:…" }` on `dc+sd-jwt` / `vc+sd-jwt` offers. The header carries the `kid` and the full stored chain in `x5c` (leaf first, root last); `iss` is the did:x509. `mso_mdoc` and W3C formats refuse a did:x509 signer with a clear error (use the `x5c` signer for `mso_mdoc`).
+- **oid4vc verifier: verify SD-JWT VCs from did:x509 issuers (#475):** credentials whose `iss` is a did:x509 and whose header carries `x5c` are verified for DIDs the agent does not own. The chain's root must be trusted through the existing X.509 trust configuration (`TRUST_LIST_URL` / trust service); the DID is resolved with the chain, so a certificate from a trusted CA cannot claim another organisation's did:x509.
+- **OpenBao KMS (#476, #477):** an optional OpenBao Transit KMS backend (`OPENBAO_ENABLED`, off by default). When enabled it holds did:x509 and X.509 keys; did:key and did:web keys only with `OPENBAO_DID_KEY_ENABLED` / `OPENBAO_DID_WEB_ENABLED`. Askar stays the default and nothing existing is moved. Key ids are prefixed `ob_`. Startup fails when OpenBao is enabled but sealed, uninitialised or unreachable. `OPENBAO_WRITE_ENABLED=false` is the rollback switch: existing keys keep signing, new keys go to Askar or the Node KMS. Deleting a tenant purges its OpenBao keys first. See `docs/openbao.md` and `docs/openbao-e2e.md`.
+- **Encrypted key import (#478):** `POST /dids/import/session` (`method`: `key`, `web`, `x509` or `polygon`) returns a single-use, short-lived session with a public key; the client sends the private key as a compact JWE in `encryptedKey`, so it never crosses the gateway, NATS or logs in plaintext. `POST /dids/write` can import an existing did:key or did:web key this way. The endpoint is rate limited (`KEY_IMPORT_RATE_LIMIT`, default 30 per `KEY_IMPORT_WINDOW_MS`, default 60 s). See `docs/key-import-security.md`.
+- **Encrypted X.509 certificate import (#485):** `POST /x509/import` takes the private key as `encryptedKey` from a key import session with `method: x509-certificate`. A plaintext `privateKey` works only with `ALLOW_PLAINTEXT_KEY_IMPORT=true`; missing or conflicting key inputs return 400.
+- **KMS backend of a DID (#485):** `GET /dids/{did}/kms` returns which backend holds the DID's keys (`askar`, `node`, `openbao` or `mixed`) and the key ids. Read only; a DID the agent holds no keys for returns `kmsBackend: null`. DID create and X.509 import responses report the backend too.
+- **KMS backend reporting (#478):** `POST /x509`, `POST /x509/import` and the self-signed DCS flow return `kmsBackend` (`askar`, `node` or `openbao`). X.509 and did:x509 keys go through the same backend selection.
+- **did:web paths (#484):** a did:web `domain` can carry a port and a path, for example `ayanworks.github.io:iec:0522012345`, and is validated (see Behaviour changes).
+- **did:web import (#489):** `POST /dids/web/import` imports a `did:web` created and hosted by an external authority. A supplied `didDocument` is stored as is (custom verification method ids, `service`, `alsoKnownAs`, public-only `keyAgreement`); without one the DID is resolved and the published document imported. A supplied document must match the published one unless `allowUnresolvedDocument: true`. `keys[]` binds one or more encrypted private keys to the verification methods they were published for, each checked by JWK thumbprint. `replace: true` is needed to rebind an existing DID; re-importing the same document and keys is idempotent.
 - **oid4vc holder:** `POST /openid4vc/holder/request-credential` sends OID4VCI notifications to the issuer's `notification_endpoint` for each credential response that has a `notification_id`: `credential_accepted` once the credential is stored, and `credential_failure` when it cannot be stored or fails the holder DID binding check. A failed store still fails the request; a notification that cannot be sent is logged and never fails it.
   - Notifications are sent one at a time, after all credentials are stored, so an issuer that records them on the issuance session cannot lose one to a concurrent update.
   - Each returned credential has a `notification` field: `{ status: "sent", event }`, `{ status: "skipped", reason }` (no `notification_endpoint`, no `notification_id`, or turned off) or `{ status: "failed", event, reason }`. The reason includes the issuer's HTTP status and error code, e.g. `HTTP 400 invalid_notification_id`.
@@ -13,15 +42,30 @@
 
 ### API
 
+- New endpoints: `POST /dids/x509/import`, `GET /dids/x509/chain/{did}`, `POST /dids/import/session`, `POST /dids/web/import`, `GET /dids/{did}/kms`.
+- OpenAPI: the X.509 import body gains `encryptedKey`; `privateKey` is deprecated and gated (#485). The key import session `method` accepts `x509-certificate`.
+- OpenAPI: `DidCreate` gains `encryptedKey`, `privateKey`, `privateKeyJwk` and `passphrase` (the plaintext fields are deprecated and gated); `privatekey` is deprecated. X.509 create and import responses gain `kmsBackend`.
 - OpenAPI: `RequestCredentialBody` gains `sendNotification` (default `true`). Each credential returned by `request-credential` gains `notification`; the record fields are unchanged.
 - **oid4vc issuer:** issuers advertise a `notification_endpoint` (`{baseUrl}/{issuerId}/notification`) and return a `notification_id` with each credential response (OpenID4VCI 1.0 §11). A wallet notification (`credential_accepted`, `credential_failure` or `credential_deleted`) is checked against the access token of the session that issued the `notification_id`, recorded on the issuance session (`notifications[]`), and posted to the issuance webhook topic `/openid4vc-issuance`: the session record, whose state is unchanged, plus a `notification` object (`notificationId`, `credentialConfigurationId`, `event`, `eventDescription?`, `receivedAt`). It is also sent on the web socket. Webhooks posted on a state change also carry `notifications[]`. Set `OID4VCI_NOTIFICATION_ENDPOINT_ENABLED=false` to turn the endpoint off.
   - A repeated identical notification (same `notification_id`, `event` and `event_description`) returns 204 without being recorded or posted again.
   - Credential and deferred credential responses save the issuance session under the same per-session lock as notifications and keep notifications stored in the meantime, so neither overwrites the other. The lock is per process: with several controller instances serving the same wallet, route all requests for an issuance session to one instance.
   - **Limitation:** the endpoint needs the session's access token, which expires after `OID4VCI_ACCESS_TOKEN_EXPIRY` (default 3600 s), and the controller issues no refresh token. A wallet can therefore report `credential_deleted` only within that time; later deletions are not received. Raise `OID4VCI_ACCESS_TOKEN_EXPIRY` if issuers need a longer window.
 
+### Bug Fixes
+
+- **x509:** `POST /x509/import` accepts a PEM private key as well as base64 DER.
+- **mDoc and SD-JWT VC with `x5c` (#486):** the whole issuer chain (intermediates and root) is embedded after the signing certificate. Before, only the leaf and one intermediate were included, so a verifier that trusts only the root could not build the path.
+- **x509 (#486):** an OpenSSL-style `issuer` or `subject` (`/C=IN/O=Example/CN=name`) is parsed into its parts when creating a certificate. Before, the whole string became the country. The comma form and the name object work as before.
+- **mDoc (#486):** the `signed` date is never after `validFrom` (see Behaviour changes).
+
 ### Dependencies
 
+- Added `@didx509/core` 0.1.3 and `@didx509/credo` 0.1.2 (did:x509), and `@sovio-id/credo-openbao-kms` 0.2.2 (OpenBao KMS).
+- `resolutions` pin the `@peculiar/asn1-*` packages to 2.11.1; two copies broke RSA and P-521 certificate parsing.
+- The `@credo-ts/core` 0.7.4 patch also emits `x5c` next to `kid` for DID issuers of SD-JWT VCs, and resolves and trust-checks did:x509 issuers with the `x5c` chain. Credo-based holders and verifiers without this change reject did:x509-signed SD-JWT VCs.
 - The `@credo-ts/openid4vc` 0.7.4 patch adds the issuer notification endpoint from openwallet-foundation/credo-ts#3215, which is not released yet. The existing changes in the patch are kept. Remove this part of the patch once a Credo release includes it.
+- `@opentelemetry/instrumentation-http` 0.221.0 → 0.222.0 (#494); `@sovio-id/credo-openbao-kms` 0.2.0 → 0.2.2, and the development dependencies `supertest` 7.3.1 → 7.3.2 and `ts-jest` 29.4.14 → 29.4.15 (#495).
+- `@opentelemetry/api` ^1.9.1, `cors` ^2.8.6 and `ws` ^8.21.3, plus development-only bumps (#456).
 
 ## [2.3.2](https://github.com/credebl/agent-controller/compare/v2.3.1...v2.3.2) (2026-11-04)
 
