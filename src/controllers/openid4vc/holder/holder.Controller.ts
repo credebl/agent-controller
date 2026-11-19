@@ -4,6 +4,7 @@ import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums/enum'
 import {
+  AcceptProofRequest,
   AuthorizeRequestCredentialOffer,
   DeleteCredentialBody,
   RequestCredentialBody,
@@ -116,7 +117,7 @@ export class HolderController extends Controller {
    * Accept a proof request
    */
   @Post('accept-proof-request')
-  public async acceptProofRequest(@Request() request: Req, @Body() body: ResolveProofRequest) {
+  public async acceptProofRequest(@Request() request: Req, @Body() body: AcceptProofRequest) {
     return await holderService.acceptPresentationRequest(request, body)
   }
 

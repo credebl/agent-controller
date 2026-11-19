@@ -13,6 +13,7 @@
 
 ### API
 
+- **oid4vc holder:** `POST /openid4vc/holder/accept-proof-request` accepts optional `selectedCredentials`, a map of Presentation Exchange input descriptor ids or DCQL credential query ids to credential record ids. The caller can therefore choose which of the credentials that satisfy the request are presented. Unspecified descriptors keep Credo's automatic selection, so existing callers are unaffected. Unknown descriptor/query ids, credential ids that were not offered, malformed selections, and unsupported credential record types return 400. A Presentation Exchange selection replaces the automatic choice for its submission requirement and is checked against the requirement's `count`/`min`/`max`; a DCQL selection with more than one credential per query is rejected with 400 when the resolved OpenID4VP version cannot carry multiple presentations. OpenAPI: `AcceptProofRequest` gains `selectedCredentials` (`ProofRequestCredentialSelection`).
 - OpenAPI: `RequestCredentialBody` gains `sendNotification` (default `true`). Each credential returned by `request-credential` gains `notification`; the record fields are unchanged.
 - **oid4vc issuer:** issuers advertise a `notification_endpoint` (`{baseUrl}/{issuerId}/notification`) and return a `notification_id` with each credential response (OpenID4VCI 1.0 §11). A wallet notification (`credential_accepted`, `credential_failure` or `credential_deleted`) is checked against the access token of the session that issued the `notification_id`, recorded on the issuance session (`notifications[]`), and posted to the issuance webhook topic `/openid4vc-issuance`: the session record, whose state is unchanged, plus a `notification` object (`notificationId`, `credentialConfigurationId`, `event`, `eventDescription?`, `receivedAt`). It is also sent on the web socket. Webhooks posted on a state change also carry `notifications[]`. Set `OID4VCI_NOTIFICATION_ENDPOINT_ENABLED=false` to turn the endpoint off.
   - A repeated identical notification (same `notification_id`, `event` and `event_description`) returns 204 without being recorded or posted again.
@@ -21,6 +22,7 @@
 
 ### Dependencies
 
+- `@openid4vc/openid4vp` `^0.6.0` is now a direct dependency (it was already installed transitively by `@credo-ts/openid4vc`); the holder uses its authorization-request version parser to reject DCQL selections that a draft OpenID4VP response cannot carry.
 - The `@credo-ts/openid4vc` 0.7.4 patch adds the issuer notification endpoint from openwallet-foundation/credo-ts#3215, which is not released yet. The existing changes in the patch are kept. Remove this part of the patch once a Credo release includes it.
 
 ## [2.3.2](https://github.com/credebl/agent-controller/compare/v2.3.1...v2.3.2) (2026-11-04)
