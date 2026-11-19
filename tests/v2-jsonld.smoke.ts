@@ -12,67 +12,27 @@
  */
 import '@openwallet-foundation/askar-nodejs'
 
-import type { InitConfig, JsonObject } from '@credo-ts/core'
+import type { JsonObject } from '@credo-ts/core'
 
-import { AskarModule } from '@credo-ts/askar'
 import {
-  Agent,
   ClaimFormat,
-  ConsoleLogger,
-  DidsModule,
   JsonTransformer,
-  KeyDidRegistrar,
-  KeyDidResolver,
-  LogLevel,
-  W3cCredentialsModule,
   W3cV2Credential,
   W3cV2CredentialService,
-  W3cV2CredentialsModule,
   W3cV2JwtVerifiableCredential,
 } from '@credo-ts/core'
-import { agentDependencies } from '@credo-ts/node'
-import { askar } from '@openwallet-foundation/askar-nodejs'
 
-import { CustomDocumentLoader } from '../src/utils/customDocumentLoader'
 import { CREDENTIALS_V2_CONTEXT_URL, STATUS_V1_CONTEXT_URL } from '../src/vc-jsonld/constants'
 import { getInlineContext } from '../src/vc-jsonld/contexts'
 import { signV2Credential } from '../src/vc-jsonld/signV2Credential'
 import { verifyV2Credential } from '../src/vc-jsonld/verifyV2Credential'
-
-function uuid(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.floor(Math.random() * 16)
-    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
-  })
-}
-
-function assert(condition: unknown, message: string): void {
-  if (!condition) throw new Error(`ASSERTION FAILED: ${message}`)
-  console.log(`  ok - ${message}`)
-}
+import { assert, createSmokeAgent, uuid } from './smokeTestHelpers'
 
 async function main(): Promise<void> {
-  const config: InitConfig = {
+  const agent = createSmokeAgent({
     label: 'v2-jsonld-smoke',
-    logger: new ConsoleLogger(LogLevel.off),
-  }
-
-  const agent = new Agent({
-    config,
-    dependencies: agentDependencies,
-    modules: {
-      askar: new AskarModule({
-        askar,
-        store: {
-          id: `v2-smoke-${uuid()}`,
-          key: 'v2-jsonld-smoke-key',
-          database: { type: 'sqlite', config: { inMemory: true } },
-        },
-      }),
-      dids: new DidsModule({ registrars: [new KeyDidRegistrar()], resolvers: [new KeyDidResolver()] }),
-      w3cCredentials: new W3cCredentialsModule({ documentLoader: CustomDocumentLoader }),
-      w3cV2Credentials: new W3cV2CredentialsModule(),
-    },
+    storeId: `v2-smoke-${uuid()}`,
+    storeKey: 'v2-jsonld-smoke-key',
   })
 
   await agent.initialize()
