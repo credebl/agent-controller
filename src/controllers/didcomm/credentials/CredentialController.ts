@@ -355,9 +355,7 @@ export class CredentialController extends Controller {
       seen.add(value as object)
 
       if (Array.isArray(value)) {
-        for (const item of value) {
-          await visit(item)
-        }
+        await Promise.all(value.map((item) => visit(item)))
         return
       }
 
@@ -365,7 +363,8 @@ export class CredentialController extends Controller {
       const status = record.credentialStatus as Record<string, unknown> | undefined
       if (status && 'string' === typeof status.statusListCredential) {
         const statusListUri = status.statusListCredential
-        const listId = statusListUri.split('/').filter(Boolean).pop()
+        const parts = statusListUri.split('/').filter(Boolean)
+        const listId = parts[parts.length - 1]
         const issuer = record.issuer
         const issuerDid = 'string' === typeof issuer ? issuer : (issuer as Record<string, unknown> | undefined)?.id
         if (listId && 'string' === typeof issuerDid) {
@@ -373,9 +372,7 @@ export class CredentialController extends Controller {
         }
       }
 
-      for (const child of Object.values(record)) {
-        await visit(child)
-      }
+      await Promise.all(Object.values(record).map((child) => visit(child)))
     }
 
     await visit(credentialFormats)

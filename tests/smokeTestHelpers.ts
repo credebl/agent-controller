@@ -1,5 +1,3 @@
-import '@openwallet-foundation/askar-nodejs'
-
 import type { InitConfig } from '@credo-ts/core'
 
 import { AskarModule } from '@credo-ts/askar'

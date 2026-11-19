@@ -28,8 +28,8 @@ export function createKmsKeyPairClass(agentContext: AgentContext): any {
       this.publicJwk = options.publicJwk
     }
 
-    public static async generate(): Promise<any> {
-      throw new Error('Not implemented')
+    public static generate(): Promise<any> {
+      return Promise.reject(new Error('Not implemented'))
     }
 
     public fingerprint(): string {
@@ -40,11 +40,15 @@ export function createKmsKeyPairClass(agentContext: AgentContext): any {
       throw new Error('Method not implemented.')
     }
 
-    public static async from(verificationMethod: any): Promise<any> {
-      const vMethod = JsonTransformer.fromJSON(verificationMethod, VerificationMethod)
-      MessageValidator.validateSync(vMethod)
-      const publicJwk = getPublicJwkFromVerificationMethod(vMethod)
-      return new KmsKeyPair({ id: vMethod.id, controller: vMethod.controller, publicJwk })
+    public static from(verificationMethod: any): Promise<any> {
+      try {
+        const vMethod = JsonTransformer.fromJSON(verificationMethod, VerificationMethod)
+        MessageValidator.validateSync(vMethod)
+        const publicJwk = getPublicJwkFromVerificationMethod(vMethod)
+        return Promise.resolve(new KmsKeyPair({ id: vMethod.id, controller: vMethod.controller, publicJwk }))
+      } catch (error) {
+        return Promise.reject(error)
+      }
     }
 
     public signer(): { sign: (data: any) => Promise<any> } {

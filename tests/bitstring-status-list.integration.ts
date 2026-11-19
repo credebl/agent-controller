@@ -6,8 +6,6 @@
  *   STATUS_LIST_API_KEY=dev-key \
  *   node -r ts-node/register/transpile-only tests/bitstring-status-list.integration.ts
  */
-import '@openwallet-foundation/askar-nodejs'
-
 import type { JsonObject } from '@credo-ts/core'
 
 import { decodeBitstring, getBit } from '../src/utils/bitstring'

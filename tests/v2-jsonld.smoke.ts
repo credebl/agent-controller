@@ -10,8 +10,6 @@
  * It validates that a VCDM 2.0 `ldp_vc` credential can be signed and verified using
  * Credo's low-level Data Integrity primitives (see `src/vc-jsonld`).
  */
-import '@openwallet-foundation/askar-nodejs'
-
 import type { JsonObject } from '@credo-ts/core'
 
 import {

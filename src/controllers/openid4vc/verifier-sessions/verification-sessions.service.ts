@@ -279,7 +279,14 @@ export class VerificationSessionsService {
       presentation?.presentation?.verifiableCredential ??
       presentation?.toJson?.()?.verifiableCredential
 
-    const credentials = Array.isArray(raw) ? raw : raw ? [raw] : []
+    let credentials: unknown[]
+    if (Array.isArray(raw)) {
+      credentials = raw
+    } else if (raw) {
+      credentials = [raw]
+    } else {
+      credentials = []
+    }
     return credentials
       .map((credential: any) => {
         if (typeof credential === 'string') {

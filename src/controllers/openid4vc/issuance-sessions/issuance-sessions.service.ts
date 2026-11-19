@@ -300,13 +300,14 @@ class IssuanceSessionsService {
       throw new BadRequestError('Cannot execute revocation: STATUS_LIST_SERVER_URL is not configured')
     }
 
-    for (const info of statusInfo) {
+    await statusInfo.reduce(async (previous, info) => {
+      await previous
       if (info.mechanism === 'bitstring') {
         await revokeBitstringInStatusList(agentReq.agent as any, info.listId, info.index, info.issuerDid)
       } else {
         await revokeCredentialInStatusList(agentReq.agent as any, info.listId, info.index, info.issuerDid)
       }
-    }
+    }, Promise.resolve())
 
     return { message: 'Credentials in session revoked successfully' }
   }

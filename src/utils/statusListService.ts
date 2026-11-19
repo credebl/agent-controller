@@ -33,6 +33,14 @@ function getApiKeyHeaders() {
 
 const STATUS_LIST_PATCH_MAX_ATTEMPTS = 5
 
+function patchAttemptsExhausted(lastError: Error | undefined, label: string): Error {
+  return new Error(
+    `Failed to update ${label} on server after ${STATUS_LIST_PATCH_MAX_ATTEMPTS} attempts: ${
+      lastError?.message ?? 'concurrent updates'
+    }`,
+  )
+}
+
 function getIfMatchHeaders(etag: string | null): Record<string, string> {
   return etag ? { 'If-Match': etag } : {}
 }
@@ -152,16 +160,13 @@ export async function checkAndCreateStatusList(agent: Agent, listId: string, iss
   }
 }
 
-export async function revokeCredentialInStatusList(agent: Agent, listId: string, index: number, issuerDid: string) {
+export function revokeCredentialInStatusList(agent: Agent, listId: string, index: number, issuerDid: string) {
   return withStatusListLock(listId, async () => {
     const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`
-
     let lastError: Error | undefined
 
-    for (let attempt = 0; attempt < STATUS_LIST_PATCH_MAX_ATTEMPTS; attempt++) {
-      const res = await fetchWithTimeout(uri, {
-        headers: getApiKeyHeaders(),
-      })
+    const attemptPatch = async (attempt: number): Promise<void> => {
+      const res = await fetchWithTimeout(uri, { headers: getApiKeyHeaders() })
       if (!res.ok) {
         const errBody = await res.text().catch(() => '')
         throw new Error(`Failed to fetch status list to revoke at ${uri}: ${res.status} ${res.statusText} ${errBody}`)
@@ -169,7 +174,6 @@ export async function revokeCredentialInStatusList(agent: Agent, listId: string,
 
       const currentJwt = await res.text()
       const statusList = getListFromStatusListJWT(currentJwt)
-
       statusList.setStatus(index, 1)
 
       const verificationMethod = await resolveAssertionMethod(agent, issuerDid)
@@ -180,7 +184,6 @@ export async function revokeCredentialInStatusList(agent: Agent, listId: string,
         headers: { ...getApiKeyHeaders(), ...getIfMatchHeaders(res.headers.get('etag')) },
         body: JSON.stringify({ jwt: newJwt }),
       })
-
       if (patchRes.ok) {
         return
       }
@@ -190,15 +193,15 @@ export async function revokeCredentialInStatusList(agent: Agent, listId: string,
       if (patchRes.status !== 412) {
         throw lastError
       }
+      if (attempt + 1 >= STATUS_LIST_PATCH_MAX_ATTEMPTS) {
+        throw patchAttemptsExhausted(lastError, 'status list')
+      }
 
       await delay(50 * (attempt + 1))
+      return attemptPatch(attempt + 1)
     }
 
-    throw new Error(
-      `Failed to update status list on server after ${STATUS_LIST_PATCH_MAX_ATTEMPTS} attempts: ${
-        lastError?.message ?? 'concurrent updates'
-      }`,
-    )
+    return attemptPatch(0)
   })
 }
 
@@ -256,7 +259,44 @@ function buildBitstringStatusListCredential(
   }
 }
 
-export async function checkAndCreateBitstringStatusList(
+function prepareBitstringStatusListCredential(credential: JsonObject, listId: string, index: number): void {
+  const subjectValue = credential.credentialSubject
+  const subject = (Array.isArray(subjectValue) ? subjectValue[0] : subjectValue) as Record<string, unknown> | undefined
+
+  if (!subject || typeof subject.encodedList !== 'string') {
+    throw new Error(`Status list ${listId} does not contain a bitstring encodedList`)
+  }
+  if (subject.statusSize !== undefined && subject.statusSize !== 1) {
+    throw new Error(
+      `Status list ${listId} uses statusSize ${String(subject.statusSize)}; only statusSize 1 is supported`,
+    )
+  }
+
+  let bits: Uint8Array
+  try {
+    bits = decodeBitstring(subject.encodedList)
+  } catch (error) {
+    throw new BadRequestError(
+      `Status list ${listId} contains an invalid encodedList: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+
+  try {
+    setBit(bits, index, true)
+  } catch (error) {
+    throw new BadRequestError(
+      `Cannot revoke bit ${index} in status list ${listId}: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+
+  subject.encodedList = encodeBitstring(bits)
+
+  if ('proof' in credential) {
+    delete credential.proof
+  }
+}
+
+export function checkAndCreateBitstringStatusList(
   agent: Agent,
   listId: string,
   issuerDid: string,
@@ -297,15 +337,13 @@ export async function checkAndCreateBitstringStatusList(
   })
 }
 
-export async function revokeBitstringInStatusList(agent: Agent, listId: string, index: number, issuerDid: string) {
+export function revokeBitstringInStatusList(agent: Agent, listId: string, index: number, issuerDid: string) {
   return withStatusListLock(listId, async () => {
     const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`
-
     let lastError: Error | undefined
 
-    for (let attempt = 0; attempt < STATUS_LIST_PATCH_MAX_ATTEMPTS; attempt++) {
+    const attemptPatch = async (attempt: number): Promise<void> => {
       const res = await fetchWithTimeout(uri, { headers: getApiKeyHeaders() })
-
       if (!res.ok) {
         const errBody = await res.text().catch(() => '')
         throw new Error(
@@ -314,41 +352,7 @@ export async function revokeBitstringInStatusList(agent: Agent, listId: string, 
       }
 
       const credential = (await res.json()) as JsonObject
-      const subjectValue = credential.credentialSubject
-      const subject = (Array.isArray(subjectValue) ? subjectValue[0] : subjectValue) as
-        Record<string, unknown> | undefined
-
-      if (!subject || typeof subject.encodedList !== 'string') {
-        throw new Error(`Status list ${listId} does not contain a bitstring encodedList`)
-      }
-      if (subject.statusSize !== undefined && subject.statusSize !== 1) {
-        throw new Error(
-          `Status list ${listId} uses statusSize ${String(subject.statusSize)}; only statusSize 1 is supported`,
-        )
-      }
-
-      let bits: Uint8Array
-      try {
-        bits = decodeBitstring(subject.encodedList)
-      } catch (error) {
-        throw new BadRequestError(
-          `Status list ${listId} contains an invalid encodedList: ${error instanceof Error ? error.message : String(error)}`,
-        )
-      }
-
-      try {
-        setBit(bits, index, true)
-      } catch (error) {
-        throw new BadRequestError(
-          `Cannot revoke bit ${index} in status list ${listId}: ${error instanceof Error ? error.message : String(error)}`,
-        )
-      }
-
-      subject.encodedList = encodeBitstring(bits)
-
-      if ('proof' in credential) {
-        delete credential.proof
-      }
+      prepareBitstringStatusListCredential(credential, listId, index)
 
       const verificationMethod = await resolveAssertionMethod(agent, issuerDid)
       const vc = await signV2Credential(agent.context, {
@@ -361,7 +365,6 @@ export async function revokeBitstringInStatusList(agent: Agent, listId: string, 
         headers: { ...getApiKeyHeaders(), ...getIfMatchHeaders(res.headers.get('etag')) },
         body: JSON.stringify({ vc }),
       })
-
       if (patchRes.ok) {
         return
       }
@@ -371,14 +374,14 @@ export async function revokeBitstringInStatusList(agent: Agent, listId: string, 
       if (patchRes.status !== 412) {
         throw lastError
       }
+      if (attempt + 1 >= STATUS_LIST_PATCH_MAX_ATTEMPTS) {
+        throw patchAttemptsExhausted(lastError, 'bitstring status list')
+      }
 
       await delay(50 * (attempt + 1))
+      return attemptPatch(attempt + 1)
     }
 
-    throw new Error(
-      `Failed to update bitstring status list on server after ${STATUS_LIST_PATCH_MAX_ATTEMPTS} attempts: ${
-        lastError?.message ?? 'concurrent updates'
-      }`,
-    )
+    return attemptPatch(0)
   })
 }

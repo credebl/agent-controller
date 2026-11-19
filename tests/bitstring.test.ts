@@ -12,7 +12,7 @@ import {
 describe('bitstring', () => {
   it('creates an empty bitstring of the minimum length', () => {
     const bits = createEmptyBitstring()
-    expect(bits.length).toBe(MIN_BITSTRING_LENGTH / 8)
+    expect(bits).toHaveLength(MIN_BITSTRING_LENGTH / 8)
     expect(bits.every((byte) => byte === 0)).toBe(true)
   })
 
@@ -25,7 +25,7 @@ describe('bitstring', () => {
 
     const decoded = decodeBitstring(encodeBitstring(bits))
 
-    expect(decoded.length).toBe(bits.length)
+    expect(decoded).toHaveLength(bits.length)
     expect(Array.from(decoded)).toEqual(Array.from(bits))
   })
 

@@ -19,48 +19,60 @@ function formatDate(date: unknown): unknown {
   return date
 }
 
+function asContextArray(value: unknown): any[] {
+  if (Array.isArray(value)) return [...value]
+  if (typeof value === 'string') return [value]
+  return []
+}
+
+function uniqueContexts(contexts: any[], ...excluded: string[]): any[] {
+  const set = new Set(contexts)
+  for (const context of excluded) {
+    set.delete(context)
+  }
+  return [...set]
+}
+
+function hasStatusContext(contexts: any[]): boolean {
+  return new Set(contexts).has(BITSTRING_STATUS_LIST_CONTEXT_V1)
+}
+
+function withStatusContext(contexts: any[], includeStatus: boolean): any[] {
+  if (!includeStatus || hasStatusContext(contexts)) return contexts
+  return [...contexts, BITSTRING_STATUS_LIST_CONTEXT_V1]
+}
+
+function v1Contexts(value: unknown, includeStatus: boolean): unknown {
+  if (Array.isArray(value)) {
+    const contexts = [CREDENTIALS_CONTEXT_V1_URL, ...uniqueContexts(value, CREDENTIALS_CONTEXT_V1_URL)]
+    return withStatusContext(contexts, includeStatus)
+  }
+  if (typeof value === 'string') {
+    return withStatusContext([CREDENTIALS_CONTEXT_V1_URL, value], includeStatus)
+  }
+  return value
+}
+
 export function updateContextForVersion(
   transformed: Record<string, any>,
   version: JsonLdVersion | undefined,
   includeStatusListContext = false,
 ) {
-  const v1Context = CREDENTIALS_CONTEXT_V1_URL
-  const v2Context = CREDENTIALS_CONTEXT_V2_URL
+  const context = transformed['@context']
 
   if (version === 'v2.0') {
-    let currentCtx: any[] = []
-    if (Array.isArray(transformed['@context'])) {
-      currentCtx = transformed['@context']
-    } else if (typeof transformed['@context'] === 'string') {
-      currentCtx = [transformed['@context']]
-    }
-
-    const ctxSet = new Set(currentCtx)
-    ctxSet.delete(v1Context)
-    ctxSet.delete(v2Context)
-    transformed['@context'] = [v2Context, v1Context, ...Array.from(ctxSet)]
-  } else if (!transformed['@context']) {
-    transformed['@context'] = [v1Context]
-  } else if (Array.isArray(transformed['@context'])) {
-    const ctxSet = new Set(transformed['@context'])
-    ctxSet.delete(v1Context)
-    const contexts = [v1Context, ...Array.from(ctxSet)]
-    if (includeStatusListContext && !contexts.some((context) => context === BITSTRING_STATUS_LIST_CONTEXT_V1)) {
-      contexts.push(BITSTRING_STATUS_LIST_CONTEXT_V1)
-    }
-    transformed['@context'] = contexts
-  } else if (typeof transformed['@context'] === 'string') {
-    transformed['@context'] = includeStatusListContext
-      ? [v1Context, transformed['@context'], BITSTRING_STATUS_LIST_CONTEXT_V1]
-      : [v1Context, transformed['@context']]
+    transformed['@context'] = [
+      CREDENTIALS_CONTEXT_V2_URL,
+      CREDENTIALS_CONTEXT_V1_URL,
+      ...uniqueContexts(asContextArray(context), CREDENTIALS_CONTEXT_V1_URL, CREDENTIALS_CONTEXT_V2_URL),
+    ]
+    return
   }
 
+  transformed['@context'] = context ? v1Contexts(context, includeStatusListContext) : [CREDENTIALS_CONTEXT_V1_URL]
+
   if (!version && includeStatusListContext) {
-    const contexts = Array.isArray(transformed['@context']) ? [...transformed['@context']] : []
-    if (!contexts.some((context) => context === BITSTRING_STATUS_LIST_CONTEXT_V1)) {
-      contexts.push(BITSTRING_STATUS_LIST_CONTEXT_V1)
-    }
-    transformed['@context'] = contexts
+    transformed['@context'] = withStatusContext(asContextArray(transformed['@context']), true)
   }
 }
 

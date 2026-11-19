@@ -4,8 +4,6 @@
  *
  *   yarn test:v1-status-roundtrip
  */
-import '@openwallet-foundation/askar-nodejs'
-
 import { ClaimFormat, JsonTransformer, W3cCredential } from '@credo-ts/core'
 
 import { assert, createSmokeAgent, uuid } from './smokeTestHelpers'

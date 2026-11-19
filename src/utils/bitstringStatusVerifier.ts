@@ -33,6 +33,17 @@ interface ParsedCredential {
   issuerId?: string
 }
 
+type Details = Partial<BitstringStatusVerificationResult>
+type ValidationFailure = { error: string; extra?: Details }
+
+function isFailure<T>(value: T | ValidationFailure): value is ValidationFailure {
+  return typeof (value as ValidationFailure).error === 'string'
+}
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 function asJsonObject(value: unknown): JsonObject | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return undefined
@@ -112,10 +123,7 @@ function getAllowedOrigins(options: BitstringStatusVerificationOptions): string[
   return normalizeOrigins(configured)
 }
 
-function failure(
-  error: string,
-  extra: Partial<BitstringStatusVerificationResult> = {},
-): BitstringStatusVerificationResult {
+function failure(error: string, extra: Details = {}): BitstringStatusVerificationResult {
   return {
     checked: true,
     revoked: false,
@@ -149,71 +157,67 @@ async function verifyListProof(
   return verifyV2Credential(agentContext, { credential: listCredential })
 }
 
-export async function verifyBitstringStatus(
-  agentContext: AgentContext,
-  input: JsonObject | string,
-  options: BitstringStatusVerificationOptions = {},
-): Promise<BitstringStatusVerificationResult> {
-  let parsed: ParsedCredential
-  try {
-    parsed = parseCredential(input)
-  } catch (error) {
-    return failure(`Unable to parse credential: ${error instanceof Error ? error.message : String(error)}`)
-  }
-
-  const entry = getStatusEntry(parsed.credential)
-  if (!entry) {
-    return { checked: false, revoked: false, verified: true }
-  }
-
+function validateEntry(
+  entry: JsonObject,
+  details: Details,
+  options: BitstringStatusVerificationOptions,
+): ValidationFailure | { statusListIndex: number; statusListUri: string; listUrl: URL } {
   const statusPurpose = entry.statusPurpose
   if (statusPurpose !== REVOCATION_PURPOSE) {
-    return failure(`Unsupported statusPurpose '${String(statusPurpose)}'`, {
-      statusPurpose: typeof statusPurpose === 'string' ? statusPurpose : undefined,
-    })
+    return {
+      error: `Unsupported statusPurpose '${String(statusPurpose)}'`,
+      extra: { ...details, statusPurpose: typeof statusPurpose === 'string' ? statusPurpose : undefined },
+    }
   }
 
   const statusListIndex = parseStatusListIndex(entry.statusListIndex)
   if (statusListIndex === undefined) {
-    return failure('statusListIndex must be a non-negative integer', { statusPurpose })
+    return { error: 'statusListIndex must be a non-negative integer', extra: details }
   }
 
   const statusListUri = entry.statusListCredential
   if (typeof statusListUri !== 'string' || statusListUri.length === 0) {
-    return failure('statusListCredential must be a non-empty string', { statusPurpose, statusListIndex })
+    return { error: 'statusListCredential must be a non-empty string', extra: { ...details, statusListIndex } }
   }
 
   let listUrl: URL
   try {
     listUrl = new URL(statusListUri)
   } catch {
-    return failure('statusListCredential must be an absolute URL', { statusPurpose, statusListIndex, statusListUri })
+    return {
+      error: 'statusListCredential must be an absolute URL',
+      extra: { ...details, statusListIndex, statusListUri },
+    }
   }
 
   if (listUrl.protocol !== 'https:' && listUrl.protocol !== 'http:') {
-    return failure('statusListCredential must use http or https', {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return {
+      error: 'statusListCredential must use http or https',
+      extra: { ...details, statusListIndex, statusListUri },
+    }
   }
 
   const allowedOrigins = getAllowedOrigins(options)
   if (allowedOrigins.length === 0) {
-    return failure('No status list server origins are configured', {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return {
+      error: 'No status list server origins are configured',
+      extra: { ...details, statusListIndex, statusListUri },
+    }
   }
   if (!allowedOrigins.includes(listUrl.origin)) {
-    return failure(`statusListCredential origin '${listUrl.origin}' is not allowed`, {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return {
+      error: `statusListCredential origin '${listUrl.origin}' is not allowed`,
+      extra: { ...details, statusListIndex, statusListUri },
+    }
   }
 
+  return { statusListIndex, statusListUri, listUrl }
+}
+
+async function fetchStatusList(
+  listUrl: URL,
+  options: BitstringStatusVerificationOptions,
+): Promise<ValidationFailure | { credential: JsonObject }> {
   const fetchImpl = options.fetchImpl ?? fetch
   const timeoutMs = options.timeoutMs ?? 10000
 
@@ -230,124 +234,133 @@ export async function verifyBitstringStatus(
       clearTimeout(timeout)
     }
   } catch (error) {
-    return failure(`Unable to fetch status list: ${error instanceof Error ? error.message : String(error)}`, {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return { error: `Unable to fetch status list: ${describeError(error)}` }
   }
 
   if (!response.ok) {
-    return failure(`Status list request failed with HTTP ${response.status}`, {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return { error: `Status list request failed with HTTP ${response.status}` }
   }
 
-  let listCredential: JsonObject
   try {
-    listCredential = (await response.json()) as JsonObject
+    return { credential: (await response.json()) as JsonObject }
   } catch (error) {
-    return failure(
-      `Status list response is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
-      {
-        statusPurpose,
-        statusListIndex,
-        statusListUri,
-      },
-    )
+    return { error: `Status list response is not valid JSON: ${describeError(error)}` }
   }
+}
 
+async function verifyStatusListProof(
+  listCredential: JsonObject,
+  parsed: ParsedCredential,
+  options: BitstringStatusVerificationOptions,
+  agentContext: AgentContext,
+  details: Details,
+): Promise<ValidationFailure | { ok: true }> {
   if (!getTypes(listCredential.type).includes(BITSTRING_LIST_CREDENTIAL_TYPE)) {
-    return failure(`Status list credential must include type '${BITSTRING_LIST_CREDENTIAL_TYPE}'`, {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return {
+      error: `Status list credential must include type '${BITSTRING_LIST_CREDENTIAL_TYPE}'`,
+      extra: details,
+    }
   }
 
   const listIssuerId = getIssuerId(listCredential)
   if (options.requireIssuerMatch !== false && parsed.issuerId && listIssuerId !== parsed.issuerId) {
-    return failure('Status list issuer does not match credential issuer', {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return { error: 'Status list issuer does not match credential issuer', extra: details }
   }
 
   const proofResult = await verifyListProof(agentContext, listCredential, options)
   if (!proofResult.isValid) {
-    return failure(
-      `Status list proof verification failed${proofResult.error ? `: ${proofResult.error.message}` : ''}`,
-      { statusPurpose, statusListIndex, statusListUri },
-    )
+    const proofError = proofResult.error ? `: ${proofResult.error.message}` : ''
+    return { error: `Status list proof verification failed${proofError}`, extra: details }
   }
 
+  return { ok: true }
+}
+
+function parseStatusListBits(listCredential: JsonObject, details: Details): ValidationFailure | { bits: Uint8Array } {
   const rawSubject = listCredential.credentialSubject
   const subject = asJsonObject(Array.isArray(rawSubject) ? rawSubject[0] : rawSubject)
   if (!subject) {
-    return failure('Status list credential has no credentialSubject', {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return { error: 'Status list credential has no credentialSubject', extra: details }
   }
-
   if (!getTypes(subject.type).includes(BITSTRING_LIST_TYPE)) {
-    return failure(`Status list subject must include type '${BITSTRING_LIST_TYPE}'`, {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return { error: `Status list subject must include type '${BITSTRING_LIST_TYPE}'`, extra: details }
   }
-
   if (subject.statusPurpose !== REVOCATION_PURPOSE) {
-    return failure(`Status list purpose '${String(subject.statusPurpose)}' does not match '${REVOCATION_PURPOSE}'`, {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return {
+      error: `Status list purpose '${String(subject.statusPurpose)}' does not match '${REVOCATION_PURPOSE}'`,
+      extra: details,
+    }
   }
-
   if (subject.statusSize !== undefined && subject.statusSize !== 1) {
-    return failure(`Unsupported statusSize '${String(subject.statusSize)}' (only 1 is supported)`, {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return {
+      error: `Unsupported statusSize '${String(subject.statusSize)}' (only 1 is supported)`,
+      extra: details,
+    }
   }
-
   if (typeof subject.encodedList !== 'string') {
-    return failure('Status list subject has no encodedList', {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return { error: 'Status list subject has no encodedList', extra: details }
   }
 
   let bits: Uint8Array
   try {
     bits = decodeBitstring(subject.encodedList)
   } catch (error) {
-    return failure(`Invalid bitstring: ${error instanceof Error ? error.message : String(error)}`, {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+    return { error: `Invalid bitstring: ${describeError(error)}`, extra: details }
   }
 
-  if (statusListIndex >= bits.length * 8) {
-    return failure(`statusListIndex ${statusListIndex} is outside the status list`, {
-      statusPurpose,
-      statusListIndex,
-      statusListUri,
-    })
+  return { bits }
+}
+
+export async function verifyBitstringStatus(
+  agentContext: AgentContext,
+  input: JsonObject | string,
+  options: BitstringStatusVerificationOptions = {},
+): Promise<BitstringStatusVerificationResult> {
+  let parsed: ParsedCredential
+  try {
+    parsed = parseCredential(input)
+  } catch (error) {
+    return failure(`Unable to parse credential: ${describeError(error)}`)
+  }
+
+  const entry = getStatusEntry(parsed.credential)
+  if (!entry) {
+    return { checked: false, revoked: false, verified: true }
+  }
+
+  const rawStatusPurpose = entry.statusPurpose
+  const statusPurpose = typeof rawStatusPurpose === 'string' ? rawStatusPurpose : undefined
+  const details: Details = { statusPurpose }
+
+  const validatedEntry = validateEntry(entry, details, options)
+  if (isFailure(validatedEntry)) {
+    return failure(validatedEntry.error, validatedEntry.extra)
+  }
+  const { statusListIndex, statusListUri, listUrl } = validatedEntry
+  const listDetails: Details = { ...details, statusListIndex, statusListUri }
+
+  const fetched = await fetchStatusList(listUrl, options)
+  if (isFailure(fetched)) {
+    return failure(fetched.error, listDetails)
+  }
+
+  const proof = await verifyStatusListProof(fetched.credential, parsed, options, agentContext, listDetails)
+  if (isFailure(proof)) {
+    return failure(proof.error, proof.extra)
+  }
+
+  const parsedBits = parseStatusListBits(fetched.credential, listDetails)
+  if (isFailure(parsedBits)) {
+    return failure(parsedBits.error, parsedBits.extra)
+  }
+
+  if (statusListIndex >= parsedBits.bits.length * 8) {
+    return failure(`statusListIndex ${statusListIndex} is outside the status list`, listDetails)
   }
 
   return {
     checked: true,
-    revoked: getBit(bits, statusListIndex),
+    revoked: getBit(parsedBits.bits, statusListIndex),
     verified: true,
     statusListUri,
     statusListIndex,
