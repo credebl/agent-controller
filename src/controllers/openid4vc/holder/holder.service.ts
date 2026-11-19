@@ -703,14 +703,14 @@ export class HolderService {
       body.options,
     )
 
-    assertDcqlSelectionResponseCompatibility(body.selectedCredentials, resolved.authorizationRequestPayload)
-
     let acceptOptions: any = {
       authorizationRequestPayload: resolved.authorizationRequestPayload,
       origin: body.options?.origin,
     }
 
     if (resolved.dcql) {
+      assertDcqlSelectionResponseCompatibility(body.selectedCredentials, resolved.authorizationRequestPayload)
+
       const autoSelection = await agentReq.agent.modules.openid4vc.holder.selectCredentialsForDcqlRequest(
         resolved.dcql.queryResult,
       )

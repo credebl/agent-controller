@@ -166,6 +166,133 @@ describe('applyPresentationExchangeSelection', () => {
 
     expect(Object.keys(result).sort()).toEqual(['mandate', 'role'])
   })
+
+  it('replaces the automatic choice when the caller selects another descriptor in the same count', () => {
+    const request = {
+      requirements: [
+        {
+          needsCount: 1,
+          rule: 'pick',
+          submissionEntry: [
+            { inputDescriptorId: 'role', verifiableCredentials: [pexCredential('auto-1'), pexCredential('chosen-2')] },
+            { inputDescriptorId: 'mandate', verifiableCredentials: [pexCredential('mandate-1')] },
+          ],
+        },
+      ],
+    } as never
+    const definition = {
+      input_descriptors: [
+        { id: 'role', group: ['identity'] },
+        { id: 'mandate', group: ['identity'] },
+      ],
+      submission_requirements: [{ from: 'identity', rule: 'pick', count: 1 }],
+    }
+
+    const result = applyPresentationExchangeSelection(
+      request,
+      { role: [pexCredential('auto-1')] } as never,
+      { mandate: ['mandate-1'] },
+      definition,
+    )
+
+    expect(result.role).toBeUndefined()
+    expect((result.mandate[0] as { credentialRecord: { id: string } }).credentialRecord.id).toBe('mandate-1')
+  })
+
+  it('keeps bounds from separate definition entries that use the same group', () => {
+    const descriptorIds = ['role', 'mandate', 'extra']
+    const submissionEntry = descriptorIds.map((id) => ({
+      inputDescriptorId: id,
+      verifiableCredentials: [pexCredential(`${id}-1`)],
+    }))
+    const request = {
+      requirements: [
+        { needsCount: 1, rule: 'pick', submissionEntry },
+        { needsCount: 2, rule: 'pick', submissionEntry },
+      ],
+    } as never
+    const definition = {
+      input_descriptors: descriptorIds.map((id) => ({ id, group: ['identity'] })),
+      submission_requirements: [
+        { from: 'identity', rule: 'pick', min: 1, max: 3 },
+        { from: 'identity', rule: 'pick', count: 2 },
+      ],
+    }
+
+    const act = () =>
+      applyPresentationExchangeSelection(
+        request,
+        { role: [pexCredential('role-1')] } as never,
+        Object.fromEntries(descriptorIds.map((id) => [id, [`${id}-1`]])),
+        definition,
+      )
+
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('expected at most 2')
+  })
+
+  it('allows more submissions when the definition has a min but no max', () => {
+    const request = pexRequestWithTwoDescriptors()
+    const definition = {
+      input_descriptors: [
+        { id: 'role', group: ['identity'] },
+        { id: 'mandate', group: ['identity'] },
+      ],
+      submission_requirements: [{ from: 'identity', rule: 'pick', min: 1 }],
+    }
+
+    const result = applyPresentationExchangeSelection(
+      request,
+      { role: [pexCredential('auto-1')] } as never,
+      { role: ['chosen-2'], mandate: ['mandate-1'] },
+      definition,
+    )
+
+    expect(Object.keys(result).sort()).toEqual(['mandate', 'role'])
+  })
+
+  it('does not retain a shared automatic entry when the caller already satisfies both requirements', () => {
+    const request = {
+      requirements: [
+        {
+          needsCount: 1,
+          rule: 'pick',
+          submissionEntry: [
+            { inputDescriptorId: 'role', verifiableCredentials: [pexCredential('role-1')] },
+            { inputDescriptorId: 'mandate', verifiableCredentials: [pexCredential('mandate-1')] },
+          ],
+        },
+        {
+          needsCount: 1,
+          rule: 'pick',
+          submissionEntry: [
+            { inputDescriptorId: 'mandate', verifiableCredentials: [pexCredential('mandate-1')] },
+            { inputDescriptorId: 'extra', verifiableCredentials: [pexCredential('extra-1')] },
+          ],
+        },
+      ],
+    } as never
+    const definition = {
+      input_descriptors: [
+        { id: 'role', group: ['first'] },
+        { id: 'mandate', group: ['first', 'second'] },
+        { id: 'extra', group: ['second'] },
+      ],
+      submission_requirements: [
+        { from: 'first', rule: 'pick', count: 1 },
+        { from: 'second', rule: 'pick', count: 1 },
+      ],
+    }
+
+    const result = applyPresentationExchangeSelection(
+      request,
+      { role: [pexCredential('role-1')] } as never,
+      { mandate: ['mandate-1'] },
+      definition,
+    )
+
+    expect(Object.keys(result)).toEqual(['mandate'])
+  })
 })
 
 const dcqlValidCredential = (id: string, output: Record<string, unknown>) =>
@@ -176,7 +303,7 @@ const dcqlValidCredential = (id: string, output: Record<string, unknown>) =>
 
 const dcqlQueryResult = {
   can_be_satisfied: true,
-  credentials: [{ id: 'query-1' }],
+  credentials: [{ id: 'query-1', multiple: false }],
   credential_matches: {
     'query-1': {
       success: true,
@@ -246,6 +373,24 @@ describe('applyDcqlSelection', () => {
     const act = () => applyDcqlSelection(dcqlQueryResult, dcqlAutoSelection, { 'query-1': [42] as never })
     expect(act).toThrow(BadRequestError)
     expect(act).toThrow('must contain at least one credential id')
+  })
+
+  it('rejects multiple credentials when the DCQL query did not enable multiple', () => {
+    const act = () => applyDcqlSelection(dcqlQueryResult, dcqlAutoSelection, { 'query-1': ['auto-1', 'chosen-2'] })
+
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('does not allow multiple credentials')
+  })
+
+  it('allows multiple credentials when the DCQL query enabled multiple', () => {
+    const queryResult = {
+      ...dcqlQueryResult,
+      credentials: [{ id: 'query-1', multiple: true }],
+    } as never
+
+    const result = applyDcqlSelection(queryResult, dcqlAutoSelection, { 'query-1': ['auto-1', 'chosen-2'] })
+
+    expect(result['query-1']).toHaveLength(2)
   })
 
   it('rejects a credential with no disclosable claim set', () => {
@@ -392,6 +537,13 @@ describe('assertDcqlSelectionResponseCompatibility', () => {
 
   it("treats Credo's ambiguous x509_san_dns PEX requests as draft 24", () => {
     const payload = { client_id: 'x509_san_dns:example.com', presentation_definition: {} }
+    const act = () => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, payload)
+
+    expect(act).toThrow('OpenID4VP version 24')
+  })
+
+  it('treats x509_san_dns requests with legacy vp_formats as draft 24', () => {
+    const payload = { client_id: 'x509_san_dns:example.com', client_metadata: { vp_formats: {} } }
     const act = () => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, payload)
 
     expect(act).toThrow('OpenID4VP version 24')

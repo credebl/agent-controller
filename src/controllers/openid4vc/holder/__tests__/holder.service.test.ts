@@ -825,6 +825,32 @@ describe('HolderService acceptPresentationRequest', () => {
     expect(holder.acceptOpenId4VpAuthorizationRequest).not.toHaveBeenCalled()
   })
 
+  it('does not apply DCQL response restrictions to PEX selections', async () => {
+    const first = pexCredential('first')
+    const second = pexCredential('second')
+    const { agentReq, holder, service } = presentationExchangeAgent(
+      {
+        requirements: [
+          {
+            needsCount: 1,
+            submissionEntry: [{ inputDescriptorId: 'membership', verifiableCredentials: [first, second] }],
+          },
+        ],
+      },
+      { membership: [pexCredential('auto')] },
+    )
+
+    await service.acceptPresentationRequest(agentReq, {
+      proofRequestUri: 'openid4vp://request',
+      selectedCredentials: { membership: ['first', 'second'] },
+    })
+
+    const credentials = holder.acceptOpenId4VpAuthorizationRequest.mock.calls[0][0].presentationExchange.credentials
+    expect(
+      credentials.membership.map((credential: { credentialRecord: { id: string } }) => credential.credentialRecord.id),
+    ).toEqual(['first', 'second'])
+  })
+
   it('uses a caller-selected credential for a DCQL query', async () => {
     const dcqlCredential = (id: string) => ({
       record: { id, type: 'SdJwtVcRecord' },

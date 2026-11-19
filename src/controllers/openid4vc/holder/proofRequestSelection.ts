@@ -38,59 +38,110 @@ function assertCredentialIds(key: string, credentialIds: string[]): void {
 
 /** The subset of a PEX definition that determines how many submissions a requirement accepts. */
 interface PexDefinitionForSelection {
-  input_descriptors?: Array<{ id: string; group?: string[] }>
-  submission_requirements?: Array<{ from?: string; count?: number; min?: number; max?: number }>
+  input_descriptors?: Array<{ id: string; group?: string[]; name?: string }>
+  submission_requirements?: Array<{
+    from?: string
+    rule?: string
+    name?: string
+    count?: number
+    min?: number
+    max?: number
+  }>
 }
 
-function requirementBounds(
+interface EffectivePexRequirement {
+  descriptorIds: string[]
+  min: number
+  max: number
+  name?: string
+}
+
+function fromResolvedRequirement(
   requirement: DifPexCredentialsForRequest['requirements'][number],
-  definition: PexDefinitionForSelection | undefined,
-): { min: number; max: number } {
+): EffectivePexRequirement {
   const descriptorIds = requirement.submissionEntry.map((entry) => entry.inputDescriptorId)
-  const min = requirement.needsCount
-  const max = min
+  const min = requirement.needsCount ?? 1
 
-  if (!definition?.submission_requirements?.length) return { min, max }
+  // Without the definition, needsCount is the only bound Credo exposes.
+  return {
+    descriptorIds,
+    min,
+    max: min,
+    name: requirement.name ?? requirement.submissionEntry[0]?.name,
+  }
+}
 
-  const groupsByDescriptor = new Map<string, string[]>()
-  for (const descriptor of definition.input_descriptors ?? []) {
-    if (descriptor.id) groupsByDescriptor.set(descriptor.id, descriptor.group ?? [])
+/**
+ * Credo creates one resolved requirement per definition entry and filters entries whose
+ * needsCount is zero. Matching by group alone is ambiguous when several entries use the same
+ * group, so keep the definition entries in their original order and pair them with the resolved
+ * requirements.
+ */
+function effectivePexRequirements(
+  definition: PexDefinitionForSelection | undefined,
+  resolved: DifPexCredentialsForRequest['requirements'],
+): EffectivePexRequirement[] {
+  if (!definition) return resolved.map(fromResolvedRequirement)
+
+  const descriptors = definition.input_descriptors ?? []
+  const submissionRequirements = definition.submission_requirements ?? []
+  const resolvedRequirements = resolved.filter((requirement) => (requirement.needsCount ?? 1) > 0)
+
+  if (submissionRequirements.length === 0) {
+    const candidates: EffectivePexRequirement[] = descriptors.map((descriptor) => ({
+      descriptorIds: [descriptor.id],
+      min: 1,
+      max: 1,
+      name: descriptor.name,
+    }))
+    if (candidates.length !== resolvedRequirements.length) return resolved.map(fromResolvedRequirement)
+    return candidates.map((candidate, index) => ({
+      ...candidate,
+      name: candidate.name ?? resolvedRequirements[index].name,
+    }))
   }
 
-  for (const submissionRequirement of definition.submission_requirements) {
-    if (!submissionRequirement.from) continue
+  const candidates: EffectivePexRequirement[] = []
+  for (const submissionRequirement of submissionRequirements) {
+    const from = submissionRequirement.from
+    const descriptorIds = from
+      ? descriptors.filter((descriptor) => descriptor.group?.includes(from)).map(({ id }) => id)
+      : []
+    const available = descriptorIds.length
+    const ruleAll = submissionRequirement.rule === 'all'
+    const min = ruleAll ? available : (submissionRequirement.count ?? submissionRequirement.min ?? 1)
+    if (min <= 0) continue
 
-    const matches = descriptorIds.filter((id) => groupsByDescriptor.get(id)?.includes(submissionRequirement.from!))
-    if (matches.length !== descriptorIds.length) continue
-
-    const submissionMin = submissionRequirement.count ?? submissionRequirement.min ?? min
-    const submissionMax = submissionRequirement.count ?? submissionRequirement.max ?? submissionMin
-    return { min: submissionMin, max: submissionMax }
+    const max = ruleAll ? available : (submissionRequirement.count ?? submissionRequirement.max ?? available)
+    candidates.push({ descriptorIds, min, max: Math.max(min, max), name: submissionRequirement.name })
   }
 
-  // The resolved requirement already normalizes count/min into needsCount. Without a matching
-  // definition entry we cannot know a separate max, so we keep the automatic selection's cardinality.
-  return { min, max }
+  if (candidates.length !== resolvedRequirements.length) return resolved.map(fromResolvedRequirement)
+  return candidates.map((candidate, index) => ({
+    ...candidate,
+    name: candidate.name ?? resolvedRequirements[index].name,
+  }))
+}
+
+function hasCredentialInSelection(selection: DifPexInputDescriptorToCredentials, descriptorId: string): boolean {
+  return (selection[descriptorId]?.length ?? 0) > 0
 }
 
 function assertRequirementCount(
-  requirement: DifPexCredentialsForRequest['requirements'][number],
+  requirement: EffectivePexRequirement,
   selection: DifPexInputDescriptorToCredentials,
-  min: number,
-  max: number,
 ): void {
-  const descriptorIds = requirement.submissionEntry.map((entry) => entry.inputDescriptorId)
-  const selectedCount = descriptorIds.filter((id) => (selection[id]?.length ?? 0) > 0).length
+  const selectedCount = requirement.descriptorIds.filter((id) => hasCredentialInSelection(selection, id)).length
   const requirementName = requirement.name ? ` "${requirement.name}"` : ''
 
-  if (selectedCount < min) {
+  if (selectedCount < requirement.min) {
     throw new BadRequestError(
-      `The selected credentials do not satisfy submission requirement${requirementName}: expected at least ${min}, received ${selectedCount}`,
+      `The selected credentials do not satisfy submission requirement${requirementName}: expected at least ${requirement.min}, received ${selectedCount}`,
     )
   }
-  if (selectedCount > max) {
+  if (selectedCount > requirement.max) {
     throw new BadRequestError(
-      `The selected credentials do not satisfy submission requirement${requirementName}: expected at most ${max}, received ${selectedCount}`,
+      `The selected credentials do not satisfy submission requirement${requirementName}: expected at most ${requirement.max}, received ${selectedCount}`,
     )
   }
 }
@@ -116,8 +167,7 @@ export function applyPresentationExchangeSelection(
     }
   }
 
-  const result: DifPexInputDescriptorToCredentials = { ...autoSelection }
-  const selectedDescriptorIds = new Set(Object.keys(selection as ProofRequestCredentialSelection))
+  const selectedCredentials: DifPexInputDescriptorToCredentials = {}
   for (const [inputDescriptorId, credentialIds] of Object.entries(selection as ProofRequestCredentialSelection)) {
     const available = offered.get(inputDescriptorId)
     if (!available) {
@@ -125,7 +175,7 @@ export function applyPresentationExchangeSelection(
     }
     assertCredentialIds(inputDescriptorId, credentialIds)
 
-    result[inputDescriptorId] = credentialIds.map((credentialId) => {
+    selectedCredentials[inputDescriptorId] = credentialIds.map((credentialId) => {
       const credential = available.find((candidate) => candidate.credentialRecord.id === credentialId)
       if (!credential) {
         throw new BadRequestError(
@@ -136,40 +186,47 @@ export function applyPresentationExchangeSelection(
     })
   }
 
-  // Credo's automatic selection stops at needsCount. A caller selection for a descriptor that was
-  // not auto-selected would otherwise add an extra submission and break the requirement's count.
-  const requirementDescriptorIds = credentialsForRequest.requirements.map((requirement) =>
-    requirement.submissionEntry.map((entry) => entry.inputDescriptorId),
+  const selectedDescriptorIds = new Set(Object.keys(selectedCredentials))
+  const autoDescriptorIds = Object.entries(autoSelection)
+    .filter(([, credentials]) => credentials.length > 0)
+    .map(([descriptorId]) => descriptorId)
+  const requirements = effectivePexRequirements(definition, credentialsForRequest.requirements)
+
+  // A caller selection replaces Credo's automatic choice for the requirements it belongs to.
+  // Automatic entries stay untouched for requirements the caller did not select. Shared entries
+  // are only added back when an affected requirement still needs them to reach its minimum.
+  const retainedDescriptorIds = new Set(selectedDescriptorIds)
+  const untouchedRequirements = requirements.filter(
+    (requirement) => !requirement.descriptorIds.some((id) => selectedDescriptorIds.has(id)),
   )
-  credentialsForRequest.requirements.forEach((requirement, requirementIndex) => {
-    const descriptorIds = requirementDescriptorIds[requirementIndex]
-    const selectedHere = descriptorIds.filter((id) => selectedDescriptorIds.has(id))
-    if (selectedHere.length === 0) return
-
-    const { min } = requirementBounds(requirement, definition)
-    const autoHere = descriptorIds.filter(
-      (id) => (autoSelection[id]?.length ?? 0) > 0 && !selectedDescriptorIds.has(id),
-    )
-    const keepFromAuto = autoHere.slice(0, Math.max(0, min - selectedHere.length))
-
-    for (const id of autoHere) {
-      if (keepFromAuto.includes(id)) continue
-
-      // A descriptor can appear in more than one requirement. Keep it if another requirement
-      // still relies on its automatic selection.
-      const shared = requirementDescriptorIds.some(
-        (ids, index) => index !== requirementIndex && ids.includes(id) && !selectedDescriptorIds.has(id),
-      )
-      if (!shared) delete result[id]
+  for (const descriptorId of autoDescriptorIds) {
+    if (untouchedRequirements.some((requirement) => requirement.descriptorIds.includes(descriptorId))) {
+      retainedDescriptorIds.add(descriptorId)
     }
-  })
+  }
 
-  credentialsForRequest.requirements.forEach((requirement, requirementIndex) => {
-    if (!requirementDescriptorIds[requirementIndex].some((id) => selectedDescriptorIds.has(id))) return
+  for (const requirement of requirements) {
+    if (!requirement.descriptorIds.some((id) => selectedDescriptorIds.has(id))) continue
+    if (requirement.descriptorIds.filter((id) => retainedDescriptorIds.has(id)).length >= requirement.min) continue
 
-    const { min, max } = requirementBounds(requirement, definition)
-    assertRequirementCount(requirement, result, min, max)
-  })
+    for (const descriptorId of requirement.descriptorIds) {
+      if (requirement.descriptorIds.filter((id) => retainedDescriptorIds.has(id)).length >= requirement.min) break
+      if (selectedDescriptorIds.has(descriptorId) || !autoDescriptorIds.includes(descriptorId)) continue
+      retainedDescriptorIds.add(descriptorId)
+    }
+  }
+
+  const result: DifPexInputDescriptorToCredentials = {}
+  for (const [descriptorId, credentials] of Object.entries(autoSelection)) {
+    if (retainedDescriptorIds.has(descriptorId)) result[descriptorId] = credentials
+  }
+  for (const [descriptorId, credentials] of Object.entries(selectedCredentials)) {
+    result[descriptorId] = credentials
+  }
+
+  for (const requirement of requirements) {
+    assertRequirementCount(requirement, result)
+  }
 
   return result
 }
@@ -248,6 +305,13 @@ export function applyDcqlSelection(
       throw new BadRequestError(`DCQL credential query "${credentialQueryId}" cannot be satisfied`)
     }
     assertCredentialIds(credentialQueryId, credentialIds)
+
+    const credentialQuery = queryResult.credentials?.find(({ id }) => id === credentialQueryId)
+    if (credentialIds.length > 1 && credentialQuery?.multiple !== true) {
+      throw new BadRequestError(
+        `DCQL credential query "${credentialQueryId}" does not allow multiple credentials. Select one credential per query.`,
+      )
+    }
 
     const validCredentials = match.valid_credentials as DcqlValidCredential[]
     result[credentialQueryId] = credentialIds.map((credentialId) => {
