@@ -161,7 +161,7 @@ export async function checkAndCreateStatusList(agent: Agent, listId: string, iss
 }
 
 export function revokeCredentialInStatusList(agent: Agent, listId: string, index: number, issuerDid: string) {
-  return withStatusListLock(listId, async () => {
+  return withStatusListLock(listId, () => {
     const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`
     let lastError: Error | undefined
 
@@ -338,7 +338,7 @@ export function checkAndCreateBitstringStatusList(
 }
 
 export function revokeBitstringInStatusList(agent: Agent, listId: string, index: number, issuerDid: string) {
-  return withStatusListLock(listId, async () => {
+  return withStatusListLock(listId, () => {
     const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`
     let lastError: Error | undefined
 
