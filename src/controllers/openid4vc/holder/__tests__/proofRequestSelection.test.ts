@@ -1,5 +1,4 @@
 import { ClaimFormat } from '@credo-ts/core'
-import { parseAuthorizationRequestVersion } from '@openid4vc/openid4vp'
 
 import { BadRequestError } from '../../../../errors/errors'
 import {
@@ -7,10 +6,6 @@ import {
   applyPresentationExchangeSelection,
   assertDcqlSelectionResponseCompatibility,
 } from '../proofRequestSelection'
-
-jest.mock('@openid4vc/openid4vp', () => ({
-  parseAuthorizationRequestVersion: jest.fn(() => 27),
-}))
 
 // Avoid loading Credo's ESM/native dependencies in Jest; the selection helper only needs the ClaimFormat values.
 jest.mock('@credo-ts/core', () => ({
@@ -31,7 +26,29 @@ const pexCredential = (id: string) =>
     disclosedPayload: { role: 'member' },
   }) as never
 
-const parseVersionMock = parseAuthorizationRequestVersion as jest.Mock
+const pexRequestWithTwoDescriptors = () =>
+  ({
+    areRequirementsSatisfied: true,
+    requirements: [
+      {
+        isRequirementSatisfied: true,
+        needsCount: 1,
+        rule: 'pick',
+        submissionEntry: [
+          { inputDescriptorId: 'role', verifiableCredentials: [pexCredential('chosen-2')] },
+          { inputDescriptorId: 'mandate', verifiableCredentials: [pexCredential('mandate-1')] },
+        ],
+      },
+    ],
+  }) as never
+
+const pexDefinitionWithGroup = (min: number, max: number) => ({
+  input_descriptors: [
+    { id: 'role', group: ['identity'] },
+    { id: 'mandate', group: ['identity'] },
+  ],
+  submission_requirements: [{ from: 'identity', min, max }],
+})
 
 const pexRequest = {
   areRequirementsSatisfied: true,
@@ -120,31 +137,11 @@ describe('applyPresentationExchangeSelection', () => {
   })
 
   it('rejects selections that exceed the submission requirement max', () => {
-    const request = {
-      areRequirementsSatisfied: true,
-      requirements: [
-        {
-          isRequirementSatisfied: true,
-          needsCount: 1,
-          rule: 'pick',
-          submissionEntry: [
-            { inputDescriptorId: 'role', verifiableCredentials: [pexCredential('chosen-2')] },
-            { inputDescriptorId: 'mandate', verifiableCredentials: [pexCredential('mandate-1')] },
-          ],
-        },
-      ],
-    } as never
-    const definition = {
-      input_descriptors: [
-        { id: 'role', group: ['identity'] },
-        { id: 'mandate', group: ['identity'] },
-      ],
-      submission_requirements: [{ from: 'identity', min: 1, max: 1 }],
-    }
+    const definition = pexDefinitionWithGroup(1, 1)
 
     const act = () =>
       applyPresentationExchangeSelection(
-        request,
+        pexRequestWithTwoDescriptors(),
         { role: [pexCredential('auto-1')] } as never,
         {
           role: ['chosen-2'],
@@ -158,30 +155,10 @@ describe('applyPresentationExchangeSelection', () => {
   })
 
   it('fills unselected slots from the automatic selection within a min/max range', () => {
-    const request = {
-      areRequirementsSatisfied: true,
-      requirements: [
-        {
-          isRequirementSatisfied: true,
-          needsCount: 1,
-          rule: 'pick',
-          submissionEntry: [
-            { inputDescriptorId: 'role', verifiableCredentials: [pexCredential('chosen-2')] },
-            { inputDescriptorId: 'mandate', verifiableCredentials: [pexCredential('mandate-1')] },
-          ],
-        },
-      ],
-    } as never
-    const definition = {
-      input_descriptors: [
-        { id: 'role', group: ['identity'] },
-        { id: 'mandate', group: ['identity'] },
-      ],
-      submission_requirements: [{ from: 'identity', min: 2, max: 2 }],
-    }
+    const definition = pexDefinitionWithGroup(2, 2)
 
     const result = applyPresentationExchangeSelection(
-      request,
+      pexRequestWithTwoDescriptors(),
       { mandate: [pexCredential('mandate-1')] } as never,
       { role: ['chosen-2'] },
       definition,
@@ -390,28 +367,41 @@ describe('applyDcqlSelection', () => {
 })
 
 describe('assertDcqlSelectionResponseCompatibility', () => {
-  beforeEach(() => {
-    parseVersionMock.mockReturnValue(27)
-  })
+  it('does not infer a version when no multi-credential selection was supplied', () => {
+    const conflictingPayload = { client_id: 'web-origin:https://example.com', verifier_attestations: {} }
 
-  it('does not parse the request when no selection was supplied', () => {
-    assertDcqlSelectionResponseCompatibility(undefined, {})
-    assertDcqlSelectionResponseCompatibility({}, {})
-    assertDcqlSelectionResponseCompatibility({ 'query-1': ['one'] }, {})
-
-    expect(parseVersionMock).not.toHaveBeenCalled()
+    expect(() => assertDcqlSelectionResponseCompatibility(undefined, conflictingPayload)).not.toThrow()
+    expect(() => assertDcqlSelectionResponseCompatibility({}, conflictingPayload)).not.toThrow()
+    expect(() => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one'] }, conflictingPayload)).not.toThrow()
   })
 
   it('allows multiple presentations for OpenID4VP 1.0 requests', () => {
-    expect(() => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, {})).not.toThrow()
+    const payload = { client_id: 'x509_hash:abc' }
+
+    expect(() => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, payload)).not.toThrow()
   })
 
   it('rejects multiple presentations before signing for draft requests', () => {
-    parseVersionMock.mockReturnValue(24)
-
-    const act = () => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, {})
+    const payload = { client_id: 'x509_san_uri:https://example.com' }
+    const act = () => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, payload)
 
     expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('OpenID4VP version 24')
     expect(act).toThrow('cannot carry multiple presentations for DCQL query "query-1"')
+  })
+
+  it("treats Credo's ambiguous x509_san_dns PEX requests as draft 24", () => {
+    const payload = { client_id: 'x509_san_dns:example.com', presentation_definition: {} }
+    const act = () => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, payload)
+
+    expect(act).toThrow('OpenID4VP version 24')
+  })
+
+  it('rejects an authorization request whose version bounds conflict', () => {
+    const payload = { client_id: 'web-origin:https://example.com', verifier_attestations: {} }
+    const act = () => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, payload)
+
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('Unable to infer OpenID4VP version')
   })
 })

@@ -11,7 +11,6 @@ import type {
 } from '@credo-ts/core'
 
 import { ClaimFormat } from '@credo-ts/core'
-import { parseAuthorizationRequestVersion } from '@openid4vc/openid4vp'
 
 import { BadRequestError } from '../../../errors/errors'
 
@@ -265,6 +264,107 @@ export function applyDcqlSelection(
   return result
 }
 
+const OPENID4VP_CLIENT_ID_PREFIXES = [
+  'pre-registered',
+  'redirect_uri',
+  'verifier_attestation',
+  'https',
+  'openid_federation',
+  'did',
+  'decentralized_identifier',
+  'x509_san_uri',
+  'x509_hash',
+  'x509_san_dns',
+  'origin',
+  'web-origin',
+]
+const DC_API_RESPONSE_MODES = ['dc_api', 'dc_api.jwt', 'w3c_dc_api.jwt', 'w3c_dc_api']
+const IAE_RESPONSE_MODES = ['iae_post', 'iae_post.jwt']
+
+type VersionRequirement = readonly [operator: '<' | '>=', version: number]
+
+function asRecord(value: unknown): Record<string, any> {
+  return value !== null && typeof value === 'object' ? (value as Record<string, any>) : {}
+}
+
+/**
+ * Local equivalent of the version inference Credo uses. The upstream helper lives in an ESM-only
+ * package that the repository's CommonJS Jest setup cannot import, so this mirrors only its
+ * version-boundary rules.
+ */
+function parseAuthorizationRequestVersionNumber(payload: unknown): number {
+  const request = asRecord(payload)
+  const requirements: VersionRequirement[] = []
+  const clientId = typeof request.client_id === 'string' ? request.client_id : undefined
+  const responseMode = typeof request.response_mode === 'string' ? request.response_mode : undefined
+  const clientMetadata = asRecord(request.client_metadata)
+  const vpFormatsSupported = asRecord(clientMetadata.vp_formats_supported)
+  const mdocFormats = asRecord(vpFormatsSupported.mso_mdoc)
+  const isDcApi = responseMode !== undefined && DC_API_RESPONSE_MODES.includes(responseMode)
+
+  if (responseMode !== undefined && IAE_RESPONSE_MODES.includes(responseMode)) requirements.push(['>=', 101])
+  if (request.verifier_info) requirements.push(['>=', 100])
+  if (request.verifier_attestations) requirements.push(['<', 100])
+  if (mdocFormats.deviceauth_alg_values || mdocFormats.issuerauth_alg_values) requirements.push(['>=', 28])
+  if (mdocFormats.issuer_signed_alg_values || mdocFormats.device_signed_alg_values) requirements.push(['<', 28])
+  if (clientMetadata.vp_formats_supported) requirements.push(['>=', 27])
+  if (clientMetadata.vp_formats) requirements.push(['<', 27])
+  if (clientId?.startsWith('openid_federation:') || clientId?.startsWith('decentralized_identifier:')) {
+    requirements.push(['>=', 26])
+  }
+  if (clientId?.startsWith('did:')) requirements.push(['<', 26])
+  if (request.presentation_definition || request.presentation_definition_uri) requirements.push(['<', 26])
+  if (request.verifier_attestations) requirements.push(['>=', 26])
+  if (clientId?.startsWith('x509_san_uri:')) requirements.push(['<', 25])
+  if (clientId?.startsWith('x509_hash:')) requirements.push(['>=', 25])
+  if (clientId?.startsWith('web-origin:')) requirements.push(['<', 25])
+  if (clientId?.startsWith('origin:')) requirements.push(['>=', 25])
+  if (isDcApi && (responseMode === 'w3c_dc_api' || responseMode === 'w3c_dc_api.jwt')) {
+    requirements.push(['<', 23], ['>=', 21])
+  }
+  if (isDcApi && (responseMode === 'dc_api' || responseMode === 'dc_api.jwt')) requirements.push(['>=', 23])
+  if (isDcApi && (request.transaction_data || request.dcql_query)) requirements.push(['>=', 23])
+  if (request.transaction_data) requirements.push(['>=', 22])
+  if (request.client_id_scheme) requirements.push(['<', 22])
+  if (clientId) {
+    const scheme = clientId.substring(0, clientId.indexOf(':'))
+    if (OPENID4VP_CLIENT_ID_PREFIXES.includes(scheme) && scheme !== 'did' && scheme !== 'https') {
+      requirements.push(['>=', 22])
+    }
+  }
+  if (!clientId) requirements.push(['>=', 21])
+  if (request.dcql_query) requirements.push(['>=', 21])
+  if (request.client_metadata_uri) requirements.push(['<', 21])
+  if (isDcApi) requirements.push(['>=', 21])
+  if (request.request_uri_method || request.wallet_nonce) requirements.push(['>=', 21])
+  if (request.client_id_scheme === 'verifier_attestation') requirements.push(['>=', 20])
+  if (request.client_id_scheme === 'x509_san_dns' || request.client_id_scheme === 'x509_san_uri') {
+    requirements.push(['>=', 19])
+  }
+
+  const upperBounds = requirements.filter(([operator]) => operator === '<').map(([, version]) => version)
+  const lowerBounds = requirements.filter(([operator]) => operator === '>=').map(([, version]) => version)
+  const highestPossibleVersion = upperBounds.length > 0 ? Math.max(Math.min(...upperBounds) - 1, 18) : 101
+  const lowestRequiredVersion = lowerBounds.length > 0 ? Math.max(...lowerBounds) : 18
+
+  if (lowestRequiredVersion > highestPossibleVersion) {
+    throw new BadRequestError(
+      `Unable to infer OpenID4VP version from the authorization request (required ${lowestRequiredVersion}, allowed up to ${highestPossibleVersion})`,
+    )
+  }
+
+  // Credo treats these ambiguous draft-25-looking requests as draft 24.
+  if (
+    highestPossibleVersion >= 24 &&
+    highestPossibleVersion < 27 &&
+    (!clientId || clientId.startsWith('x509_san_dns:'))
+  ) {
+    return 24
+  }
+
+  return highestPossibleVersion
+}
+
 /**
  * Credo can only encode multiple presentations per DCQL query when the resolved request uses
  * OpenID4VP 1.0. Earlier versions throw after signing every presentation, which surfaces as a 500.
@@ -281,9 +381,7 @@ export function assertDcqlSelectionResponseCompatibility(
   )
   if (multiCredentialQueries.length === 0) return
 
-  const version = parseAuthorizationRequestVersion(
-    authorizationRequestPayload as Parameters<typeof parseAuthorizationRequestVersion>[0],
-  )
+  const version = parseAuthorizationRequestVersionNumber(authorizationRequestPayload)
   if (version > 24) return
 
   const [queryId] = multiCredentialQueries[0]
