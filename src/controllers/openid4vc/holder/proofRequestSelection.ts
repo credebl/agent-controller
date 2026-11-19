@@ -79,11 +79,11 @@ export function applyPresentationExchangeSelection(
 }
 
 function firstClaimSet(credential: DcqlValidCredential) {
-  const claimSet = credential.claims.valid_claim_sets[0]
-  if (!claimSet) {
+  const claimSets = credential.claims?.valid_claim_sets
+  if (!Array.isArray(claimSets) || claimSets.length === 0) {
     throw new BadRequestError('DCQL credential has no disclosable claim set')
   }
-  return claimSet
+  return claimSets[0]
 }
 
 function selectiveDisclosure(credential: DcqlValidCredential) {

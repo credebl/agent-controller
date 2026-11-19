@@ -1,5 +1,6 @@
 import { ClaimFormat, SdJwtVcRecord } from '@credo-ts/core'
 
+import { BadRequestError } from '../../../../errors/errors'
 import {
   assertOfferAcceptsHolderDid,
   assertW3cCredentialsBoundToHolderDid,
@@ -815,12 +816,12 @@ describe('HolderService acceptPresentationRequest', () => {
       { membership: [pexCredential('auto')] },
     )
 
-    await expect(
-      service.acceptPresentationRequest(agentReq, {
-        proofRequestUri: 'openid4vp://request',
-        selectedCredentials: { membership: ['not-offered'] },
-      }),
-    ).rejects.toThrow('does not satisfy input descriptor "membership"')
+    const request = service.acceptPresentationRequest(agentReq, {
+      proofRequestUri: 'openid4vp://request',
+      selectedCredentials: { membership: ['not-offered'] },
+    })
+    await expect(request).rejects.toBeInstanceOf(BadRequestError)
+    await expect(request).rejects.toThrow('does not satisfy input descriptor "membership"')
     expect(holder.acceptOpenId4VpAuthorizationRequest).not.toHaveBeenCalled()
   })
 

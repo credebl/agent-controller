@@ -1,5 +1,6 @@
 import { ClaimFormat } from '@credo-ts/core'
 
+import { BadRequestError } from '../../../../errors/errors'
 import { applyDcqlSelection, applyPresentationExchangeSelection } from '../proofRequestSelection'
 
 // Avoid loading Credo's ESM/native dependencies in Jest; the selection helper only needs the ClaimFormat values.
@@ -9,6 +10,8 @@ jest.mock('@credo-ts/core', () => ({
     SdJwtW3cVc: 'vc+sd-jwt',
     DiVc: 'di_vc',
     MsoMdoc: 'mso_mdoc',
+    LdpVc: 'ldp_vc',
+    JwtW3cVc: 'vc+jwt',
   },
 }))
 
@@ -57,22 +60,29 @@ describe('applyPresentationExchangeSelection', () => {
     expect((result.mandate[0] as { credentialRecord: { id: string } }).credentialRecord.id).toBe('mandate-1')
   })
 
-  it('rejects an unknown input descriptor id', () => {
-    expect(() => applyPresentationExchangeSelection(pexRequest, pexAutoSelection, { missing: ['chosen-2'] })).toThrow(
-      'no input descriptor "missing"',
-    )
+  it('rejects an unknown input descriptor id with BadRequestError', () => {
+    const act = () => applyPresentationExchangeSelection(pexRequest, pexAutoSelection, { missing: ['chosen-2'] })
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('no input descriptor "missing"')
   })
 
   it('rejects a credential that does not satisfy the descriptor', () => {
-    expect(() => applyPresentationExchangeSelection(pexRequest, pexAutoSelection, { role: ['mandate-1'] })).toThrow(
-      'Credential "mandate-1" does not satisfy input descriptor "role"',
-    )
+    const act = () => applyPresentationExchangeSelection(pexRequest, pexAutoSelection, { role: ['mandate-1'] })
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('Credential "mandate-1" does not satisfy input descriptor "role"')
   })
 
   it('rejects an empty selection for a descriptor', () => {
-    expect(() => applyPresentationExchangeSelection(pexRequest, pexAutoSelection, { role: [] })).toThrow(
-      'must contain at least one credential id',
-    )
+    const act = () => applyPresentationExchangeSelection(pexRequest, pexAutoSelection, { role: [] })
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('must contain at least one credential id')
+  })
+
+  it('rejects a malformed selection value', () => {
+    const act = () =>
+      applyPresentationExchangeSelection(pexRequest, pexAutoSelection, { role: '' as unknown as string[] })
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('must contain at least one credential id')
   })
 })
 
@@ -128,16 +138,16 @@ describe('applyDcqlSelection', () => {
     expect(entry.disclosedPaths).toEqual([['role']])
   })
 
-  it('rejects an unknown credential query id', () => {
-    expect(() => applyDcqlSelection(dcqlQueryResult, dcqlAutoSelection, { missing: ['chosen-2'] })).toThrow(
-      'no DCQL credential query "missing"',
-    )
+  it('rejects an unknown credential query id with BadRequestError', () => {
+    const act = () => applyDcqlSelection(dcqlQueryResult, dcqlAutoSelection, { missing: ['chosen-2'] })
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('no DCQL credential query "missing"')
   })
 
   it('rejects a credential that does not satisfy the query', () => {
-    expect(() => applyDcqlSelection(dcqlQueryResult, dcqlAutoSelection, { 'query-1': ['auto-9'] })).toThrow(
-      'does not satisfy DCQL credential query "query-1"',
-    )
+    const act = () => applyDcqlSelection(dcqlQueryResult, dcqlAutoSelection, { 'query-1': ['auto-9'] })
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('does not satisfy DCQL credential query "query-1"')
   })
 
   it('rejects a query that cannot be satisfied', () => {
@@ -145,8 +155,131 @@ describe('applyDcqlSelection', () => {
       credential_matches: { 'query-1': { success: false } },
     } as never
 
-    expect(() => applyDcqlSelection(unsatisfied, dcqlAutoSelection, { 'query-1': ['auto-1'] })).toThrow(
-      'cannot be satisfied',
+    const act = () => applyDcqlSelection(unsatisfied, dcqlAutoSelection, { 'query-1': ['auto-1'] })
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('cannot be satisfied')
+  })
+
+  it('rejects a malformed selection value', () => {
+    const act = () => applyDcqlSelection(dcqlQueryResult, dcqlAutoSelection, { 'query-1': [42] as never })
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('must contain at least one credential id')
+  })
+
+  it('rejects a credential with no disclosable claim set', () => {
+    const noClaimSet = {
+      credential_matches: {
+        'query-1': {
+          success: true,
+          valid_credentials: [{ record: { id: 'no-claims', type: 'SdJwtVcRecord' }, claims: {} }],
+        },
+      },
+    } as never
+
+    expect(() => applyDcqlSelection(noClaimSet, dcqlAutoSelection, { 'query-1': ['no-claims'] })).toThrow(
+      BadRequestError,
+    )
+  })
+
+  it('builds an mdoc selection entry from the first claim set', () => {
+    const mdoc = {
+      record: { id: 'mdoc-1', type: 'MdocRecord' },
+      claims: { valid_claim_sets: [{ output: { 'org.iso.18013.5.1': { family_name: 'Doe' } } }] },
+    } as never
+    const queryResult = {
+      credential_matches: { 'query-1': { success: true, valid_credentials: [mdoc] } },
+    } as never
+
+    const result = applyDcqlSelection(queryResult, dcqlAutoSelection, { 'query-1': ['mdoc-1'] })
+    const entry = result['query-1'][0] as {
+      claimFormat: ClaimFormat
+      credentialRecord: { id: string }
+      disclosedPayload: Record<string, unknown>
+    }
+
+    expect(entry.claimFormat).toBe(ClaimFormat.MsoMdoc)
+    expect(entry.credentialRecord.id).toBe('mdoc-1')
+    expect(entry.disclosedPayload).toEqual({ 'org.iso.18013.5.1': { family_name: 'Doe' } })
+  })
+
+  it('builds a W3C credential selection entry from the JSON credential', () => {
+    const jsonCredential = { '@context': ['https://www.w3.org/2018/credentials/v1'], type: ['VerifiableCredential'] }
+    const w3c = {
+      record: {
+        id: 'w3c-1',
+        type: 'W3cCredentialRecord',
+        firstCredential: { claimFormat: ClaimFormat.LdpVc, jsonCredential },
+      },
+      claims: { valid_claim_sets: [{ output: { ignored: true } }] },
+    } as never
+    const queryResult = {
+      credential_matches: { 'query-1': { success: true, valid_credentials: [w3c] } },
+    } as never
+
+    const result = applyDcqlSelection(queryResult, dcqlAutoSelection, { 'query-1': ['w3c-1'] })
+    const entry = result['query-1'][0] as {
+      claimFormat: ClaimFormat
+      credentialRecord: { id: string }
+      disclosedPayload: Record<string, unknown>
+    }
+
+    expect(entry.claimFormat).toBe(ClaimFormat.LdpVc)
+    expect(entry.credentialRecord.id).toBe('w3c-1')
+    expect(entry.disclosedPayload).toBe(jsonCredential)
+  })
+
+  it('builds a W3C V2 SD-JWT selection entry with selective disclosure', () => {
+    const w3cV2 = {
+      record: {
+        id: 'w3c-v2-1',
+        type: 'W3cV2CredentialRecord',
+        firstCredential: { claimFormat: ClaimFormat.SdJwtW3cVc },
+      },
+      claims: {
+        valid_claim_sets: [{ output: { role: 'member' }, disclosed_paths: [['role']] }],
+      },
+    } as never
+    const queryResult = {
+      credential_matches: { 'query-1': { success: true, valid_credentials: [w3cV2] } },
+    } as never
+
+    const result = applyDcqlSelection(queryResult, dcqlAutoSelection, { 'query-1': ['w3c-v2-1'] })
+    const entry = result['query-1'][0] as {
+      claimFormat: ClaimFormat
+      disclosedPayload: Record<string, unknown>
+      disclosedPaths: unknown[]
+    }
+
+    expect(entry.claimFormat).toBe(ClaimFormat.SdJwtW3cVc)
+    expect(entry.disclosedPayload).toEqual({ role: 'member' })
+    expect(entry.disclosedPaths).toEqual([['role']])
+  })
+
+  it('rejects W3C V2 Data Integrity credentials for DCQL selection', () => {
+    const w3cV2Di = {
+      record: { id: 'w3c-v2-di', type: 'W3cV2CredentialRecord', firstCredential: { claimFormat: ClaimFormat.DiVc } },
+      claims: { valid_claim_sets: [{ output: {} }] },
+    } as never
+    const queryResult = {
+      credential_matches: { 'query-1': { success: true, valid_credentials: [w3cV2Di] } },
+    } as never
+
+    expect(() => applyDcqlSelection(queryResult, dcqlAutoSelection, { 'query-1': ['w3c-v2-di'] })).toThrow(
+      BadRequestError,
+    )
+  })
+
+  it('rejects unsupported credential record types', () => {
+    const unknown = {
+      record: { id: 'unknown', type: 'SomethingElse' },
+      claims: { valid_claim_sets: [{ output: {} }] },
+    } as never
+    const queryResult = {
+      credential_matches: { 'query-1': { success: true, valid_credentials: [unknown] } },
+    } as never
+
+    expect(() => applyDcqlSelection(queryResult, dcqlAutoSelection, { 'query-1': ['unknown'] })).toThrow(
+      BadRequestError,
     )
   })
 })
