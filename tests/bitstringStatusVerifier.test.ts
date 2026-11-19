@@ -1,10 +1,6 @@
 import type { AgentContext, JsonObject } from '@credo-ts/core'
 
-import {
-  createEmptyBitstring,
-  encodeBitstring,
-  setBit,
-} from '../src/utils/bitstring'
+import { createEmptyBitstring, encodeBitstring, setBit } from '../src/utils/bitstring'
 import { verifyBitstringStatus } from '../src/utils/bitstringStatusVerifier'
 
 const ISSUER = 'did:key:z6Mkissuer'
@@ -127,14 +123,10 @@ describe('verifyBitstringStatus', () => {
 
   it('handles VCDM 1.0 JWT credentials with a vc claim', async () => {
     const credential = makeCredential()
-    const result = await verifyBitstringStatus(
-      agentContext,
-      makeJwt({ iss: ISSUER, vc: credential }),
-      {
-        ...defaultOptions(),
-        fetchImpl: jest.fn(async () => jsonResponse(makeList({}, { revoked: true }))),
-      },
-    )
+    const result = await verifyBitstringStatus(agentContext, makeJwt({ iss: ISSUER, vc: credential }), {
+      ...defaultOptions(),
+      fetchImpl: jest.fn(async () => jsonResponse(makeList({}, { revoked: true }))),
+    })
 
     expect(result).toMatchObject({ checked: true, revoked: true, verified: true })
   })
@@ -244,14 +236,10 @@ describe('verifyBitstringStatus', () => {
   })
 
   it('rejects indexes outside the list', async () => {
-    const result = await verifyBitstringStatus(
-      agentContext,
-      makeCredential({ statusListIndex: String(131072) }),
-      {
-        ...defaultOptions(),
-        fetchImpl: jest.fn(async () => jsonResponse(makeList())),
-      },
-    )
+    const result = await verifyBitstringStatus(agentContext, makeCredential({ statusListIndex: String(131072) }), {
+      ...defaultOptions(),
+      fetchImpl: jest.fn(async () => jsonResponse(makeList())),
+    })
 
     expect(result.verified).toBe(false)
     expect(result.error).toMatch(/outside the status list/)

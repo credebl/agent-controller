@@ -116,10 +116,7 @@ async function main(): Promise<void> {
       proofType: 'Ed25519Signature2018',
     })
     const signedJson = signed.toJson() as { credentialStatus?: Record<string, unknown> }
-    assert(
-      signedJson.credentialStatus?.statusPurpose === 'revocation',
-      'statusPurpose survives VCDM 1.0 signing',
-    )
+    assert(signedJson.credentialStatus?.statusPurpose === 'revocation', 'statusPurpose survives VCDM 1.0 signing')
     assert(signedJson.credentialStatus?.statusListIndex === '1', 'statusListIndex survives signing')
     assert(
       signedJson.credentialStatus?.statusListCredential === credentialStatus.statusListCredential,

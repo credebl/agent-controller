@@ -53,9 +53,7 @@ async function fetchCredential(listId: string): Promise<JsonObject> {
 
 function readBits(credential: JsonObject): Uint8Array {
   const subjectValue = credential.credentialSubject
-  const subject = (Array.isArray(subjectValue) ? subjectValue[0] : subjectValue) as
-    | Record<string, unknown>
-    | undefined
+  const subject = (Array.isArray(subjectValue) ? subjectValue[0] : subjectValue) as Record<string, unknown> | undefined
   if (!subject || typeof subject.encodedList !== 'string') {
     throw new Error('credentialSubject.encodedList is missing')
   }
