@@ -14,8 +14,8 @@ import { Request as Req } from 'express'
 import { injectable } from 'tsyringe'
 
 import { SignerMethod } from '../../../enums'
-import { assertDcqlLdpVcTypeValuesExpanded } from '../../../utils/dcql'
 import { verifyBitstringStatus } from '../../../utils/bitstringStatusVerifier'
+import { assertDcqlLdpVcTypeValuesExpanded } from '../../../utils/dcql'
 import {
   CreateAuthorizationRequest,
   OpenId4VCDCQLVerificationSessionRecord,
