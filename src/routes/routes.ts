@@ -1084,6 +1084,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "Record_string.string-Array_": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"array","array":{"dataType":"string"}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "AcceptProofRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "proofRequestUri": {"dataType":"string","required":true},
+            "options": {"ref":"ResolveOpenId4VpAuthorizationRequestOptions"},
+            "selectedCredentials": {"ref":"Record_string.string-Array_"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "CredentialType": {
         "dataType": "refEnum",
         "enums": ["sd-jwt-vc","mso_mdoc","w3c-vc"],
@@ -3935,7 +3950,7 @@ export function RegisterRoutes(app: Router) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsHolderController_acceptProofRequest: Record<string, TsoaRoute.ParameterSchema> = {
                 request: {"in":"request","name":"request","required":true,"dataType":"object"},
-                body: {"in":"body","name":"body","required":true,"ref":"ResolveProofRequest"},
+                body: {"in":"body","name":"body","required":true,"ref":"AcceptProofRequest"},
         };
         app.post('/openid4vc/holder/accept-proof-request',
             authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
