@@ -16,13 +16,13 @@ ghcr.io/credebl/credo-controller
 
 For every release tag, for example `v2.4.0`, these tags are published:
 
-| Tag            | What it is                                |
-| -------------- | ----------------------------------------- |
-| `v2.4.0`       | Multi-arch manifest (AMD64 + ARM64)       |
-| `2.4.0`        | Same as above, without the `v`            |
-| `latest`       | Multi-arch manifest of the newest release |
-| `v2.4.0-amd64` | AMD64 image only                          |
-| `v2.4.0-arm64` | ARM64 image only                          |
+| Tag            | What it is                                                                                               |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| `v2.4.0`       | Multi-arch manifest (AMD64 + ARM64)                                                                      |
+| `2.4.0`        | Same as above, without the `v`                                                                           |
+| `latest`       | Multi-arch manifest of the highest stable release (pre-release tags such as `v2.4.0-rc1` do not move it) |
+| `v2.4.0-amd64` | AMD64 image only                                                                                         |
+| `v2.4.0-arm64` | ARM64 image only                                                                                         |
 
 Both architectures are built from the same commit in the same workflow run.
 
@@ -58,7 +58,7 @@ Tests done with Askar `0.6.1` (the version in the lock file) and `0.7.1`, agains
 
 What this means:
 
-- On ARM64 the connection failed with `BadSignature` for an RSA server certificate, even with `sslmode=require`, which should not verify the CA. The same RSA setup works on AMD64. An ECDSA certificate works on both. The error is therefore not caused by a missing or wrong CA bundle. It comes from signature checking in Askar's native TLS code on ARM64 for RSA certificates.
+- On ARM64 the connection failed with `BadSignature` for an RSA server certificate, even with `sslmode=require`, which should not verify the CA. The same RSA setup works on AMD64. An ECDSA certificate works on both. So a missing or wrong CA bundle is unlikely to be the cause. A possible cause is the signature checking in Askar's native TLS code on ARM64 for RSA certificates, but this is a hypothesis: the tests do not prove it and other causes are not ruled out.
 - AWS RDS uses RSA certificates, which matches the failure seen on ARM64 Fargate.
 - The failure is the same with Askar 0.6.0, 0.6.1 and 0.7.1, so upgrading Askar did not help in our tests. Older versions (0.4.x) could not be compared with our test script.
 - This was reproduced on one machine only (Apple Silicon, native ARM64 vs emulated AMD64). It should be confirmed on real AMD64 hardware and reported upstream to Askar.
