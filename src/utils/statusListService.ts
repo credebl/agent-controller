@@ -32,6 +32,8 @@ function getApiKeyHeaders() {
 }
 
 const STATUS_LIST_PATCH_MAX_ATTEMPTS = 5
+const BITSTRING_STATUS_LIST_CREDENTIAL_TYPE = 'BitstringStatusListCredential'
+const BITSTRING_STATUS_LIST_TYPE = 'BitstringStatusList'
 
 function patchAttemptsExhausted(lastError: Error | undefined, label: string): Error {
   return new Error(
@@ -290,6 +292,64 @@ function assertStatusListIssuer(credential: JsonObject, listId: string, issuerDi
   }
 }
 
+function getStringTypes(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return [value]
+  }
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string')
+  }
+  return []
+}
+
+async function assertCompatibleBitstringStatusListResponse(
+  res: Response,
+  listId: string,
+  issuerDid: string,
+): Promise<void> {
+  let credential: unknown
+  try {
+    credential = await res.json()
+  } catch {
+    throw new BadRequestError(`Status list ${listId} is not a bitstring status list credential`)
+  }
+
+  if (!credential || typeof credential !== 'object' || Array.isArray(credential)) {
+    throw new BadRequestError(`Status list ${listId} is not a bitstring status list credential`)
+  }
+
+  const listCredential = credential as JsonObject
+  const incompatibleList = new BadRequestError(
+    `Status list ${listId} is not a revocation bitstring status list credential`,
+  )
+
+  if (!getStringTypes(listCredential.type).includes(BITSTRING_STATUS_LIST_CREDENTIAL_TYPE)) {
+    throw incompatibleList
+  }
+
+  assertStatusListIssuer(listCredential, listId, issuerDid)
+
+  const subjectValue = listCredential.credentialSubject
+  const subject = (Array.isArray(subjectValue) ? subjectValue[0] : subjectValue) as Record<string, unknown> | undefined
+  if (!subject || !getStringTypes(subject.type).includes(BITSTRING_STATUS_LIST_TYPE)) {
+    throw incompatibleList
+  }
+  if (subject.statusPurpose !== 'revocation' || (subject.statusSize !== undefined && subject.statusSize !== 1)) {
+    throw incompatibleList
+  }
+  if (typeof subject.encodedList !== 'string') {
+    throw incompatibleList
+  }
+
+  try {
+    decodeBitstring(subject.encodedList)
+  } catch (error) {
+    throw new BadRequestError(
+      `Status list ${listId} contains an invalid encodedList: ${error instanceof Error ? error.message : String(error)}`,
+    )
+  }
+}
+
 function prepareBitstringStatusListCredential(credential: JsonObject, listId: string, index: number): void {
   const subjectValue = credential.credentialSubject
   const subject = (Array.isArray(subjectValue) ? subjectValue[0] : subjectValue) as Record<string, unknown> | undefined
@@ -358,6 +418,17 @@ export function checkAndCreateBitstringStatusList(
         const errBody = await postRes.text()
         throw new Error(`Failed to create bitstring status list on server: ${postRes.status} ${errBody}`)
       }
+
+      if (postRes.status === 409) {
+        const winnerRes = await fetchWithTimeout(uri, { headers: getApiKeyHeaders() })
+        if (!winnerRes.ok) {
+          const errBody = await winnerRes.text().catch(() => '')
+          throw new Error(
+            `Failed to check bitstring status list ${listId} at ${uri}: ${winnerRes.status} ${winnerRes.statusText} ${errBody}`,
+          )
+        }
+        await assertCompatibleBitstringStatusListResponse(winnerRes, listId, issuerDid)
+      }
       return
     }
 
@@ -367,6 +438,8 @@ export function checkAndCreateBitstringStatusList(
         `Failed to check bitstring status list ${listId} at ${uri}: ${res.status} ${res.statusText} ${errBody}`,
       )
     }
+
+    await assertCompatibleBitstringStatusListResponse(res, listId, issuerDid)
   })
 }
 

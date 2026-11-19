@@ -229,6 +229,7 @@ async function fetchStatusList(
       response = await fetchImpl(listUrl.toString(), {
         headers: { accept: 'application/ld+json, application/json' },
         signal: controller.signal,
+        redirect: 'error',
       })
     } finally {
       clearTimeout(timeout)

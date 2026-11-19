@@ -20,6 +20,8 @@ When a credential offer has `isRevocable: true`, the issuer creates or reuses a 
 - JSON-LD credentials receive `credentialStatus` with type `BitstringStatusListEntry`, purpose `revocation`, the status list URL and the zero-based index.
 - SD-JWT credentials keep the existing `status_list` block.
 
+An existing list is reused only when it is a revocation bitstring status list issued by the credential's issuer DID. Reusing an SD-JWT list or a list with another purpose/status size fails the offer before any credential is issued.
+
 The issuance session stores `StatusListInfo` with the list id, index, issuer DID and, for bitstring lists, `mechanism: "bitstring"`. Revoking by session id uses that field to select the correct revoker.
 
 ## Revocation
@@ -50,7 +52,7 @@ Updates use the status-list server's `If-Match`/ETag protocol and retry conflict
 
 `isValid` is set to the same value as `verified`, so a valid signature over a revoked credential returns `isValid: false`. A credential with no bitstring status entry returns `checked: false`, `revoked: false`, `verified: true`.
 
-OID4VC verification-session responses include an aggregated `revocation` summary with `checked`, `revoked`, `verified` and per-presentation/per-credential details.
+OID4VC verification-session responses include an aggregated `revocation` summary with `checked`, `revoked`, `verified` and per-presentation/per-credential details. The summary is also stored on the verification session and returned by the stored-response endpoint, so a revoked or unverifiable credential cannot be retrieved later without its status outcome.
 
 ## Local checks
 

@@ -86,6 +86,26 @@ describe('CredentialController.ensureBitstringStatusLists', () => {
     expect(createMock).toHaveBeenCalledWith(agent, 'list-3', ISSUER_DID)
   })
 
+  it('creates lists for each bitstring entry in an array-valued credentialStatus', async () => {
+    const credential = {
+      issuer: { id: ISSUER_DID },
+      credentialStatus: [
+        { type: 'StatusList2021Entry', statusListCredential: 'https://status.example.com/status-lists/legacy' },
+        statusCredential('list-4').credentialStatus,
+        {
+          type: ['Other', 'BitstringStatusListEntry'],
+          statusListCredential: 'https://status.example.com/status-lists/list-5',
+        },
+      ],
+    }
+
+    await (controller as any).ensureBitstringStatusLists(agent, [credential])
+
+    expect(createMock).toHaveBeenCalledTimes(2)
+    expect(createMock).toHaveBeenCalledWith(agent, 'list-4', ISSUER_DID)
+    expect(createMock).toHaveBeenCalledWith(agent, 'list-5', ISSUER_DID)
+  })
+
   it('handles circular references without revisiting nodes', async () => {
     const node: any = statusCredential('list-1')
     node.self = node

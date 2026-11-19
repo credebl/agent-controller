@@ -40,6 +40,15 @@ const V1_CREDENTIAL = {
   credentialSubject: { id: 'did:web:holder.example' },
 }
 const V2_CREDENTIAL = { ...V1_CREDENTIAL, '@context': [CREDENTIALS_V2_CONTEXT_URL] }
+const BITSTRING_CREDENTIAL = {
+  ...V1_CREDENTIAL,
+  credentialStatus: {
+    type: 'BitstringStatusListEntry',
+    statusPurpose: 'revocation',
+    statusListIndex: '1',
+    statusListCredential: 'https://status.example.com/status-lists/1',
+  },
+}
 const STATUS_OK = {
   checked: true,
   revoked: false,
@@ -89,6 +98,45 @@ describe('AgentController.verifyCredential', () => {
     expect(request.agent.w3cV2Credentials.verifyCredential).not.toHaveBeenCalled()
     expect(verifyBitstringMock).toHaveBeenCalledWith(request.agent.context, V1_CREDENTIAL)
     expect(result).toEqual({ isValid: true, verified: true, verifier: 'v1', revocation: STATUS_OK })
+  })
+
+  it('disables Credo status verification for bitstring entries before checking them explicitly', async () => {
+    const request = makeRequest()
+
+    await controller.verifyCredential(request, { credential: BITSTRING_CREDENTIAL })
+
+    expect(request.agent.w3cCredentials.verifyCredential).toHaveBeenCalledWith({
+      credential: BITSTRING_CREDENTIAL,
+      verifyCredentialStatus: false,
+    })
+    expect(verifyBitstringMock).toHaveBeenCalledWith(request.agent.context, BITSTRING_CREDENTIAL)
+  })
+
+  it('disables Credo status verification for array-valued bitstring entries', async () => {
+    const request = makeRequest()
+    const credential = {
+      ...V1_CREDENTIAL,
+      credentialStatus: [{ type: 'Other' }, BITSTRING_CREDENTIAL.credentialStatus],
+    }
+
+    await controller.verifyCredential(request, { credential })
+
+    expect(request.agent.w3cCredentials.verifyCredential).toHaveBeenCalledWith({
+      credential,
+      verifyCredentialStatus: false,
+    })
+  })
+
+  it('leaves Credo status verification enabled for other status mechanisms', async () => {
+    const request = makeRequest()
+    const credential = {
+      ...V1_CREDENTIAL,
+      credentialStatus: { type: 'StatusList2021Entry' },
+    }
+
+    await controller.verifyCredential(request, { credential })
+
+    expect(request.agent.w3cCredentials.verifyCredential).toHaveBeenCalledWith({ credential })
   })
 
   it('verifies a VCDM 2.0 JSON credential with the V2 helper', async () => {

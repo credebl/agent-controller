@@ -381,20 +381,24 @@ export class CredentialController extends Controller {
       }
 
       const record = value as Record<string, unknown>
-      const status = record.credentialStatus as Record<string, unknown> | undefined
-      const statusTypes = Array.isArray(status?.type) ? status.type : [status?.type]
-      if (
-        status &&
-        statusTypes.includes(BITSTRING_STATUS_LIST_ENTRY_TYPE) &&
-        'string' === typeof status.statusListCredential
-      ) {
-        const statusListUri = status.statusListCredential
-        const parts = statusListUri.split('/').filter(Boolean)
-        const listId = parts[parts.length - 1]
-        const issuer = record.issuer
-        const issuerDid = 'string' === typeof issuer ? issuer : (issuer as Record<string, unknown> | undefined)?.id
-        if (listId && 'string' === typeof issuerDid) {
-          await checkAndCreateBitstringStatusList(agent as any, listId, issuerDid)
+      const issuer = record.issuer
+      const issuerDid = 'string' === typeof issuer ? issuer : (issuer as Record<string, unknown> | undefined)?.id
+      const statuses = Array.isArray(record.credentialStatus) ? record.credentialStatus : [record.credentialStatus]
+
+      for (const item of statuses) {
+        const status = item as Record<string, unknown> | undefined
+        const statusTypes = Array.isArray(status?.type) ? status.type : [status?.type]
+        if (
+          status &&
+          statusTypes.includes(BITSTRING_STATUS_LIST_ENTRY_TYPE) &&
+          'string' === typeof status.statusListCredential
+        ) {
+          const statusListUri = status.statusListCredential
+          const parts = statusListUri.split('/').filter(Boolean)
+          const listId = parts[parts.length - 1]
+          if (listId && 'string' === typeof issuerDid) {
+            await checkAndCreateBitstringStatusList(agent as any, listId, issuerDid)
+          }
         }
       }
 

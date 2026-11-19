@@ -1,7 +1,14 @@
 import type { JsonObject } from '@credo-ts/core'
 
 import { BadRequestError } from '../src/errors/errors'
-import { MIN_BITSTRING_LENGTH, createEmptyBitstring, encodeBitstring, setBit } from '../src/utils/bitstring'
+import {
+  MIN_BITSTRING_LENGTH,
+  createEmptyBitstring,
+  decodeBitstring,
+  encodeBitstring,
+  getBit,
+  setBit,
+} from '../src/utils/bitstring'
 import { fetchWithTimeout } from '../src/utils/helpers'
 import { checkAndCreateBitstringStatusList, revokeBitstringInStatusList } from '../src/utils/statusListService'
 import { CREDENTIALS_V2_CONTEXT_URL } from '../src/vc-jsonld/constants'
@@ -147,14 +154,55 @@ describe('checkAndCreateBitstringStatusList', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('tolerates a concurrent create returning 409', async () => {
-    fetchMock.mockResolvedValueOnce(response('', 404)).mockResolvedValueOnce(response('', 409))
+  it('tolerates a concurrent create returning 409 when the winner is a bitstring list', async () => {
+    fetchMock
+      .mockResolvedValueOnce(response('', 404))
+      .mockResolvedValueOnce(response('', 409))
+      .mockResolvedValueOnce(response(listCredential()))
 
     await expect(checkAndCreateBitstringStatusList(agent, LIST_ID, ISSUER)).resolves.toBeUndefined()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
-  it('leaves an existing list untouched', async () => {
+  it('rejects an existing SD-JWT status list instead of reusing it', async () => {
+    fetchMock.mockResolvedValueOnce(response('header.payload.signature'))
+
+    await expect(checkAndCreateBitstringStatusList(agent, LIST_ID, ISSUER)).rejects.toThrow(
+      /not a bitstring status list credential/,
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(signV2Mock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a list with an incompatible status purpose', async () => {
+    fetchMock.mockResolvedValueOnce(response(listCredential({ statusPurpose: 'suspension' })))
+
+    await expect(checkAndCreateBitstringStatusList(agent, LIST_ID, ISSUER)).rejects.toThrow(
+      /not a revocation bitstring status list credential/,
+    )
+    expect(signV2Mock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a list issued by another DID', async () => {
+    fetchMock.mockResolvedValueOnce(response({ ...listCredential(), issuer: 'did:web:other.example' }))
+
+    await expect(checkAndCreateBitstringStatusList(agent, LIST_ID, ISSUER)).rejects.toThrow(/not issued by/)
+    expect(signV2Mock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a concurrent winner that uses a different status mechanism', async () => {
+    fetchMock
+      .mockResolvedValueOnce(response('', 404))
+      .mockResolvedValueOnce(response('', 409))
+      .mockResolvedValueOnce(response('header.payload.signature'))
+
+    await expect(checkAndCreateBitstringStatusList(agent, LIST_ID, ISSUER)).rejects.toThrow(
+      /not a bitstring status list credential/,
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('leaves an existing compatible list untouched', async () => {
     fetchMock.mockResolvedValueOnce(response(listCredential()))
 
     await checkAndCreateBitstringStatusList(agent, LIST_ID, ISSUER)
@@ -190,17 +238,31 @@ describe('revokeBitstringInStatusList', () => {
     expect(signV2Mock).not.toHaveBeenCalled()
   })
 
-  it('retries a 412 patch with If-Match until it succeeds', async () => {
+  it('retries a 412 patch with If-Match and preserves another revocation', async () => {
+    const secondSnapshot = listCredential()
+    const secondSubject = secondSnapshot.credentialSubject as { encodedList: string }
+    const bits = decodeBitstring(secondSubject.encodedList)
+    setBit(bits, 7, true)
+    secondSubject.encodedList = encodeBitstring(bits)
+
     fetchMock
       .mockResolvedValueOnce(response(listCredential(), 200, '"v1"'))
       .mockResolvedValueOnce(response('conflict', 412))
-      .mockResolvedValueOnce(response(listCredential(), 200, '"v2"'))
+      .mockResolvedValueOnce(response(secondSnapshot, 200, '"v2"'))
       .mockResolvedValueOnce(response('', 200))
 
     await revokeBitstringInStatusList(agent, LIST_ID, 1, ISSUER)
 
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(fetchMock.mock.calls[1][1].headers).toEqual(expect.objectContaining({ 'If-Match': '"v1"' }))
+    expect(fetchMock.mock.calls[3][1].headers).toEqual(expect.objectContaining({ 'If-Match': '"v2"' }))
+
+    const finalBody = JSON.parse(fetchMock.mock.calls[3][1].body as string) as {
+      vc: { credentialSubject: { encodedList: string } }
+    }
+    const finalBits = decodeBitstring(finalBody.vc.credentialSubject.encodedList)
+    expect(getBit(finalBits, 1)).toBe(true)
+    expect(getBit(finalBits, 7)).toBe(true)
     expect(signV2Mock).toHaveBeenCalledTimes(2)
   })
 

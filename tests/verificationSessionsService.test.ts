@@ -13,6 +13,7 @@ jest.mock('@credo-ts/core', () => ({
 
 jest.mock('@credo-ts/openid4vc', () => ({
   OpenId4VcJwtIssuerDid: class OpenId4VcJwtIssuerDid {},
+  OpenId4VcVerificationSessionRepository: class OpenId4VcVerificationSessionRepository {},
   OpenId4VcVerificationSessionState: {},
 }))
 
@@ -26,18 +27,41 @@ jest.mock('../src/utils/bitstringStatusVerifier', () => ({
 
 const verifyMock = verifyBitstringStatus as jest.Mock
 const service = new VerificationSessionsService()
+const REVOCATION_METADATA_KEY = 'bitstringStatus'
 
-function requestReturning(result: unknown) {
+function makeSession(revocation?: unknown) {
+  const data: Record<string, unknown> = revocation ? { [REVOCATION_METADATA_KEY]: revocation } : {}
   return {
+    id: 'session-1',
+    state: 'ResponseVerified',
+    metadata: {
+      get: jest.fn((key: string) => data[key] ?? null),
+      set: jest.fn((key: string, value: unknown) => {
+        data[key] = value
+      }),
+    },
+  } as any
+}
+
+function requestReturning(result: unknown, session = makeSession()) {
+  const update = jest.fn(async () => undefined)
+  const request = {
     agent: {
       context: { contextCorrelationId: 'test' },
+      dependencyManager: { resolve: jest.fn(() => ({ update })) },
       modules: {
         openid4vc: {
-          verifier: { verifyAuthorizationResponse: jest.fn(async () => result) },
+          verifier: {
+            verifyAuthorizationResponse: jest.fn(async () => result),
+            getVerificationSessionById: jest.fn(async () => session),
+            getVerifiedAuthorizationResponse: jest.fn(async () => ({})),
+          },
         },
       },
     },
   } as any
+
+  return Object.assign(request, { update, session })
 }
 
 beforeEach(() => {
@@ -146,5 +170,40 @@ describe('VerificationSessionsService.verifyAuthorizationResponse', () => {
 
     expect(verifyMock).toHaveBeenCalledTimes(1)
     expect(verifyMock).toHaveBeenCalledWith(request.agent.context, 'encoded-mdoc')
+  })
+
+  it('persists the status outcome with the verification session', async () => {
+    const result = {
+      presentationExchange: {
+        presentations: {
+          proof1: [{ verifiableCredential: ['revoked-jwt'] }],
+        },
+      },
+    }
+    const request = requestReturning(result)
+
+    const response = await service.verifyAuthorizationResponse(request, {
+      verificationSessionId: 'session-1',
+    } as any)
+
+    expect(response.revocation.revoked).toBe(true)
+    expect(request.session.metadata.set).toHaveBeenCalledWith(REVOCATION_METADATA_KEY, response.revocation)
+    expect(request.update).toHaveBeenCalledWith(request.agent.context, request.session)
+  })
+})
+
+describe('VerificationSessionsService.getVerifiedAuthorizationResponse', () => {
+  it('exposes the status outcome stored with the session', async () => {
+    const storedRevocation = {
+      checked: true,
+      revoked: true,
+      verified: true,
+      presentations: [{ presentationIndex: 0, credentials: [{ credentialIndex: 0, revoked: true }] }],
+    }
+    const request = requestReturning({}, makeSession(storedRevocation))
+
+    const response = await service.getVerifiedAuthorizationResponse(request, 'session-1')
+
+    expect(response.revocation).toEqual(storedRevocation)
   })
 })

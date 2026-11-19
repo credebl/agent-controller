@@ -99,7 +99,10 @@ describe('verifyBitstringStatus', () => {
 
     expect(fetchImpl).toHaveBeenCalledWith(
       LIST_URL,
-      expect.objectContaining({ headers: expect.objectContaining({ accept: expect.any(String) }) }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ accept: expect.any(String) }),
+        redirect: 'error',
+      }),
     )
     expect(result).toMatchObject({
       checked: true,
