@@ -1,33 +1,113 @@
 name: Continous Delivery
 
+# On every version tag (v*), build the image natively on an AMD64 and an ARM64
+# runner, smoke test each one, push per-architecture tags, and then publish one
+# multi-arch manifest under the release tags and `latest`.
+#
+# Registries:
+#   - GHCR (always): ghcr.io/<owner>/credo-controller
+#   - Docker Hub (optional): <DOCKERHUB_NAMESPACE>/credo-controller
+#     Enabled only when the repository/organisation secrets DOCKERHUB_USERNAME and
+#     DOCKERHUB_TOKEN exist. No credentials are stored in this repo.
+
 on:
   push:
     tags:
       - 'v*'
 
 env:
-  REGISTRY: ghcr.io
   SERVICE: credo-controller
+  GHCR_IMAGE: ghcr.io/${{ github.repository_owner }}/credo-controller
+  # Docker Hub namespace (organisation). Override with the DOCKERHUB_NAMESPACE repository variable.
+  DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_NAMESPACE || 'credebl' }}/credo-controller
 
 jobs:
-  build-and-push:
-    name: Push Docker image to GitHub
-    runs-on: ubuntu-latest
-
+  build:
+    name: Build, test and push (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
-
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Extract Git Tag
-        id: get_tag
-        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (${{ matrix.platform }}) for testing
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ matrix.platform }}
+          load: true
+          tags: ${{ env.SERVICE }}:smoke-${{ matrix.arch }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+
+      - name: Smoke test - native Askar library loads
+        run: |
+          docker run --rm --platform ${{ matrix.platform }} --entrypoint node \
+            ${{ env.SERVICE }}:smoke-${{ matrix.arch }} \
+            -e "const { askar } = require('@openwallet-foundation/askar-nodejs'); console.log('arch=' + process.arch, 'askar loaded, native call ok:', typeof askar.version())"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Push per-architecture tags
+        run: |
+          set -euo pipefail
+          src="${SERVICE}:smoke-${{ matrix.arch }}"
+          targets="${GHCR_IMAGE}:${TAG}-${{ matrix.arch }}"
+          if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+            targets="${targets} ${DOCKERHUB_IMAGE}:${TAG}-${{ matrix.arch }}"
+          fi
+          for t in ${targets}; do
+            docker tag "${src}" "${t}"
+            docker push "${t}"
+          done
+
+  publish-manifest:
+    name: Publish multi-arch manifest
+    runs-on: ubuntu-24.04
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - name: Extract Git Tag
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -39,13 +119,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image ${{ env.SERVICE }}
-        uses: docker/build-push-action@v6
+      - name: Log in to Docker Hub
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
         with:
-          context: .
-          file: Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.SERVICE }}:${{ env.TAG }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.SERVICE }}:latest
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Create and push multi-arch manifests
+        run: |
+          set -euo pipefail
+          images="${GHCR_IMAGE}"
+          if [ -n "${DOCKERHUB_USERNAME}" ] && [ -n "${DOCKERHUB_TOKEN}" ]; then
+            images="${images} ${DOCKERHUB_IMAGE}"
+          fi
+          # Tags: v2.4.0 (as before), 2.4.0 (without the v) and latest
+          for image in ${images}; do
+            docker buildx imagetools create \
+              --tag "${image}:${TAG}" \
+              --tag "${image}:${TAG#v}" \
+              --tag "${image}:latest" \
+              "${image}:${TAG}-amd64" \
+              "${image}:${TAG}-arm64"
+            docker buildx imagetools inspect "${image}:${TAG}"
+          done
