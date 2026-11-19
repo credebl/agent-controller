@@ -11,6 +11,7 @@ import type {
 } from '@credo-ts/core'
 
 import { ClaimFormat } from '@credo-ts/core'
+import { parseAuthorizationRequestVersion } from '@openid4vc/openid4vp'
 
 import { BadRequestError } from '../../../errors/errors'
 
@@ -36,10 +37,70 @@ function assertCredentialIds(key: string, credentialIds: string[]): void {
   }
 }
 
+/** The subset of a PEX definition that determines how many submissions a requirement accepts. */
+interface PexDefinitionForSelection {
+  input_descriptors?: Array<{ id: string; group?: string[] }>
+  submission_requirements?: Array<{ from?: string; count?: number; min?: number; max?: number }>
+}
+
+function requirementBounds(
+  requirement: DifPexCredentialsForRequest['requirements'][number],
+  definition: PexDefinitionForSelection | undefined,
+): { min: number; max: number } {
+  const descriptorIds = requirement.submissionEntry.map((entry) => entry.inputDescriptorId)
+  const min = requirement.needsCount
+  const max = min
+
+  if (!definition?.submission_requirements?.length) return { min, max }
+
+  const groupsByDescriptor = new Map<string, string[]>()
+  for (const descriptor of definition.input_descriptors ?? []) {
+    if (descriptor.id) groupsByDescriptor.set(descriptor.id, descriptor.group ?? [])
+  }
+
+  for (const submissionRequirement of definition.submission_requirements) {
+    if (!submissionRequirement.from) continue
+
+    const matches = descriptorIds.filter((id) => groupsByDescriptor.get(id)?.includes(submissionRequirement.from!))
+    if (matches.length !== descriptorIds.length) continue
+
+    const submissionMin = submissionRequirement.count ?? submissionRequirement.min ?? min
+    const submissionMax = submissionRequirement.count ?? submissionRequirement.max ?? submissionMin
+    return { min: submissionMin, max: submissionMax }
+  }
+
+  // The resolved requirement already normalizes count/min into needsCount. Without a matching
+  // definition entry we cannot know a separate max, so we keep the automatic selection's cardinality.
+  return { min, max }
+}
+
+function assertRequirementCount(
+  requirement: DifPexCredentialsForRequest['requirements'][number],
+  selection: DifPexInputDescriptorToCredentials,
+  min: number,
+  max: number,
+): void {
+  const descriptorIds = requirement.submissionEntry.map((entry) => entry.inputDescriptorId)
+  const selectedCount = descriptorIds.filter((id) => (selection[id]?.length ?? 0) > 0).length
+  const requirementName = requirement.name ? ` "${requirement.name}"` : ''
+
+  if (selectedCount < min) {
+    throw new BadRequestError(
+      `The selected credentials do not satisfy submission requirement${requirementName}: expected at least ${min}, received ${selectedCount}`,
+    )
+  }
+  if (selectedCount > max) {
+    throw new BadRequestError(
+      `The selected credentials do not satisfy submission requirement${requirementName}: expected at most ${max}, received ${selectedCount}`,
+    )
+  }
+}
+
 export function applyPresentationExchangeSelection(
   credentialsForRequest: DifPexCredentialsForRequest,
   autoSelection: DifPexInputDescriptorToCredentials,
   selection?: ProofRequestCredentialSelection,
+  definition?: PexDefinitionForSelection,
 ): DifPexInputDescriptorToCredentials {
   if (!hasSelection(selection)) return autoSelection
 
@@ -57,6 +118,7 @@ export function applyPresentationExchangeSelection(
   }
 
   const result: DifPexInputDescriptorToCredentials = { ...autoSelection }
+  const selectedDescriptorIds = new Set(Object.keys(selection as ProofRequestCredentialSelection))
   for (const [inputDescriptorId, credentialIds] of Object.entries(selection as ProofRequestCredentialSelection)) {
     const available = offered.get(inputDescriptorId)
     if (!available) {
@@ -74,6 +136,41 @@ export function applyPresentationExchangeSelection(
       return credential
     })
   }
+
+  // Credo's automatic selection stops at needsCount. A caller selection for a descriptor that was
+  // not auto-selected would otherwise add an extra submission and break the requirement's count.
+  const requirementDescriptorIds = credentialsForRequest.requirements.map((requirement) =>
+    requirement.submissionEntry.map((entry) => entry.inputDescriptorId),
+  )
+  credentialsForRequest.requirements.forEach((requirement, requirementIndex) => {
+    const descriptorIds = requirementDescriptorIds[requirementIndex]
+    const selectedHere = descriptorIds.filter((id) => selectedDescriptorIds.has(id))
+    if (selectedHere.length === 0) return
+
+    const { min } = requirementBounds(requirement, definition)
+    const autoHere = descriptorIds.filter(
+      (id) => (autoSelection[id]?.length ?? 0) > 0 && !selectedDescriptorIds.has(id),
+    )
+    const keepFromAuto = autoHere.slice(0, Math.max(0, min - selectedHere.length))
+
+    for (const id of autoHere) {
+      if (keepFromAuto.includes(id)) continue
+
+      // A descriptor can appear in more than one requirement. Keep it if another requirement
+      // still relies on its automatic selection.
+      const shared = requirementDescriptorIds.some(
+        (ids, index) => index !== requirementIndex && ids.includes(id) && !selectedDescriptorIds.has(id),
+      )
+      if (!shared) delete result[id]
+    }
+  })
+
+  credentialsForRequest.requirements.forEach((requirement, requirementIndex) => {
+    if (!requirementDescriptorIds[requirementIndex].some((id) => selectedDescriptorIds.has(id))) return
+
+    const { min, max } = requirementBounds(requirement, definition)
+    assertRequirementCount(requirement, result, min, max)
+  })
 
   return result
 }
@@ -166,4 +263,31 @@ export function applyDcqlSelection(
   }
 
   return result
+}
+
+/**
+ * Credo can only encode multiple presentations per DCQL query when the resolved request uses
+ * OpenID4VP 1.0. Earlier versions throw after signing every presentation, which surfaces as a 500.
+ * Validate caller-supplied selections before that work starts.
+ */
+export function assertDcqlSelectionResponseCompatibility(
+  selection: ProofRequestCredentialSelection | undefined,
+  authorizationRequestPayload: unknown,
+): void {
+  if (!hasSelection(selection)) return
+
+  const multiCredentialQueries = Object.entries(selection as ProofRequestCredentialSelection).filter(
+    ([, credentialIds]) => credentialIds.length > 1,
+  )
+  if (multiCredentialQueries.length === 0) return
+
+  const version = parseAuthorizationRequestVersion(
+    authorizationRequestPayload as Parameters<typeof parseAuthorizationRequestVersion>[0],
+  )
+  if (version > 24) return
+
+  const [queryId] = multiCredentialQueries[0]
+  throw new BadRequestError(
+    `OpenID4VP version ${version} cannot carry multiple presentations for DCQL query "${queryId}". Select one credential per query.`,
+  )
 }

@@ -48,7 +48,11 @@ import {
   getCredentialBindingResolver,
 } from './credentialBindingResolver'
 import { withReadableErrors } from './holderErrors'
-import { applyDcqlSelection, applyPresentationExchangeSelection } from './proofRequestSelection'
+import {
+  applyDcqlSelection,
+  applyPresentationExchangeSelection,
+  assertDcqlSelectionResponseCompatibility,
+} from './proofRequestSelection'
 type FilterValue = string | string[] | undefined
 
 class NotificationTimeoutError extends Error {}
@@ -699,6 +703,8 @@ export class HolderService {
       body.options,
     )
 
+    assertDcqlSelectionResponseCompatibility(body.selectedCredentials, resolved.authorizationRequestPayload)
+
     let acceptOptions: any = {
       authorizationRequestPayload: resolved.authorizationRequestPayload,
       origin: body.options?.origin,
@@ -721,6 +727,7 @@ export class HolderService {
           resolved.presentationExchange.credentialsForRequest,
           autoSelection,
           body.selectedCredentials,
+          resolved.presentationExchange.definition as Parameters<typeof applyPresentationExchangeSelection>[3],
         ),
       }
     } else {

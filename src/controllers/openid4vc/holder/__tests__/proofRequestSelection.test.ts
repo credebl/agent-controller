@@ -1,7 +1,16 @@
 import { ClaimFormat } from '@credo-ts/core'
+import { parseAuthorizationRequestVersion } from '@openid4vc/openid4vp'
 
 import { BadRequestError } from '../../../../errors/errors'
-import { applyDcqlSelection, applyPresentationExchangeSelection } from '../proofRequestSelection'
+import {
+  applyDcqlSelection,
+  applyPresentationExchangeSelection,
+  assertDcqlSelectionResponseCompatibility,
+} from '../proofRequestSelection'
+
+jest.mock('@openid4vc/openid4vp', () => ({
+  parseAuthorizationRequestVersion: jest.fn(() => 27),
+}))
 
 // Avoid loading Credo's ESM/native dependencies in Jest; the selection helper only needs the ClaimFormat values.
 jest.mock('@credo-ts/core', () => ({
@@ -22,12 +31,14 @@ const pexCredential = (id: string) =>
     disclosedPayload: { role: 'member' },
   }) as never
 
+const parseVersionMock = parseAuthorizationRequestVersion as jest.Mock
+
 const pexRequest = {
   areRequirementsSatisfied: true,
   requirements: [
     {
       isRequirementSatisfied: true,
-      needsCount: 1,
+      needsCount: 2,
       rule: 'pick',
       submissionEntry: [
         { inputDescriptorId: 'role', verifiableCredentials: [pexCredential('auto-1'), pexCredential('chosen-2')] },
@@ -83,6 +94,100 @@ describe('applyPresentationExchangeSelection', () => {
       applyPresentationExchangeSelection(pexRequest, pexAutoSelection, { role: '' as unknown as string[] })
     expect(act).toThrow(BadRequestError)
     expect(act).toThrow('must contain at least one credential id')
+  })
+
+  it('replaces the automatic submission when the caller selects a different descriptor', () => {
+    const request = {
+      areRequirementsSatisfied: true,
+      requirements: [
+        {
+          isRequirementSatisfied: true,
+          needsCount: 1,
+          rule: 'pick',
+          submissionEntry: [
+            { inputDescriptorId: 'role', verifiableCredentials: [pexCredential('auto-1'), pexCredential('chosen-2')] },
+            { inputDescriptorId: 'mandate', verifiableCredentials: [pexCredential('mandate-1')] },
+          ],
+        },
+      ],
+    } as never
+    const autoSelection = { role: [pexCredential('auto-1')] } as never
+
+    const result = applyPresentationExchangeSelection(request, autoSelection, { mandate: ['mandate-1'] })
+
+    expect(result.role).toBeUndefined()
+    expect((result.mandate[0] as { credentialRecord: { id: string } }).credentialRecord.id).toBe('mandate-1')
+  })
+
+  it('rejects selections that exceed the submission requirement max', () => {
+    const request = {
+      areRequirementsSatisfied: true,
+      requirements: [
+        {
+          isRequirementSatisfied: true,
+          needsCount: 1,
+          rule: 'pick',
+          submissionEntry: [
+            { inputDescriptorId: 'role', verifiableCredentials: [pexCredential('chosen-2')] },
+            { inputDescriptorId: 'mandate', verifiableCredentials: [pexCredential('mandate-1')] },
+          ],
+        },
+      ],
+    } as never
+    const definition = {
+      input_descriptors: [
+        { id: 'role', group: ['identity'] },
+        { id: 'mandate', group: ['identity'] },
+      ],
+      submission_requirements: [{ from: 'identity', min: 1, max: 1 }],
+    }
+
+    const act = () =>
+      applyPresentationExchangeSelection(
+        request,
+        { role: [pexCredential('auto-1')] } as never,
+        {
+          role: ['chosen-2'],
+          mandate: ['mandate-1'],
+        },
+        definition,
+      )
+
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('expected at most 1')
+  })
+
+  it('fills unselected slots from the automatic selection within a min/max range', () => {
+    const request = {
+      areRequirementsSatisfied: true,
+      requirements: [
+        {
+          isRequirementSatisfied: true,
+          needsCount: 1,
+          rule: 'pick',
+          submissionEntry: [
+            { inputDescriptorId: 'role', verifiableCredentials: [pexCredential('chosen-2')] },
+            { inputDescriptorId: 'mandate', verifiableCredentials: [pexCredential('mandate-1')] },
+          ],
+        },
+      ],
+    } as never
+    const definition = {
+      input_descriptors: [
+        { id: 'role', group: ['identity'] },
+        { id: 'mandate', group: ['identity'] },
+      ],
+      submission_requirements: [{ from: 'identity', min: 2, max: 2 }],
+    }
+
+    const result = applyPresentationExchangeSelection(
+      request,
+      { mandate: [pexCredential('mandate-1')] } as never,
+      { role: ['chosen-2'] },
+      definition,
+    )
+
+    expect(Object.keys(result).sort()).toEqual(['mandate', 'role'])
   })
 })
 
@@ -281,5 +386,32 @@ describe('applyDcqlSelection', () => {
     expect(() => applyDcqlSelection(queryResult, dcqlAutoSelection, { 'query-1': ['unknown'] })).toThrow(
       BadRequestError,
     )
+  })
+})
+
+describe('assertDcqlSelectionResponseCompatibility', () => {
+  beforeEach(() => {
+    parseVersionMock.mockReturnValue(27)
+  })
+
+  it('does not parse the request when no selection was supplied', () => {
+    assertDcqlSelectionResponseCompatibility(undefined, {})
+    assertDcqlSelectionResponseCompatibility({}, {})
+    assertDcqlSelectionResponseCompatibility({ 'query-1': ['one'] }, {})
+
+    expect(parseVersionMock).not.toHaveBeenCalled()
+  })
+
+  it('allows multiple presentations for OpenID4VP 1.0 requests', () => {
+    expect(() => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, {})).not.toThrow()
+  })
+
+  it('rejects multiple presentations before signing for draft requests', () => {
+    parseVersionMock.mockReturnValue(24)
+
+    const act = () => assertDcqlSelectionResponseCompatibility({ 'query-1': ['one', 'two'] }, {})
+
+    expect(act).toThrow(BadRequestError)
+    expect(act).toThrow('cannot carry multiple presentations for DCQL query "query-1"')
   })
 })
