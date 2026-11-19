@@ -45,7 +45,7 @@ export function updateContextForVersion(
     const ctxSet = new Set(transformed['@context'])
     ctxSet.delete(v1Context)
     const contexts = [v1Context, ...Array.from(ctxSet)]
-    if (includeStatusListContext && !contexts.includes(BITSTRING_STATUS_LIST_CONTEXT_V1)) {
+    if (includeStatusListContext && !contexts.some((context) => context === BITSTRING_STATUS_LIST_CONTEXT_V1)) {
       contexts.push(BITSTRING_STATUS_LIST_CONTEXT_V1)
     }
     transformed['@context'] = contexts
@@ -57,7 +57,7 @@ export function updateContextForVersion(
 
   if (!version && includeStatusListContext) {
     const contexts = Array.isArray(transformed['@context']) ? [...transformed['@context']] : []
-    if (!contexts.includes(BITSTRING_STATUS_LIST_CONTEXT_V1)) {
+    if (!contexts.some((context) => context === BITSTRING_STATUS_LIST_CONTEXT_V1)) {
       contexts.push(BITSTRING_STATUS_LIST_CONTEXT_V1)
     }
     transformed['@context'] = contexts
