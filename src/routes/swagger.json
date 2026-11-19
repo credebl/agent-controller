@@ -2617,6 +2617,35 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"ProofRequestCredentialSelection": {
+				"description": "Optional caller selection of the credentials to present. Keys are presentation-exchange input descriptor ids or\nDCQL credential query ids, values are the ids of the credential records to use for that descriptor/query.",
+				"properties": {},
+				"type": "object",
+				"additionalProperties": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				}
+			},
+			"AcceptProofRequest": {
+				"properties": {
+					"proofRequestUri": {
+						"type": "string"
+					},
+					"options": {
+						"$ref": "#/components/schemas/ResolveOpenId4VpAuthorizationRequestOptions"
+					},
+					"selectedCredentials": {
+						"$ref": "#/components/schemas/ProofRequestCredentialSelection"
+					}
+				},
+				"required": [
+					"proofRequestUri"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"CredentialType": {
 				"enum": [
 					"sd-jwt-vc",
@@ -8261,7 +8290,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/ResolveProofRequest"
+								"$ref": "#/components/schemas/AcceptProofRequest"
 							}
 						}
 					}

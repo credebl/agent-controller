@@ -91,9 +91,18 @@ export interface ResolveProofRequest {
   options?: ResolveOpenId4VpAuthorizationRequestOptions
 }
 
+/**
+ * Optional caller selection of the credentials to present. Keys are presentation-exchange input descriptor ids or
+ * DCQL credential query ids, values are the ids of the credential records to use for that descriptor/query.
+ */
+export interface ProofRequestCredentialSelection {
+  [descriptorOrQueryId: string]: string[]
+}
+
 export interface AcceptProofRequest {
   proofRequestUri: string
-  // selectedCredentials?: { [inputDescriptorId: string]: string }
+  options?: ResolveOpenId4VpAuthorizationRequestOptions
+  selectedCredentials?: ProofRequestCredentialSelection
 }
 
 export interface DeleteCredentialBody {
