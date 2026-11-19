@@ -4,6 +4,11 @@
 
 ### Features
 
+- **Optional Indy ledger:** with an empty or missing `indyLedger` and no `BCOVRIN_TEST_GENESIS`, the controller starts without the Indy VDR module, the `did:indy` registrar and resolver, and the Indy AnonCreds registry, and never contacts an Indy pool. Startup used to fail with `IndyVdrError: Invalid pool create parameters`. With a ledger or `BCOVRIN_TEST_GENESIS` configured, nothing changes. See [docs/indy-ledger.md](docs/indy-ledger.md).
+  - New `indyEnabled` config field / `--indy-enabled` / `AFJ_REST_INDY_ENABLED`: `false` turns Indy off even when a ledger is configured; `true` fails startup when no ledger is configured. Unset keeps the automatic behaviour.
+  - Without Indy, `POST /dids/write` with `method: indy` and `/anoncreds/schemas` and `/anoncreds/credential-definitions` requests for Indy identifiers answer 501 `Indy ledger is not configured`, before anything is created. Identifiers served by other AnonCreds registries are not affected. A blank `AFJ_REST_INDY_ENABLED=` counts as unset. The AnonCreds module stays registered with a placeholder registry that gives the same message for Indy identifiers.
+  - `yarn test:no-indy` starts the built controller without a ledger and checks it end to end.
+
 - **oid4vc holder:** `POST /openid4vc/holder/request-credential` sends OID4VCI notifications to the issuer's `notification_endpoint` for each credential response that has a `notification_id`: `credential_accepted` once the credential is stored, and `credential_failure` when it cannot be stored or fails the holder DID binding check. A failed store still fails the request; a notification that cannot be sent is logged and never fails it.
   - Notifications are sent one at a time, after all credentials are stored, so an issuer that records them on the issuance session cannot lose one to a concurrent update.
   - Each returned credential has a `notification` field: `{ status: "sent", event }`, `{ status: "skipped", reason }` (no `notification_endpoint`, no `notification_id`, or turned off) or `{ status: "failed", event, reason }`. The reason includes the issuer's HTTP status and error code, e.g. `HTTP 400 invalid_notification_id`.
@@ -13,6 +18,7 @@
 
 ### API
 
+- OpenAPI: `POST /dids/write` and the `/anoncreds/schemas` and `/anoncreds/credential-definitions` routes document a 501 response.
 - OpenAPI: `RequestCredentialBody` gains `sendNotification` (default `true`). Each credential returned by `request-credential` gains `notification`; the record fields are unchanged.
 - **oid4vc issuer:** issuers advertise a `notification_endpoint` (`{baseUrl}/{issuerId}/notification`) and return a `notification_id` with each credential response (OpenID4VCI 1.0 §11). A wallet notification (`credential_accepted`, `credential_failure` or `credential_deleted`) is checked against the access token of the session that issued the `notification_id`, recorded on the issuance session (`notifications[]`), and posted to the issuance webhook topic `/openid4vc-issuance`: the session record, whose state is unchanged, plus a `notification` object (`notificationId`, `credentialConfigurationId`, `event`, `eventDescription?`, `receivedAt`). It is also sent on the web socket. Webhooks posted on a state change also carry `notifications[]`. Set `OID4VCI_NOTIFICATION_ENDPOINT_ENABLED=false` to turn the endpoint off.
   - A repeated identical notification (same `notification_id`, `event` and `event_description`) returns 204 without being recorded or posted again.

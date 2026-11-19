@@ -35,6 +35,7 @@
     "prepublishOnly": "yarn run build",
     "test": "jest",
     "test:integration": "OPENBAO_INTEGRATION=1 jest --config jest.integration.config.ts --runInBand",
+    "test:no-indy": "yarn build && NO_INDY_LEDGER_INTEGRATION=1 jest --config jest.integration.config.ts --runInBand e2e/no-indy-ledger",
     "postinstall": "patch-package",
     "lint": "eslint --config eslint.config.mjs .",
     "validate": "yarn lint && yarn check-types && yarn check-format"

@@ -1,12 +1,13 @@
 import { getUnqualifiedSchemaId, parseIndySchemaId, RegisterSchemaReturnStateFinished } from '@credo-ts/anoncreds'
 import { Request as Req } from 'express'
-import { Example, Get, Post, Route, Tags, Security, Path, Body, Controller, Request } from 'tsoa'
+import { Example, Get, Post, Route, Tags, Security, Path, Body, Controller, Request, Response } from 'tsoa'
 import { injectable } from 'tsyringe'
 
 import { CredentialEnum, EndorserMode, SchemaError, SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
 import { ENDORSER_DID_NOT_PRESENT } from '../../../errorMessages'
 import { BadRequestError, InternalServerError, NotFoundError } from '../../../errors/errors'
+import { assertAnonCredsIdentifiersServed } from '../../../utils/indyLedgerGuard'
 import { CreateSchemaSuccessful, SchemaExample, SchemaId } from '../../examples'
 import { CreateSchemaInput, RegisterSchemaReturn, SchemaResponseDTO } from '../../types'
 
@@ -25,12 +26,14 @@ export class SchemaController extends Controller {
    * @returns get schema by Id
    */
   @Example(SchemaExample)
+  @Response(501, 'Indy ledger is not configured')
   @Get('/:schemaId')
   public async getSchemaById(
     @Request() request: Req,
     @Path('schemaId') schemaId: SchemaId,
   ): Promise<SchemaResponseDTO> {
     try {
+      assertAnonCredsIdentifiersServed(request.agent, [schemaId])
       const schemBySchemaId = await request.agent.modules.anoncreds.getSchema(schemaId)
 
       if (
@@ -59,6 +62,7 @@ export class SchemaController extends Controller {
    * @param internalServerError
    * @returns get schema
    */
+  @Response(501, 'Indy ledger is not configured')
   @Post('/')
   @Example(CreateSchemaSuccessful)
   public async createSchema(
@@ -66,6 +70,8 @@ export class SchemaController extends Controller {
     @Body() schema: CreateSchemaInput,
   ): Promise<RegisterSchemaReturn | RegisterSchemaReturnStateFinished> {
     try {
+      // The issuer id picks the registry; a non-Indy registry may serve it, an Indy id without a ledger cannot.
+      assertAnonCredsIdentifiersServed(request.agent, [schema.issuerId])
       const { issuerId, name, version, attributes } = schema
 
       const schemaPayload = {
