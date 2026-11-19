@@ -4,10 +4,11 @@ The Agent Controller is published as a container image for **AMD64** and **ARM64
 
 ## Where to pull from
 
-| Registry                                     | Image                              |
-| -------------------------------------------- | ---------------------------------- |
-| GitHub Container Registry                    | `ghcr.io/credebl/credo-controller` |
-| Docker Hub (when enabled by the maintainers) | `credebl/credo-controller`         |
+The images are published to GitHub Container Registry only:
+
+```
+ghcr.io/credebl/credo-controller
+```
 
 > The image keeps the legacy name `credo-controller`.
 
@@ -43,8 +44,6 @@ The workflow is [`continuous-delivery.yml`](../.github/workflows/continuous-deli
 1. AMD64 and ARM64 images are built on native runners (no QEMU emulation).
 2. Each image is smoke tested: the container starts and the native Askar library (`@openwallet-foundation/askar-nodejs`) is loaded.
 3. Per-architecture tags are pushed, and then the multi-arch manifest is created from them.
-
-Docker Hub is used only if the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets are configured in the GitHub repository. The namespace can be changed with the `DOCKERHUB_NAMESPACE` repository variable (default `credebl`).
 
 ## PostgreSQL with TLS (for example AWS RDS)
 
