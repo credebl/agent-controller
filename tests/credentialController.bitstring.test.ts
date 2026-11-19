@@ -4,6 +4,7 @@ import { checkAndCreateBitstringStatusList, revokeBitstringInStatusList } from '
 jest.mock('@credo-ts/core', () => ({
   W3cCredentialService: class W3cCredentialService {},
   createPeerDidDocumentFromServices: jest.fn(),
+  parseDid: jest.fn((did: string) => ({ did })),
   PeerDidNumAlgo: { MultipleInceptionKeyWithoutDoc: 2 },
 }))
 
@@ -34,7 +35,10 @@ const ISSUER_DID = 'did:web:issuer.example'
 const createMock = checkAndCreateBitstringStatusList as jest.Mock
 const revokeMock = revokeBitstringInStatusList as jest.Mock
 
-const agent = { context: { contextCorrelationId: 'test' } } as any
+const agent = {
+  context: { contextCorrelationId: 'test' },
+  dids: { getCreatedDids: jest.fn(async () => [{ did: ISSUER_DID }]) },
+} as any
 const controller = new CredentialController({} as any)
 
 function statusCredential(listId: string, issuer: unknown = ISSUER_DID) {
@@ -56,15 +60,30 @@ describe('CredentialController.ensureBitstringStatusLists', () => {
     const shared = statusCredential('list-1')
     const formats = {
       w3c: [shared, shared, { issuer: { id: ISSUER_DID }, nested: [statusCredential('list-2')] }],
-      other: [{ credentialStatus: { statusListCredential: 'not-a-url' }, issuer: ISSUER_DID }],
+      other: [
+        { credentialStatus: { type: 'StatusList2021Entry', statusListCredential: 'not-a-url' }, issuer: ISSUER_DID },
+      ],
     }
 
     await (controller as any).ensureBitstringStatusLists(agent, formats)
 
-    expect(createMock).toHaveBeenCalledTimes(3)
+    expect(createMock).toHaveBeenCalledTimes(2)
     expect(createMock).toHaveBeenCalledWith(agent, 'list-1', ISSUER_DID)
     expect(createMock).toHaveBeenCalledWith(agent, 'list-2', ISSUER_DID)
-    expect(createMock).toHaveBeenCalledWith(agent, 'not-a-url', ISSUER_DID)
+  })
+
+  it('accepts a bitstring status type supplied as an array', async () => {
+    await (controller as any).ensureBitstringStatusLists(agent, [
+      {
+        ...statusCredential('list-3'),
+        credentialStatus: {
+          ...statusCredential('list-3').credentialStatus,
+          type: ['Other', 'BitstringStatusListEntry'],
+        },
+      },
+    ])
+
+    expect(createMock).toHaveBeenCalledWith(agent, 'list-3', ISSUER_DID)
   })
 
   it('handles circular references without revisiting nodes', async () => {
@@ -102,5 +121,19 @@ describe('CredentialController.revokeBitstringCredential', () => {
     ).resolves.toEqual({ revoked: true, listId: 'list-1', index: 4 })
 
     expect(revokeMock).toHaveBeenCalledWith(agent, 'list-1', 4, ISSUER_DID)
+    expect(agent.dids.getCreatedDids).toHaveBeenCalledWith({ did: ISSUER_DID })
+  })
+
+  it('rejects revocation when the wallet does not control the issuer DID', async () => {
+    agent.dids.getCreatedDids.mockResolvedValueOnce([])
+
+    await expect(
+      controller.revokeBitstringCredential({ agent } as any, {
+        listId: 'list-1',
+        index: 4,
+        issuerDid: ISSUER_DID,
+      }),
+    ).rejects.toThrow(/does not control issuer DID/)
+    expect(revokeMock).not.toHaveBeenCalled()
   })
 })

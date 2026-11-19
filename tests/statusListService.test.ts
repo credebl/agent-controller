@@ -1,7 +1,7 @@
 import type { JsonObject } from '@credo-ts/core'
 
 import { BadRequestError } from '../src/errors/errors'
-import { createEmptyBitstring, encodeBitstring, setBit } from '../src/utils/bitstring'
+import { MIN_BITSTRING_LENGTH, createEmptyBitstring, encodeBitstring, setBit } from '../src/utils/bitstring'
 import { fetchWithTimeout } from '../src/utils/helpers'
 import { checkAndCreateBitstringStatusList, revokeBitstringInStatusList } from '../src/utils/statusListService'
 import { CREDENTIALS_V2_CONTEXT_URL } from '../src/vc-jsonld/constants'
@@ -132,6 +132,21 @@ describe('checkAndCreateBitstringStatusList', () => {
     )
   })
 
+  it('rejects list sizes below the minimum bitstring length before calling the server', () => {
+    expect(() => checkAndCreateBitstringStatusList(agent, LIST_ID, ISSUER, 1000)).toThrow(BadRequestError)
+    expect(() => checkAndCreateBitstringStatusList(agent, LIST_ID, ISSUER, 1000)).toThrow(
+      /multiple of 8 and at least 131072 bits/,
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects bitstring list sizes that are not multiples of 8', () => {
+    expect(() => checkAndCreateBitstringStatusList(agent, LIST_ID, ISSUER, MIN_BITSTRING_LENGTH + 1)).toThrow(
+      BadRequestError,
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('tolerates a concurrent create returning 409', async () => {
     fetchMock.mockResolvedValueOnce(response('', 404)).mockResolvedValueOnce(response('', 409))
 
@@ -165,6 +180,13 @@ describe('revokeBitstringInStatusList', () => {
     fetchMock.mockResolvedValueOnce(response(listCredential({ statusSize: 2, revoked: true })))
 
     await expect(revokeBitstringInStatusList(agent, LIST_ID, 1, ISSUER)).rejects.toThrow(/only statusSize 1/)
+    expect(signV2Mock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a status list whose issuer differs from the caller DID', async () => {
+    fetchMock.mockResolvedValueOnce(response({ ...listCredential(), issuer: 'did:web:other.example' }))
+
+    await expect(revokeBitstringInStatusList(agent, LIST_ID, 1, ISSUER)).rejects.toThrow(/not issued by/)
     expect(signV2Mock).not.toHaveBeenCalled()
   })
 

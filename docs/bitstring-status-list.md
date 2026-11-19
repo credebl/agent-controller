@@ -37,7 +37,7 @@ Content-Type: application/json
 }
 ```
 
-The response is `{ "revoked": true, "listId": "...", "index": 42 }`. For OID4VCI sessions, use the existing session revocation endpoint; it dispatches to bitstring or SD-JWT revocation automatically.
+The response is `{ "revoked": true, "listId": "...", "index": 42 }`. The caller's wallet must control `issuerDid`, and the fetched list's `issuer` must match it; otherwise the request returns HTTP 403 before anything is signed or sent. For OID4VCI sessions, use the existing session revocation endpoint; it dispatches to bitstring or SD-JWT revocation automatically.
 
 Updates use the status-list server's `If-Match`/ETag protocol and retry conflicts (HTTP 412) a bounded number of times. Per-list locking serializes concurrent updates inside one controller process. Multiple controller instances still need to share or front the same status-list server; configure sticky routing for issuance sessions when notifications or per-session locks matter.
 

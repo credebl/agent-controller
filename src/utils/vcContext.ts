@@ -63,13 +63,19 @@ export function updateContextForVersion(
   if (version === 'v2.0') {
     transformed['@context'] = [
       CREDENTIALS_CONTEXT_V2_URL,
-      CREDENTIALS_CONTEXT_V1_URL,
       ...uniqueContexts(asContextArray(context), CREDENTIALS_CONTEXT_V1_URL, CREDENTIALS_CONTEXT_V2_URL),
     ]
     return
   }
 
-  transformed['@context'] = context ? v1Contexts(context, includeStatusListContext) : [CREDENTIALS_CONTEXT_V1_URL]
+  if (!context) {
+    transformed['@context'] =
+      version === 'v1.1' && includeStatusListContext
+        ? [CREDENTIALS_CONTEXT_V1_URL, BITSTRING_STATUS_LIST_CONTEXT_V1]
+        : [CREDENTIALS_CONTEXT_V1_URL]
+  } else {
+    transformed['@context'] = v1Contexts(context, includeStatusListContext)
+  }
 
   if (!version && includeStatusListContext) {
     transformed['@context'] = withStatusContext(asContextArray(transformed['@context']), true)

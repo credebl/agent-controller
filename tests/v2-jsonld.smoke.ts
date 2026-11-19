@@ -22,6 +22,7 @@ import {
 
 import { CREDENTIALS_V2_CONTEXT_URL, STATUS_V1_CONTEXT_URL } from '../src/vc-jsonld/constants'
 import { getInlineContext } from '../src/vc-jsonld/contexts'
+import { withInlineContexts } from '../src/vc-jsonld/documentLoader'
 import { signV2Credential } from '../src/vc-jsonld/signV2Credential'
 import { verifyV2Credential } from '../src/vc-jsonld/verifyV2Credential'
 import { assert, createSmokeAgent, uuid } from './smokeTestHelpers'
@@ -48,6 +49,19 @@ async function main(): Promise<void> {
     console.log('\n[1] inline contexts')
     assert(getInlineContext(CREDENTIALS_V2_CONTEXT_URL), 'credentials/v2 served inline')
     assert(getInlineContext(STATUS_V1_CONTEXT_URL), 'status/v1 served inline')
+    const delegatedUrls: string[] = []
+    const networkLoader = async (url: string) => {
+      delegatedUrls.push(url)
+      return { documentUrl: url, contextUrl: null, document: {} }
+    }
+    const inlineLoader = withInlineContexts(networkLoader)
+    const inlineResult = await inlineLoader(STATUS_V1_CONTEXT_URL)
+    assert(inlineResult.document === getInlineContext(STATUS_V1_CONTEXT_URL), 'loader wrapper serves status/v1 inline')
+    await inlineLoader('https://example.com/unknown-context')
+    assert(
+      delegatedUrls.length === 1 && delegatedUrls[0] === 'https://example.com/unknown-context',
+      'loader wrapper delegates unknown URLs',
+    )
 
     console.log('\n[2] sign + verify VCDM 2.0 ldp_vc')
     const credential: JsonObject = {
@@ -138,7 +152,19 @@ async function main(): Promise<void> {
     }
     assert(conflictThrown, 'credentials/v2 + status/v1 fails with a protected term redefinition')
 
-    console.log('\n[8] jwt_vc_json-ld (VCDM 2.0 payload inside a JWT, via Credo V2 service)')
+    console.log('\n[8] unsupported proof type returns an invalid result')
+    const unsupportedProof: JsonObject = {
+      ...signed,
+      proof: { ...((signed.proof as JsonObject) ?? {}), type: 'DataIntegrityProof' },
+    }
+    const unsupportedResult = await verifyV2Credential(agent.context, { credential: unsupportedProof })
+    assert(!unsupportedResult.isValid, 'unsupported proof type does not verify')
+    assert(
+      unsupportedResult.error?.message.includes('Unsupported VCDM 2.0 proof type') === true,
+      'unsupported proof type reports the reason',
+    )
+
+    console.log('\n[9] jwt_vc_json-ld (VCDM 2.0 payload inside a JWT, via Credo V2 service)')
     const v2JwtCredentialService = agent.context.dependencyManager.resolve(W3cV2CredentialService)
     const v2Credential = JsonTransformer.fromJSON(
       {

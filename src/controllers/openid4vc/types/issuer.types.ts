@@ -14,6 +14,10 @@ export interface OpenId4VciOfferCredentials {
   statusListDetails?: {
     listId: string
     index: number
+    /**
+     * Number of entries for SD-JWT status lists; for bitstring status lists this is the
+     * number of bits (multiple of 8, at least 131072).
+     */
     listSize?: number
   }
 }
@@ -94,6 +98,10 @@ export interface OpenId4VcIssuanceSessionsCreateOffer {
   statusListDetails?: {
     listId: string
     index: number
+    /**
+     * Number of entries for SD-JWT status lists; for bitstring status lists this is the
+     * number of bits (multiple of 8, at least 131072).
+     */
     listSize?: number
   }
   isRevocable?: boolean

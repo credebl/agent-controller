@@ -1881,7 +1881,8 @@
 						"properties": {
 							"listSize": {
 								"type": "number",
-								"format": "double"
+								"format": "double",
+								"description": "Number of entries for SD-JWT status lists; for bitstring status lists this is the\nnumber of bits (multiple of 8, at least 131072)."
 							},
 							"index": {
 								"type": "number",
@@ -2032,7 +2033,8 @@
 						"properties": {
 							"listSize": {
 								"type": "number",
-								"format": "double"
+								"format": "double",
+								"description": "Number of entries for SD-JWT status lists; for bitstring status lists this is the\nnumber of bits (multiple of 8, at least 131072)."
 							},
 							"index": {
 								"type": "number",
@@ -2129,7 +2131,8 @@
 						"properties": {
 							"listSize": {
 								"type": "number",
-								"format": "double"
+								"format": "double",
+								"description": "Number of entries for SD-JWT status lists; for bitstring status lists this is the\nnumber of bits (multiple of 8, at least 131072)."
 							},
 							"index": {
 								"type": "number",
@@ -2322,7 +2325,8 @@
 						"properties": {
 							"listSize": {
 								"type": "number",
-								"format": "double"
+								"format": "double",
+								"description": "Number of entries for SD-JWT status lists; for bitstring status lists this is the\nnumber of bits (multiple of 8, at least 131072)."
 							},
 							"index": {
 								"type": "number",
@@ -4205,6 +4209,60 @@
 					"data"
 				],
 				"type": "object"
+			},
+			"BitstringStatusVerificationResult": {
+				"properties": {
+					"checked": {
+						"type": "boolean"
+					},
+					"revoked": {
+						"type": "boolean"
+					},
+					"verified": {
+						"type": "boolean"
+					},
+					"statusListUri": {
+						"type": "string"
+					},
+					"statusListIndex": {
+						"type": "number",
+						"format": "double"
+					},
+					"statusPurpose": {
+						"type": "string"
+					},
+					"error": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"checked",
+					"revoked",
+					"verified"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"VerifyCredentialResponse": {
+				"description": "Verification response returned by `POST /agent/credential/verify`.",
+				"properties": {
+					"isValid": {
+						"type": "boolean"
+					},
+					"verified": {
+						"type": "boolean"
+					},
+					"revocation": {
+						"$ref": "#/components/schemas/BitstringStatusVerificationResult"
+					}
+				},
+				"required": [
+					"isValid",
+					"verified",
+					"revocation"
+				],
+				"type": "object",
+				"additionalProperties": {}
 			},
 			"AnonCredsW3cCredentialProofOptions": {
 				"properties": {
@@ -10736,7 +10794,9 @@
 						"description": "Ok",
 						"content": {
 							"application/json": {
-								"schema": {}
+								"schema": {
+									"$ref": "#/components/schemas/VerifyCredentialResponse"
+								}
 							}
 						}
 					}

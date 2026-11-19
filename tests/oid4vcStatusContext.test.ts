@@ -42,9 +42,16 @@ describe('OID4VC JSON-LD status context', () => {
     )
 
     expect(result['@context']).not.toContain(STATUS_CONTEXT)
+    expect(result['@context']).not.toContain(V1_CONTEXT)
     expect(result['@context'][0]).toBe(V2_CONTEXT)
     expect(result.validFrom).toBe('2026-01-01T00:00:00.000Z')
     expect(result.issuanceDate).toBeUndefined()
+  })
+
+  it('adds the status context to a V1 payload without a context', () => {
+    const result = transform({}, 'v1.1', true)
+
+    expect(result['@context']).toEqual([V1_CONTEXT, STATUS_CONTEXT])
   })
 
   it('leaves the context untouched for non-JSON-LD payloads', () => {

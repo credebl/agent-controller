@@ -1,17 +1,10 @@
 import type { AgentContext, JsonObject } from '@credo-ts/core'
 
-import {
-  Ed25519Signature2018,
-  Ed25519Signature2020,
-  W3cCredentialsModuleConfig,
-  asArray,
-  vcLibraries,
-} from '@credo-ts/core'
+import { Ed25519Signature2018, Ed25519Signature2020, asArray, vcLibraries } from '@credo-ts/core'
 
 import { SUPPORTED_V2_PROOF_TYPES } from './constants'
+import { resolveDocumentLoader, withInlineContexts, type JsonLdDocumentLoader } from './documentLoader'
 import { createKmsKeyPairClass } from './kmsKeyPair'
-
-type DocumentLoader = (url: string) => Promise<any>
 
 const SUITE_CLASSES: Record<string, any> = {
   Ed25519Signature2018,
@@ -26,18 +19,13 @@ export interface VerifyV2CredentialOptions {
    * (Bitstring Status List verification is handled separately by the platform).
    */
   checkStatus?: (options: { credential: JsonObject }) => { verified: boolean; error?: Error }
-  documentLoader?: DocumentLoader
+  documentLoader?: JsonLdDocumentLoader
 }
 
 export interface VerifyV2CredentialResult {
   isValid: boolean
   error?: Error
   validations: Record<string, unknown>
-}
-
-function resolveDocumentLoader(agentContext: AgentContext): DocumentLoader {
-  const config = agentContext.dependencyManager.resolve(W3cCredentialsModuleConfig)
-  return config.documentLoader(agentContext) as unknown as DocumentLoader
 }
 
 function getSuiteClass(proofType: string): any {
@@ -56,12 +44,21 @@ export async function verifyV2Credential(
   agentContext: AgentContext,
   options: VerifyV2CredentialOptions,
 ): Promise<VerifyV2CredentialResult> {
-  const documentLoader = options.documentLoader ?? resolveDocumentLoader(agentContext)
+  const documentLoader = withInlineContexts(options.documentLoader ?? resolveDocumentLoader(agentContext))
   const WalletKeyPair = createKmsKeyPairClass(agentContext)
 
   const proofs = asArray((options.credential as { proof?: unknown }).proof) as Array<Record<string, unknown>>
   if (proofs.length === 0 || typeof proofs[0] !== 'object') {
     return { isValid: false, error: new Error('Credential has no proof to verify'), validations: {} }
+  }
+
+  const unsupported = proofs.find((proof) => !SUITE_CLASSES[proof.type as string])
+  if (unsupported) {
+    return {
+      isValid: false,
+      error: new Error(`Unsupported VCDM 2.0 proof type '${String(unsupported.type)}'`),
+      validations: {},
+    }
   }
 
   const suites = proofs.map((proof) => {

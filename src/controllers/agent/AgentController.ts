@@ -2,6 +2,7 @@ import type {
   AgentInfo,
   AgentToken,
   SafeW3cJsonLdVerifyCredentialOptions,
+  VerifyCredentialResponse,
   CustomW3cJsonLdSignCredentialOptions,
   SignDataOptions,
   VerifyDataOptions,
@@ -246,7 +247,7 @@ export class AgentController extends Controller {
   public async verifyCredential(
     @Request() request: Req,
     @Body() credentialToVerify: SafeW3cJsonLdVerifyCredentialOptions | any,
-  ) {
+  ): Promise<VerifyCredentialResponse> {
     try {
       const { credential, ...credentialOptions } = credentialToVerify ?? {}
       if (!credential) {
@@ -264,6 +265,9 @@ export class AgentController extends Controller {
               [key: string]: unknown
             })
       } else if (isV2) {
+        if (credentialOptions.trustedIssuers !== undefined) {
+          throw new BadRequestError('"trustedIssuers" is not supported for VCDM 2.0 JSON-LD credentials.')
+        }
         signedCred = await verifyV2Credential(request.agent.context, { credential, ...credentialOptions })
       } else {
         const transformedCredential = JsonTransformer.fromJSON(credential, W3cJsonLdVerifiableCredential)

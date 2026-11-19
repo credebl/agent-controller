@@ -1,9 +1,9 @@
 import type { Agent, JsonObject, JwsProtectedHeaderOptions, VerificationMethod } from '@credo-ts/core'
 
-import { JwsService, JwtPayload } from '@credo-ts/core'
+import { JwsService, JwtPayload, parseDid } from '@credo-ts/core'
 import { StatusList, getListFromStatusListJWT } from '@sd-jwt/jwt-status-list'
 
-import { BadRequestError } from '../errors/errors'
+import { BadRequestError, ForbiddenError } from '../errors/errors'
 import { CREDENTIALS_V2_CONTEXT_URL } from '../vc-jsonld/constants'
 import { signV2Credential } from '../vc-jsonld/signV2Credential'
 
@@ -235,6 +235,17 @@ async function resolveAssertionMethod(agent: Agent, issuerDid: string): Promise<
   return verificationMethod
 }
 
+/**
+ * Reject bitstring list sizes that cannot be encoded as a valid bitstring.
+ */
+function assertBitstringListSize(listSize: number): void {
+  if (!Number.isInteger(listSize) || listSize < MIN_BITSTRING_LENGTH || listSize % 8 !== 0) {
+    throw new BadRequestError(
+      `Bitstring status list size must be a multiple of 8 and at least ${MIN_BITSTRING_LENGTH} bits, received ${listSize}`,
+    )
+  }
+}
+
 function buildBitstringStatusListCredential(
   listId: string,
   issuerDid: string,
@@ -256,6 +267,26 @@ function buildBitstringStatusListCredential(
       encodedList: encodeBitstring(bits),
       statusSize,
     },
+  }
+}
+
+function didIdentifier(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  try {
+    return parseDid(value).did
+  } catch {
+    return value
+  }
+}
+
+function assertStatusListIssuer(credential: JsonObject, listId: string, issuerDid: string): void {
+  const issuerValue = credential.issuer
+  const issuerId = typeof issuerValue === 'object' ? (issuerValue as { id?: unknown } | null)?.id : issuerValue
+  const listIssuer = didIdentifier(issuerId)
+  const expectedIssuer = didIdentifier(issuerDid)
+
+  if (!listIssuer || !expectedIssuer || listIssuer !== expectedIssuer) {
+    throw new ForbiddenError(`Status list ${listId} is not issued by ${issuerDid}`)
   }
 }
 
@@ -301,7 +332,9 @@ export function checkAndCreateBitstringStatusList(
   listId: string,
   issuerDid: string,
   listSize = MIN_BITSTRING_LENGTH,
-) {
+): Promise<void> {
+  assertBitstringListSize(listSize)
+
   return withStatusListLock(listId, async () => {
     const uri = `${getServerUrl()}/${STATUS_LISTS_PATH}/${listId}`
     const res = await fetchWithTimeout(uri, { headers: getApiKeyHeaders() })
@@ -352,6 +385,7 @@ export function revokeBitstringInStatusList(agent: Agent, listId: string, index:
       }
 
       const credential = (await res.json()) as JsonObject
+      assertStatusListIssuer(credential, listId, issuerDid)
       prepareBitstringStatusListCredential(credential, listId, index)
 
       const verificationMethod = await resolveAssertionMethod(agent, issuerDid)

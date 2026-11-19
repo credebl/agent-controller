@@ -1,4 +1,5 @@
 import type { RecordId } from './examples'
+import type { BitstringStatusVerificationResult } from '../utils/bitstringStatusVerifier'
 import type {
   AnonCredsCredentialDefinition,
   AnonCredsDidCommCredentialFormat,
@@ -600,6 +601,14 @@ export interface SafeW3cJsonLdVerifyCredentialOptions extends Omit<W3cJsonLdVeri
    * an empty list trusts no issuer.
    */
   trustedIssuers?: TrustedIssuerDidOption[]
+}
+
+/** Verification response returned by `POST /agent/credential/verify`. */
+export interface VerifyCredentialResponse {
+  isValid: boolean
+  verified: boolean
+  revocation: BitstringStatusVerificationResult
+  [key: string]: unknown
 }
 
 export type ExtensibleW3cCredentialSubject = W3cCredentialSubject & {

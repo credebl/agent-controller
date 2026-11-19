@@ -38,7 +38,7 @@ async function main(): Promise<void> {
         '@context': [
           'https://www.w3.org/2018/credentials/v1',
           'https://w3id.org/security/suites/ed25519-2020/v1',
-          'https://w3id.org/vc/status-list/2021/v1',
+          'https://www.w3.org/ns/credentials/status/v1',
         ],
         id: 'https://example.com/credentials/1',
         type: ['VerifiableCredential'],

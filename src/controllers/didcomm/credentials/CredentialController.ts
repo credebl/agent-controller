@@ -1,6 +1,6 @@
 import type { PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
-import { W3cCredentialService, createPeerDidDocumentFromServices, PeerDidNumAlgo } from '@credo-ts/core'
+import { W3cCredentialService, createPeerDidDocumentFromServices, parseDid, PeerDidNumAlgo } from '@credo-ts/core'
 import {
   DidCommCredentialExchangeRecordProps,
   CredentialProtocolVersionType,
@@ -14,6 +14,7 @@ import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
+import { ForbiddenError } from '../../../errors/errors'
 import { PurgeRecordType } from '../../../purge/PurgeTypes'
 import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { AgentType } from '../../../types'
@@ -31,6 +32,8 @@ import {
   ThreadId,
 } from '../../types'
 import { OutOfBandController } from '../outofband/OutOfBandController'
+
+const BITSTRING_STATUS_LIST_ENTRY_TYPE = 'BitstringStatusListEntry'
 
 @Tags('DIDComm - Credentials')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
@@ -330,6 +333,7 @@ export class CredentialController extends Controller {
     @Body() revokeOptions: RevokeBitstringCredentialOptions,
   ) {
     try {
+      await this.assertIssuerDidOwnership(request, revokeOptions.issuerDid)
       await revokeBitstringInStatusList(
         request.agent as any,
         revokeOptions.listId,
@@ -339,6 +343,23 @@ export class CredentialController extends Controller {
       return { revoked: true, listId: revokeOptions.listId, index: revokeOptions.index }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
+   * Ensure the authenticated wallet controls the DID that will sign the status-list update.
+   */
+  private async assertIssuerDidOwnership(request: Req, issuerDid: string): Promise<void> {
+    let did: string
+    try {
+      did = parseDid(issuerDid).did
+    } catch {
+      throw new ForbiddenError(`Caller does not control issuer DID ${issuerDid}`)
+    }
+
+    const [ownedDid] = await request.agent.dids.getCreatedDids({ did })
+    if (!ownedDid) {
+      throw new ForbiddenError(`Caller does not control issuer DID ${issuerDid}`)
     }
   }
 
@@ -361,7 +382,12 @@ export class CredentialController extends Controller {
 
       const record = value as Record<string, unknown>
       const status = record.credentialStatus as Record<string, unknown> | undefined
-      if (status && 'string' === typeof status.statusListCredential) {
+      const statusTypes = Array.isArray(status?.type) ? status.type : [status?.type]
+      if (
+        status &&
+        statusTypes.includes(BITSTRING_STATUS_LIST_ENTRY_TYPE) &&
+        'string' === typeof status.statusListCredential
+      ) {
         const statusListUri = status.statusListCredential
         const parts = statusListUri.split('/').filter(Boolean)
         const listId = parts[parts.length - 1]

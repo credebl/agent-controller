@@ -1746,6 +1746,30 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"method":{"dataType":"string"},"did":{"dataType":"string"},"publicKeyBase58":{"dataType":"string","required":true},"keyType":{"dataType":"any","required":true},"data":{"dataType":"string","required":true}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "BitstringStatusVerificationResult": {
+        "dataType": "refObject",
+        "properties": {
+            "checked": {"dataType":"boolean","required":true},
+            "revoked": {"dataType":"boolean","required":true},
+            "verified": {"dataType":"boolean","required":true},
+            "statusListUri": {"dataType":"string"},
+            "statusListIndex": {"dataType":"double"},
+            "statusPurpose": {"dataType":"string"},
+            "error": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "VerifyCredentialResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "isValid": {"dataType":"boolean","required":true},
+            "verified": {"dataType":"boolean","required":true},
+            "revocation": {"ref":"BitstringStatusVerificationResult","required":true},
+        },
+        "additionalProperties": {"dataType":"any"},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "AnonCredsW3cCredentialProofOptions": {
         "dataType": "refObject",
         "properties": {

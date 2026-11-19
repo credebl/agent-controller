@@ -7,16 +7,14 @@ import {
   Ed25519Signature2020,
   JsonTransformer,
   VerificationMethod,
-  W3cCredentialsModuleConfig,
   getPublicJwkFromVerificationMethod,
   parseDid,
   vcLibraries,
 } from '@credo-ts/core'
 
 import { DEFAULT_V2_PROOF_TYPE, SUPPORTED_V2_PROOF_TYPES } from './constants'
+import { resolveDocumentLoader, withInlineContexts, type JsonLdDocumentLoader } from './documentLoader'
 import { createKmsKeyPairClass } from './kmsKeyPair'
-
-type DocumentLoader = (url: string) => Promise<any>
 
 const SUITE_CLASSES: Record<string, any> = {
   Ed25519Signature2018,
@@ -29,12 +27,7 @@ export interface SignV2CredentialOptions {
   proofType?: SupportedV2ProofType
   proofPurpose?: any
   created?: string
-  documentLoader?: DocumentLoader
-}
-
-function resolveDocumentLoader(agentContext: AgentContext): DocumentLoader {
-  const config = agentContext.dependencyManager.resolve(W3cCredentialsModuleConfig)
-  return config.documentLoader(agentContext) as unknown as DocumentLoader
+  documentLoader?: JsonLdDocumentLoader
 }
 
 function resolveIssuerId(credential: JsonObject): string {
@@ -57,7 +50,7 @@ function getSuiteClass(proofType: string): any {
 async function resolveSigningKey(
   agentContext: AgentContext,
   verificationMethod: string,
-  documentLoader: DocumentLoader,
+  documentLoader: JsonLdDocumentLoader,
 ) {
   const dids = agentContext.dependencyManager.resolve(DidsApi)
   const verificationMethodObject = await documentLoader(verificationMethod)
@@ -85,7 +78,7 @@ export async function signV2Credential(
   agentContext: AgentContext,
   options: SignV2CredentialOptions,
 ): Promise<Record<string, unknown>> {
-  const documentLoader = options.documentLoader ?? resolveDocumentLoader(agentContext)
+  const documentLoader = withInlineContexts(options.documentLoader ?? resolveDocumentLoader(agentContext))
   const WalletKeyPair = createKmsKeyPairClass(agentContext)
   const signingKey = await resolveSigningKey(agentContext, options.verificationMethod, documentLoader)
   const proofType = options.proofType ?? DEFAULT_V2_PROOF_TYPE
