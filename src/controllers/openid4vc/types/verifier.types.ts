@@ -34,17 +34,49 @@ export interface PresentationDefinition {
 /*                                 DCQL MODELS                                */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * A DCQL claims query (OpenID4VP 1.0, section 6.3).
+ */
 export interface DcqlClaim {
-  path: string[]
+  /** Required when the credential query has `claim_sets`, which refer to claims by this id. */
+  id?: string
+  /**
+   * The claim's path: a string selects an object key, a number an array index, and null every array element.
+   * @example ["credentialSubject", "role"]
+   */
+  path: Array<string | number | null>
+  /**
+   * The claim matches only if its value is one of these.
+   * @example ["MND-0001"]
+   */
+  values?: Array<string | number | boolean>
+  /** mso_mdoc only: whether the verifier intends to keep the claim value. */
   intent_to_retain?: boolean
 }
 
+/**
+ * A trusted authorities query (OpenID4VP 1.0, section 6.1.1).
+ */
+export interface DcqlTrustedAuthority {
+  /** e.g. `aki` (authority key identifier), `etsi_tl` or `openid_federation` */
+  type: string
+  values: string[]
+}
+
+/**
+ * A DCQL credential query (OpenID4VP 1.0, section 6.1).
+ */
 export interface DcqlCredential {
   id: string
   format: string
+  /** Whether several credentials may be returned for this query. */
+  multiple?: boolean
   meta?: Record<string, any>
+  trusted_authorities?: DcqlTrustedAuthority[]
   require_cryptographic_holder_binding?: boolean
   claims?: DcqlClaim[]
+  /** Alternative sets of claim ids, in order of preference. */
+  claim_sets?: string[][]
 }
 
 export interface DcqlCredentialSet {
