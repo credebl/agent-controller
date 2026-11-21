@@ -93,7 +93,15 @@ export interface ResolveProofRequest {
 
 export interface AcceptProofRequest {
   proofRequestUri: string
-  // selectedCredentials?: { [inputDescriptorId: string]: string }
+  options?: ResolveOpenId4VpAuthorizationRequestOptions
+  /**
+   * The credential record to present for each DCQL credential query id or Presentation Exchange input descriptor id,
+   * as `{ "<query or descriptor id>": ["<credential record id>"] }`. The record ids are those listed by
+   * `resolve-proof-request`. Queries left out are selected automatically, as when this field is absent; with DCQL
+   * credential sets, queries left out are not presented.
+   * @example { "authvc": ["4f6a1c9e-2b7d-4e0a-9c1f-8d3b5a7e6f21"] }
+   */
+  selectedCredentials?: Record<string, string[]>
 }
 
 export interface DeleteCredentialBody {

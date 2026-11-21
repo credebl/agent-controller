@@ -2617,6 +2617,41 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"Record_string.string-Array_": {
+				"properties": {},
+				"additionalProperties": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"type": "object",
+				"description": "Construct a type with a set of properties K of type T"
+			},
+			"AcceptProofRequest": {
+				"properties": {
+					"proofRequestUri": {
+						"type": "string"
+					},
+					"options": {
+						"$ref": "#/components/schemas/ResolveOpenId4VpAuthorizationRequestOptions"
+					},
+					"selectedCredentials": {
+						"$ref": "#/components/schemas/Record_string.string-Array_",
+						"description": "The credential record to present for each DCQL credential query id or Presentation Exchange input descriptor id,\nas `{ \"<query or descriptor id>\": [\"<credential record id>\"] }`. The record ids are those listed by\n`resolve-proof-request`. Queries left out are selected automatically, as when this field is absent; with DCQL\ncredential sets, queries left out are not presented.",
+						"example": {
+							"authvc": [
+								"4f6a1c9e-2b7d-4e0a-9c1f-8d3b5a7e6f21"
+							]
+						}
+					}
+				},
+				"required": [
+					"proofRequestUri"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"CredentialType": {
 				"enum": [
 					"sd-jwt-vc",
@@ -8243,7 +8278,7 @@
 						}
 					}
 				},
-				"description": "Accept a proof request",
+				"description": "Accept a proof request. Without `selectedCredentials` the agent picks a matching credential for each query; with it,\nthe chosen credentials are presented. `verifierResponse` is the verifier's response body, e.g. its `error` and\n`error_description` when it rejects the presentation.",
 				"tags": [
 					"oid4vc holders"
 				],
@@ -8261,7 +8296,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"$ref": "#/components/schemas/ResolveProofRequest"
+								"$ref": "#/components/schemas/AcceptProofRequest"
 							}
 						}
 					}

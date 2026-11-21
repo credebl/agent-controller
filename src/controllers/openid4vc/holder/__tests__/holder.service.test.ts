@@ -9,6 +9,7 @@ import { HolderService } from '../holder.service'
 
 // Avoid loading Credo's ESM/native dependencies in Jest; only the symbols the service touches are stubbed.
 jest.mock('@credo-ts/core', () => ({
+  DcqlError: class DcqlError extends Error {},
   Mdoc: {},
   SdJwtVcRecord: class {},
   MdocRecord: class {},
@@ -733,6 +734,127 @@ describe('HolderService requestCredential', () => {
         event: 'credential_accepted',
         reason: 'No answer from the issuer within 20 ms',
       })
+    })
+  })
+})
+
+describe('HolderService acceptPresentationRequest', () => {
+  const dcqlResolved = {
+    authorizationRequestPayload: { client_id: 'verifier' },
+    dcql: {
+      queryResult: {
+        can_be_satisfied: true,
+        credentials: [{ id: 'authvc' }],
+        credential_matches: {
+          authvc: {
+            success: true,
+            valid_credentials: [
+              { success: true, record: { id: 'first' } },
+              { success: true, record: { id: 'second' } },
+            ],
+          },
+        },
+      },
+    },
+  }
+
+  const createAgentReq = (resolved: any, submission: any) => {
+    const holder = {
+      resolveOpenId4VpAuthorizationRequest: jest.fn().mockResolvedValue(resolved),
+      // Like Credo: the first remaining match of each query.
+      selectCredentialsForDcqlRequest: jest.fn((queryResult: any) => {
+        const valid = queryResult.credential_matches.authvc.valid_credentials
+        if (valid.length === 0) {
+          const { DcqlError } = jest.requireMock('@credo-ts/core')
+          throw new DcqlError("Unable to select credential for credential query id 'authvc'.")
+        }
+        return { authvc: [{ credentialRecord: valid[0].record }] }
+      }),
+      selectCredentialsForPresentationExchangeRequest: jest.fn((credentialsForRequest: any) => ({
+        [credentialsForRequest.requirements[0].submissionEntry[0].inputDescriptorId]: [
+          credentialsForRequest.requirements[0].submissionEntry[0].verifiableCredentials[0],
+        ],
+      })),
+      acceptOpenId4VpAuthorizationRequest: jest.fn().mockResolvedValue(submission),
+    }
+    return { agentReq: { agent: { modules: { openid4vc: { holder } } } } as any, holder }
+  }
+  const accepted = { ok: true, serverResponse: { status: 200, body: { redirect_uri: 'https://v.example/done' } } }
+
+  it('lets the agent pick when no credential is chosen', async () => {
+    const { agentReq, holder } = createAgentReq(dcqlResolved, accepted)
+    await new HolderService().acceptPresentationRequest(agentReq, { proofRequestUri: 'openid4vp://x' })
+    expect(
+      holder.acceptOpenId4VpAuthorizationRequest.mock.calls[0][0].dcql.credentials.authvc[0].credentialRecord.id,
+    ).toBe('first')
+  })
+
+  it('presents the chosen credential', async () => {
+    const { agentReq, holder } = createAgentReq(dcqlResolved, accepted)
+    await new HolderService().acceptPresentationRequest(agentReq, {
+      proofRequestUri: 'openid4vp://x',
+      selectedCredentials: { authvc: ['second'] },
+    })
+    expect(
+      holder.acceptOpenId4VpAuthorizationRequest.mock.calls[0][0].dcql.credentials.authvc[0].credentialRecord.id,
+    ).toBe('second')
+  })
+
+  it('presents the chosen credential for a Presentation Exchange request', async () => {
+    const resolved = {
+      authorizationRequestPayload: {},
+      presentationExchange: {
+        credentialsForRequest: {
+          areRequirementsSatisfied: true,
+          requirements: [
+            {
+              rule: 'all',
+              needsCount: 1,
+              submissionEntry: [
+                {
+                  inputDescriptorId: 'authvc',
+                  verifiableCredentials: [{ credentialRecord: { id: 'w1' } }, { credentialRecord: { id: 'w2' } }],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    }
+    const { agentReq, holder } = createAgentReq(resolved, accepted)
+    await new HolderService().acceptPresentationRequest(agentReq, {
+      proofRequestUri: 'openid4vp://x',
+      selectedCredentials: { authvc: ['w2'] },
+    })
+    expect(
+      holder.acceptOpenId4VpAuthorizationRequest.mock.calls[0][0].presentationExchange.credentials.authvc[0]
+        .credentialRecord.id,
+    ).toBe('w2')
+  })
+
+  it('refuses a credential that does not satisfy the request, without contacting the verifier', async () => {
+    const { agentReq, holder } = createAgentReq(dcqlResolved, accepted)
+    await expect(
+      new HolderService().acceptPresentationRequest(agentReq, {
+        proofRequestUri: 'openid4vp://x',
+        selectedCredentials: { authvc: ['unknown'] },
+      }),
+    ).rejects.toThrow('does not satisfy')
+    expect(holder.acceptOpenId4VpAuthorizationRequest).not.toHaveBeenCalled()
+  })
+
+  it("returns the verifier's response body alongside the existing status and body", async () => {
+    const rejected = {
+      ok: false,
+      serverResponse: { status: 400, body: { error: 'invalid_request', error_description: 'Status is not valid' } },
+      authorizationResponsePayload: { state: 's' },
+    }
+    const { agentReq } = createAgentReq(dcqlResolved, rejected)
+    const result = await new HolderService().acceptPresentationRequest(agentReq, { proofRequestUri: 'openid4vp://x' })
+    expect(result).toEqual({
+      status: 400,
+      body: { ok: false, authorizationResponsePayload: { state: 's' } },
+      verifierResponse: { error: 'invalid_request', error_description: 'Status is not valid' },
     })
   })
 })

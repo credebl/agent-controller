@@ -1,4 +1,5 @@
 import type {
+  AcceptProofRequest,
   AuthorizeRequestCredentialOffer,
   CredentialListQuery,
   CredentialNotificationEvent,
@@ -21,6 +22,7 @@ import type {
 import type { Request as Req } from 'express'
 
 import {
+  DcqlError,
   Mdoc,
   SdJwtVcRecord,
   MdocRecord,
@@ -47,6 +49,7 @@ import {
   getCredentialBindingResolver,
 } from './credentialBindingResolver'
 import { withReadableErrors } from './holderErrors'
+import { restrictDcqlQueryResult, restrictPexCredentials } from './presentationSelection'
 type FilterValue = string | string[] | undefined
 
 class NotificationTimeoutError extends Error {}
@@ -691,28 +694,33 @@ export class HolderService {
     )) as any
   }
 
-  public async acceptPresentationRequest(agentReq: Req, body: ResolveProofRequest) {
+  public async acceptPresentationRequest(agentReq: Req, body: AcceptProofRequest) {
     const resolved = await agentReq.agent.modules.openid4vc.holder.resolveOpenId4VpAuthorizationRequest(
       body.proofRequestUri,
       body.options,
     )
-    // const presentationExchangeService = agent.dependencyManager.resolve(DifPresentationExchangeService)
+    const selected = body.selectedCredentials
 
-    let acceptOptions: any = {
+    const acceptOptions: any = {
       authorizationRequestPayload: resolved.authorizationRequestPayload,
       origin: body.options?.origin,
     }
 
     if (resolved.dcql) {
-      const dcqlCredentials = await agentReq.agent.modules.openid4vc.holder.selectCredentialsForDcqlRequest(
-        resolved.dcql.queryResult,
+      const queryResult = selected
+        ? restrictDcqlQueryResult(resolved.dcql.queryResult, selected)
+        : resolved.dcql.queryResult
+      const dcqlCredentials = await this.selectOrBadRequest(() =>
+        agentReq.agent.modules.openid4vc.holder.selectCredentialsForDcqlRequest(queryResult),
       )
       acceptOptions.dcql = { credentials: dcqlCredentials as DcqlCredentialsForRequest }
     } else if (resolved.presentationExchange) {
-      const pexCredentials =
-        await agentReq.agent.modules.openid4vc.holder.selectCredentialsForPresentationExchangeRequest(
-          resolved.presentationExchange.credentialsForRequest,
-        )
+      const credentialsForRequest = selected
+        ? restrictPexCredentials(resolved.presentationExchange.credentialsForRequest, selected)
+        : resolved.presentationExchange.credentialsForRequest
+      const pexCredentials = await this.selectOrBadRequest(() =>
+        agentReq.agent.modules.openid4vc.holder.selectCredentialsForPresentationExchangeRequest(credentialsForRequest),
+      )
       acceptOptions.presentationExchange = { credentials: pexCredentials }
     } else {
       throw new Error('Missing DCQL or Presentation Exchange on request')
@@ -726,12 +734,30 @@ export class HolderService {
       return {
         ...serverResponse,
         body: rest,
+        // The verifier's own response body; `body` above is the holder's submission, kept for existing clients.
+        verifierResponse: serverResponse.body,
       } as any
     }
     return {
       status: 200,
       body: submissionResult,
     } as any
+  }
+
+  /** Credo's credential selection; a request the chosen credentials cannot satisfy is the caller's error, not ours. */
+  private async selectOrBadRequest<T>(select: () => T | Promise<T>): Promise<T> {
+    try {
+      return await select()
+    } catch (error) {
+      // Credo raises a DcqlError when a DCQL query cannot be satisfied, and this CredoError for Presentation Exchange.
+      if (
+        error instanceof DcqlError ||
+        (error instanceof Error && error.message.startsWith('Could not find the required credentials'))
+      ) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
   }
 
   public async deleteCredential(agentReq: Req, { credentialId, credentialType }: DeleteCredentialBody) {

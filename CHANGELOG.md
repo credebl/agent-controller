@@ -4,6 +4,8 @@
 
 ### Features
 
+- **oid4vc holder:** `POST /openid4vc/holder/accept-proof-request` takes `selectedCredentials`, the credential record to present for each DCQL credential query id or Presentation Exchange input descriptor id: `{ "<query id>": ["<record id>"] }`. Without it the agent picks a matching credential, as before. A record that does not satisfy its query, an unknown query id, or more than one record per query answers 400, and nothing is sent to the verifier. Queries left out are selected automatically; with DCQL credential sets they are not presented, so the chosen queries decide the option.
+- **oid4vc holder:** `accept-proof-request` returns the verifier's response body as `verifierResponse` (e.g. `error` and `error_description` when the verifier rejects the presentation). `status` and `body` are unchanged.
 - **oid4vc holder:** `POST /openid4vc/holder/request-credential` sends OID4VCI notifications to the issuer's `notification_endpoint` for each credential response that has a `notification_id`: `credential_accepted` once the credential is stored, and `credential_failure` when it cannot be stored or fails the holder DID binding check. A failed store still fails the request; a notification that cannot be sent is logged and never fails it.
   - Notifications are sent one at a time, after all credentials are stored, so an issuer that records them on the issuance session cannot lose one to a concurrent update.
   - Each returned credential has a `notification` field: `{ status: "sent", event }`, `{ status: "skipped", reason }` (no `notification_endpoint`, no `notification_id`, or turned off) or `{ status: "failed", event, reason }`. The reason includes the issuer's HTTP status and error code, e.g. `HTTP 400 invalid_notification_id`.
@@ -13,6 +15,7 @@
 
 ### API
 
+- OpenAPI: `accept-proof-request` takes `AcceptProofRequest` (`proofRequestUri`, `options`, `selectedCredentials`) instead of `ResolveProofRequest`; existing request bodies are still valid.
 - OpenAPI: `RequestCredentialBody` gains `sendNotification` (default `true`). Each credential returned by `request-credential` gains `notification`; the record fields are unchanged.
 - **oid4vc issuer:** issuers advertise a `notification_endpoint` (`{baseUrl}/{issuerId}/notification`) and return a `notification_id` with each credential response (OpenID4VCI 1.0 §11). A wallet notification (`credential_accepted`, `credential_failure` or `credential_deleted`) is checked against the access token of the session that issued the `notification_id`, recorded on the issuance session (`notifications[]`), and posted to the issuance webhook topic `/openid4vc-issuance`: the session record, whose state is unchanged, plus a `notification` object (`notificationId`, `credentialConfigurationId`, `event`, `eventDescription?`, `receivedAt`). It is also sent on the web socket. Webhooks posted on a state change also carry `notifications[]`. Set `OID4VCI_NOTIFICATION_ENDPOINT_ENABLED=false` to turn the endpoint off.
   - A repeated identical notification (same `notification_id`, `event` and `event_description`) returns 204 without being recorded or posted again.
