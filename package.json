@@ -38,6 +38,7 @@
     "test:v1-status-roundtrip": "node -r ts-node/register/transpile-only tests/v1-bitstring-roundtrip.smoke.ts",
     "test:bitstring-status-list": "node -r ts-node/register/transpile-only tests/bitstring-status-list.integration.ts",
     "test:integration": "OPENBAO_INTEGRATION=1 jest --config jest.integration.config.ts --runInBand",
+    "test:no-indy": "yarn build && NO_INDY_LEDGER_INTEGRATION=1 jest --config jest.integration.config.ts --runInBand e2e/no-indy-ledger",
     "postinstall": "patch-package",
     "lint": "eslint --config eslint.config.mjs .",
     "validate": "yarn lint && yarn check-types && yarn check-format"
