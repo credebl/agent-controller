@@ -82,12 +82,6 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Checkout Repository (tags only, to decide on latest)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          fetch-depth: 1
-          fetch-tags: true
-
       - name: Extract Git Tag
         run: echo "TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
 
@@ -107,7 +101,9 @@ jobs:
           # Tags: v2.4.0 (as before) and 2.4.0 (without the v).
           # `latest` moves only when this is the highest stable (non pre-release) version tag.
           tags=(--tag "${GHCR_IMAGE}:${TAG}" --tag "${GHCR_IMAGE}:${TAG#v}")
-          highest="$(git tag -l 'v*' | grep -Ev -- '-' | sort -V | tail -n1)"
+          # Read the tag list from the remote. actions/checkout with fetch-tags fails on a tag-triggered run
+          # ("Cannot fetch both <sha> and refs/tags/<tag>").
+          highest="$(git ls-remote --tags --refs "https://github.com/${GITHUB_REPOSITORY}.git" 'v*' | sed 's#.*refs/tags/##' | grep -v -e '-' | sort -V | tail -n1)"
           if [[ "${TAG}" != *-* && "${TAG}" == "${highest}" ]]; then
             tags+=(--tag "${GHCR_IMAGE}:latest")
           else
