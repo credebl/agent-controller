@@ -36,6 +36,9 @@ jobs:
         with:
           version: yarn version-packages
           title: 'chore: version packages'
+          # Push through the GitHub API so the commit is signed by GitHub; main requires signed commits and the
+          # default git-cli mode would leave the Version Packages pull request unmergeable.
+          commitMode: github-api
           commit: |-
             chore: version packages
 
