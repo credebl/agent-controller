@@ -4,6 +4,8 @@
 credentials itself. A caller that wants to decide, for example a wallet app showing the holder a choice, can pass
 `selectedCredentials`.
 
+The queries a wallet answers are written by the verifier; see [DCQL queries in presentation requests](oid4vp-dcql-query.md).
+
 ## Request
 
 ```json

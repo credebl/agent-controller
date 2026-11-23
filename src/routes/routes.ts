@@ -580,10 +580,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DcqlTrustedAuthority": {
+        "dataType": "refObject",
+        "properties": {
+            "type": {"dataType":"string","required":true},
+            "values": {"dataType":"array","array":{"dataType":"string"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "DcqlClaim": {
         "dataType": "refObject",
         "properties": {
-            "path": {"dataType":"array","array":{"dataType":"string"},"required":true},
+            "id": {"dataType":"string"},
+            "path": {"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"double"},{"dataType":"enum","enums":[null]}]},"required":true},
+            "values": {"dataType":"array","array":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"double"},{"dataType":"boolean"}]}},
             "intent_to_retain": {"dataType":"boolean"},
         },
         "additionalProperties": false,
@@ -594,9 +605,12 @@ const models: TsoaRoute.Models = {
         "properties": {
             "id": {"dataType":"string","required":true},
             "format": {"dataType":"string","required":true},
+            "multiple": {"dataType":"boolean"},
             "meta": {"ref":"Record_string.any_"},
+            "trusted_authorities": {"dataType":"array","array":{"dataType":"refObject","ref":"DcqlTrustedAuthority"}},
             "require_cryptographic_holder_binding": {"dataType":"boolean"},
             "claims": {"dataType":"array","array":{"dataType":"refObject","ref":"DcqlClaim"}},
+            "claim_sets": {"dataType":"array","array":{"dataType":"array","array":{"dataType":"string"}}},
         },
         "additionalProperties": false,
     },

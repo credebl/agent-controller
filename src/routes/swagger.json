@@ -1169,16 +1169,78 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"DcqlClaim": {
+			"DcqlTrustedAuthority": {
+				"description": "A trusted authorities query (OpenID4VP 1.0, section 6.1.1).",
 				"properties": {
-					"path": {
+					"type": {
+						"type": "string",
+						"description": "e.g. `aki` (authority key identifier), `etsi_tl` or `openid_federation`"
+					},
+					"values": {
 						"items": {
 							"type": "string"
 						},
 						"type": "array"
+					}
+				},
+				"required": [
+					"type",
+					"values"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"DcqlClaim": {
+				"description": "A DCQL claims query (OpenID4VP 1.0, section 6.3).",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Required when the credential query has `claim_sets`, which refer to claims by this id."
+					},
+					"path": {
+						"items": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "number",
+									"format": "double"
+								}
+							],
+							"nullable": true
+						},
+						"type": "array",
+						"description": "The claim's path: a string selects an object key, a number an array index, and null every array element.",
+						"example": [
+							"credentialSubject",
+							"role"
+						]
+					},
+					"values": {
+						"items": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "number",
+									"format": "double"
+								},
+								{
+									"type": "boolean"
+								}
+							]
+						},
+						"type": "array",
+						"description": "The claim matches only if its value is one of these.",
+						"example": [
+							"MND-0001"
+						]
 					},
 					"intent_to_retain": {
-						"type": "boolean"
+						"type": "boolean",
+						"description": "mso_mdoc only: whether the verifier intends to keep the claim value."
 					}
 				},
 				"required": [
@@ -1188,6 +1250,7 @@
 				"additionalProperties": false
 			},
 			"DcqlCredential": {
+				"description": "A DCQL credential query (OpenID4VP 1.0, section 6.1).",
 				"properties": {
 					"id": {
 						"type": "string"
@@ -1195,8 +1258,18 @@
 					"format": {
 						"type": "string"
 					},
+					"multiple": {
+						"type": "boolean",
+						"description": "Whether several credentials may be returned for this query."
+					},
 					"meta": {
 						"$ref": "#/components/schemas/Record_string.any_"
+					},
+					"trusted_authorities": {
+						"items": {
+							"$ref": "#/components/schemas/DcqlTrustedAuthority"
+						},
+						"type": "array"
 					},
 					"require_cryptographic_holder_binding": {
 						"type": "boolean"
@@ -1206,6 +1279,16 @@
 							"$ref": "#/components/schemas/DcqlClaim"
 						},
 						"type": "array"
+					},
+					"claim_sets": {
+						"items": {
+							"items": {
+								"type": "string"
+							},
+							"type": "array"
+						},
+						"type": "array",
+						"description": "Alternative sets of claim ids, in order of preference."
 					}
 				},
 				"required": [

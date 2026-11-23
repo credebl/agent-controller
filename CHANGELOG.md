@@ -4,6 +4,7 @@
 
 ### Features
 
+- **oid4vc verifier:** `POST /openid4vc/verification-sessions/create-presentation-request` accepts the whole DCQL query of OpenID4VP 1.0: claim `id` and `values` (match a claim only when it has one of these values), `null` and numeric path segments, and on a credential query `multiple`, `trusted_authorities` and `claim_sets`. They were refused with 422 by request validation.
 - **oid4vc holder:** `POST /openid4vc/holder/accept-proof-request` returns the verifier's response body as `verifierResponse` (for example `error` and `error_description` when the verifier rejects the presentation). `status` and `body` are unchanged.
 - **oid4vc holder:** `accept-proof-request` answers 400 instead of 500 when Credo cannot select credentials for the request (a DCQL query or Presentation Exchange definition the wallet's credentials cannot satisfy).
 - **oid4vc holder:** with DCQL `credential_sets` and `selectedCredentials`, queries the caller left out are not presented automatically, so the option made of the chosen queries is the one presented. Without credential sets, queries left out stay automatic as before.
