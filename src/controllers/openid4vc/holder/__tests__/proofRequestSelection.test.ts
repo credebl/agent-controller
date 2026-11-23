@@ -5,6 +5,7 @@ import {
   applyDcqlSelection,
   applyPresentationExchangeSelection,
   assertDcqlSelectionResponseCompatibility,
+  restrictDcqlQueryResultToSelection,
 } from '../proofRequestSelection'
 
 // Avoid loading Credo's ESM/native dependencies in Jest; the selection helper only needs the ClaimFormat values.
@@ -582,5 +583,42 @@ describe('assertDcqlSelectionResponseCompatibility', () => {
 
     expect(act).toThrow(BadRequestError)
     expect(act).toThrow('Unable to infer OpenID4VP version')
+  })
+})
+
+describe('restrictDcqlQueryResultToSelection', () => {
+  const match = (id: string) => ({ success: true, valid_credentials: [{ record: { id } }] })
+  const withSets = {
+    credentials: [{ id: 'pid' }, { id: 'passport' }],
+    credential_sets: [{ required: true, options: [['pid'], ['passport']] }],
+    credential_matches: { pid: match('pid-1'), passport: match('passport-1') },
+  } as never
+
+  it('returns the result unchanged without a selection', () => {
+    expect(restrictDcqlQueryResultToSelection(withSets)).toBe(withSets)
+    expect(restrictDcqlQueryResultToSelection(withSets, {})).toBe(withSets)
+  })
+
+  it('returns the result unchanged when the query has no credential sets', () => {
+    const withoutSets = { credentials: [{ id: 'pid' }], credential_matches: { pid: match('pid-1') } } as never
+    expect(restrictDcqlQueryResultToSelection(withoutSets, { pid: ['pid-1'] })).toBe(withoutSets)
+  })
+
+  it('empties the queries the caller did not select when there are credential sets', () => {
+    const result = restrictDcqlQueryResultToSelection(withSets, { passport: ['passport-1'] }) as unknown as {
+      credential_matches: Record<string, { valid_credentials: unknown[] }>
+    }
+
+    expect(result.credential_matches.pid.valid_credentials).toEqual([])
+    expect(result.credential_matches.passport.valid_credentials).toHaveLength(1)
+  })
+
+  it('does not modify the resolved result', () => {
+    restrictDcqlQueryResultToSelection(withSets, { passport: ['passport-1'] })
+
+    expect(
+      (withSets as unknown as { credential_matches: { pid: { valid_credentials: unknown[] } } }).credential_matches.pid
+        .valid_credentials,
+    ).toHaveLength(1)
   })
 })

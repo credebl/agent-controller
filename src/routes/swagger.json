@@ -8305,7 +8305,7 @@
 						}
 					}
 				},
-				"description": "Accept a proof request",
+				"description": "Accept a proof request. Without `selectedCredentials` the agent picks a matching credential for each query; with it,\nthe chosen credentials are presented. `verifierResponse` is the verifier's response body, e.g. its `error` and\n`error_description` when it rejects the presentation.",
 				"tags": [
 					"oid4vc holders"
 				],
