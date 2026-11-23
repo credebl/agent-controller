@@ -4,9 +4,9 @@ agent-controller uses Askar as its default KMS. OpenBao Transit is an optional, 
 cannot hold or that an operator wants in a centrally managed KMS. Existing wallets and DIDs keep working unchanged: no
 key is re-imported, and Askar remains the default for implicit key creation, DIDComm, routing, X25519, and secp256k1.
 
-The backend itself is the Apache-2.0 [`@credebl/credo-ts-openbao`](https://github.com/sovio-id/credo-ts-openbao) plugin.
+The backend itself is the Apache-2.0 [`@sovio-id/credo-openbao-kms`](https://github.com/sovio-id/credo-openbao-kms) plugin.
 Unseal options, PostgreSQL storage, disaster recovery, and the key-rotation prohibitions are documented in its
-[`docs/seal.md`](https://github.com/sovio-id/credo-ts-openbao/blob/main/docs/seal.md).
+[`docs/seal.md`](https://github.com/sovio-id/credo-openbao-kms/blob/main/docs/seal.md).
 
 ## What goes to OpenBao
 

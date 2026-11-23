@@ -5,7 +5,6 @@ import '@hyperledger/indy-vdr-nodejs'
 import '@hyperledger/anoncreds-nodejs'
 import type { AskarModuleConfigStoreOptions } from '@credo-ts/askar'
 import type { InitConfig } from '@credo-ts/core'
-import type { IndyVdrPoolConfig } from '@credo-ts/indy-vdr'
 
 import { PolygonDidRegistrar, PolygonDidResolver, PolygonModule } from '@ayanworks/credo-polygon-w3c-module'
 import {
@@ -21,6 +20,7 @@ import { AskarModule, AskarMultiWalletDatabaseScheme } from '@credo-ts/askar'
 import {
   DidsModule,
   W3cCredentialsModule,
+  W3cV2CredentialsModule,
   KeyDidRegistrar,
   KeyDidResolver,
   CacheModule,
@@ -29,6 +29,7 @@ import {
   LogLevel,
   Agent,
   X509Module,
+  X509ModuleConfig,
   JwkDidRegistrar,
   JwkDidResolver,
   SdJwtVcModule,
@@ -46,27 +47,18 @@ import {
   DidCommModule,
   DidCommDiscoverFeaturesModule,
 } from '@credo-ts/didcomm'
-import {
-  IndyVdrAnonCredsRegistry,
-  IndyVdrIndyDidResolver,
-  IndyVdrModule,
-  IndyVdrIndyDidRegistrar,
-} from '@credo-ts/indy-vdr'
 import { agentDependencies, DidCommHttpInboundTransport, DidCommWsInboundTransport } from '@credo-ts/node'
 import { OpenId4VcHolderModule, OpenId4VcModule } from '@credo-ts/openid4vc'
 import { QuestionAnswerModule } from '@credo-ts/question-answer'
 import { TenantsModule } from '@credo-ts/tenants'
 import { X509DidResolver } from '@didx509/credo'
 import { anoncreds } from '@hyperledger/anoncreds-nodejs'
-import { indyVdr } from '@hyperledger/indy-vdr-nodejs'
 import { askar } from '@openwallet-foundation/askar-nodejs'
-import axios from 'axios'
 import bodyParser from 'body-parser'
 import express from 'express'
 import { readFile } from 'fs/promises'
 
 import { getStoredX509Chain } from './controllers/x509/didX509.utils'
-import { IndicioAcceptanceMechanism, IndicioTransactionAuthorAgreement, Network, NetworkName } from './enums'
 import { validatePurgeConfig } from './purge/PurgeConfigValidator'
 import {
   initPurgeSchedulers,
@@ -80,6 +72,7 @@ import { AuthTypes, getAuthType } from './utils/auth'
 import { isCustomDocumentLoaderEnabled } from './utils/config'
 import { CustomDocumentLoader } from './utils/customDocumentLoader'
 import { generateSecretKey } from './utils/helpers'
+import { getIndyModules, resolveIndyNetworks, type IndyLedgerConfig, type IndyNetworks } from './utils/indyLedger'
 import { NodeKmsModule } from './utils/kms/nodeKms'
 import { OpenBaoKmsModule, getOpenBaoConfigFromEnv, type OpenBaoKmsConfig } from './utils/kms/openBao'
 import { TsLogger } from './utils/logger'
@@ -105,14 +98,16 @@ const outboundTransportMapping = {
   ws: DidCommWsOutboundTransport,
 } as const
 
-interface indyLedger {
-  genesisTransactions: string
-  indyNamespace: string
-}
 export interface AriesRestConfig {
   label: string
   walletConfig: AskarModuleConfigStoreOptions
-  indyLedger: indyLedger[]
+  /** Indy ledgers to connect to. Leave empty (and `BCOVRIN_TEST_GENESIS` unset) to run without Indy. */
+  indyLedger?: IndyLedgerConfig[]
+  /**
+   * Explicit Indy switch. `false` runs without Indy even if a ledger is configured; `true` fails startup when no ledger
+   * is configured. Unset: Indy is enabled exactly when a ledger is configured.
+   */
+  indyEnabled?: boolean
   adminPort: number
   publicDidSeed?: string
   endpoints?: string[]
@@ -161,7 +156,7 @@ expressApp.use(express.json({ limit: process.env.APP_JSON_BODY_SIZE ?? '5mb' }))
 expressApp.use(express.urlencoded({ limit: process.env.APP_URL_ENCODED_BODY_SIZE ?? '5mb', extended: true }))
 // TODO: add object
 const getModules = (
-  networkConfig: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]],
+  networkConfig: IndyNetworks | undefined,
   didRegistryContractAddress: string,
   fileServerToken: string,
   fileServerUrl: string,
@@ -181,6 +176,8 @@ const getModules = (
   const anonCredsCredentialFormatService = new AnonCredsDidCommCredentialFormatService()
   const anonCredsProofFormatService = new AnonCredsDidCommProofFormatService()
   const presentationExchangeProofFormatService = new DidCommDifPresentationExchangeProofFormatService()
+  // Without a configured ledger the Indy VDR module, did:indy and the Indy AnonCreds registry are left out entirely.
+  const indy = getIndyModules(networkConfig)
 
   return {
     askar: new AskarModule({
@@ -198,19 +195,11 @@ const getModules = (
       deploymentId: storeOptions.id,
     }),
 
-    indyVdr: new IndyVdrModule({
-      indyVdr,
-      networks: networkConfig,
-    }),
+    ...(indy.indyVdrModule ? { indyVdr: indy.indyVdrModule } : {}),
     dids: new DidsModule({
-      registrars: [
-        new IndyVdrIndyDidRegistrar(),
-        new KeyDidRegistrar(),
-        new JwkDidRegistrar(),
-        new PolygonDidRegistrar(),
-      ],
+      registrars: [...indy.didRegistrars, new KeyDidRegistrar(), new JwkDidRegistrar(), new PolygonDidRegistrar()],
       resolvers: [
-        new IndyVdrIndyDidResolver(),
+        ...indy.didResolvers,
         new KeyDidResolver(),
         new WebDidResolver(),
         new JwkDidResolver(),
@@ -225,7 +214,7 @@ const getModules = (
     }),
 
     anoncreds: new AnonCredsModule({
-      registries: [new IndyVdrAnonCredsRegistry()],
+      registries: [indy.anonCredsRegistry],
       anoncreds,
     }),
     w3cCredentials: isCustomDocumentLoaderEnabled()
@@ -233,6 +222,7 @@ const getModules = (
           documentLoader: CustomDocumentLoader,
         })
       : new W3cCredentialsModule(),
+    w3cV2Credentials: new W3cV2CredentialsModule(),
     didcomm: new DidCommModule({
       processDidCommMessagesConcurrently: true,
       mediationRecipient: true,
@@ -301,6 +291,8 @@ const getModules = (
         accessTokenExpiresInSeconds: Number(process.env.OID4VCI_ACCESS_TOKEN_EXPIRY) || 3600,
         authorizationCodeExpiresInSeconds: Number(process.env.OID4VCI_AUTH_CODE_EXPIRY) || 3600,
         cNonceExpiresInSeconds: Number(process.env.OID4VCI_CNONCE_EXPIRY) || 3600,
+        // OID4VCI notification endpoint (credential_accepted / _deleted / _failure from wallets); on unless 'false'
+        notificationEndpointEnabled: process.env.OID4VCI_NOTIFICATION_ENDPOINT_ENABLED !== 'false',
         dpopRequired: false,
         credentialRequestToCredentialMapper: (...args) => getMixedCredentialRequestToCredentialMapper()(...args),
       },
@@ -328,8 +320,33 @@ const getModules = (
           return await getX509CertsByClientToken(tenantId, certificateChain)
         }
 
-        // NoAuth: return all certs from the static trust list URL
-        return await getX509CertsByUrl()
+        // NoAuth: return all certs from the static trust list URL.
+        // Locally the trust list service is often unreachable (placeholder URL),
+        // so fall back to the certificates explicitly marked as trusted on this
+        // agent (e.g. added through POST /x509/trusted).
+        try {
+          return await getX509CertsByUrl()
+        } catch (error) {
+          const nodeEnv = process.env.NODE_ENV?.toUpperCase()
+          const isProd = nodeEnv === 'PROD' || nodeEnv === 'PRODUCTION'
+          const allowFallback = process.env.ALLOW_TRUST_LIST_FALLBACK === 'true'
+
+          if (isProd && !allowFallback) {
+            agentContext.config.logger?.warn(
+              '[getTrustedCertificatesForVerification] Trust list lookup failed in production environment. Falling back to agent trusted certificates is disabled. Set ALLOW_TRUST_LIST_FALLBACK=true to override.',
+            )
+            throw error
+          }
+
+          const agentTrustedCertificates = agentContext.dependencyManager.resolve(X509ModuleConfig).trustedCertificates
+          if (agentTrustedCertificates && agentTrustedCertificates.length > 0) {
+            agentContext.config.logger?.warn(
+              `[getTrustedCertificatesForVerification] Trust list lookup failed, falling back to agent trusted certificates${isProd ? ' (explicitly allowed via ALLOW_TRUST_LIST_FALLBACK)' : ' (non-production environment)'}`,
+            )
+            return agentTrustedCertificates
+          }
+          throw error
+        }
       },
     }),
   }
@@ -337,7 +354,7 @@ const getModules = (
 
 // TODO: add object
 const getWithTenantModules = (
-  networkConfig: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]],
+  networkConfig: IndyNetworks | undefined,
   didRegistryContractAddress: string,
   fileServerToken: string,
   fileServerUrl: string,
@@ -415,6 +432,8 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     apiKey,
     updateJwtSecret,
     openBaoConfig: configuredOpenBao,
+    indyLedger,
+    indyEnabled,
     ...afjConfig
   } = restConfig
 
@@ -430,60 +449,13 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     allowInsecureHttpUrls: process.env.ALLOW_INSECURE_HTTP_URLS === 'true',
   }
 
-  async function fetchLedgerData(ledgerConfig: {
-    genesisTransactions: string
-    indyNamespace: string
-  }): Promise<IndyVdrPoolConfig> {
-    const urlPattern = /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/
-
-    if (!urlPattern.test(ledgerConfig.genesisTransactions)) {
-      throw new Error('Not a valid URL')
-    }
-
-    const genesisTransactions = await axios.get(ledgerConfig.genesisTransactions)
-
-    const networkConfig: IndyVdrPoolConfig = {
-      genesisTransactions: genesisTransactions.data,
-      indyNamespace: ledgerConfig.indyNamespace,
-      isProduction: false,
-      connectOnStartup: true,
-    }
-
-    if (ledgerConfig.indyNamespace.includes(NetworkName.Indicio)) {
-      if (ledgerConfig.indyNamespace === (Network.Indicio_Mainnet as string)) {
-        networkConfig.transactionAuthorAgreement = {
-          version: IndicioTransactionAuthorAgreement.Indicio_Testnet_Mainnet_Version,
-          acceptanceMechanism: IndicioAcceptanceMechanism.Wallet_Agreement,
-        }
-      } else {
-        networkConfig.transactionAuthorAgreement = {
-          version: IndicioTransactionAuthorAgreement.Indicio_Demonet_Version,
-          acceptanceMechanism: IndicioAcceptanceMechanism.Wallet_Agreement,
-        }
-      }
-    }
-
-    return networkConfig
-  }
-
-  let networkConfig: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]]
-
-  const parseIndyLedger = afjConfig?.indyLedger ?? []
-  if (parseIndyLedger.length !== 0) {
-    networkConfig = [
-      await fetchLedgerData(parseIndyLedger[0]),
-      ...(await Promise.all(parseIndyLedger.slice(1).map(fetchLedgerData))),
-    ]
+  const networkConfig = await resolveIndyNetworks({ indyLedger, indyEnabled })
+  if (networkConfig) {
+    logger.info(`Indy ledger enabled: ${networkConfig.map((network) => network.indyNamespace).join(', ')}`)
   } else {
-    networkConfig = [
-      {
-        genesisTransactions: process.env.BCOVRIN_TEST_GENESIS as string,
-        indyNamespace: Network.Bcovrin_Testnet,
-        isProduction: false,
-        connectOnStartup: true,
-      },
-    ]
+    logger.info('Indy ledger not configured: running without Indy (no did:indy, no Indy AnonCreds registry)')
   }
+
   const openBaoConfig = configuredOpenBao ?? getOpenBaoConfigFromEnv()
   let modules
 
@@ -592,8 +564,6 @@ export async function runRestAgent(restConfig: AriesRestConfig) {
     },
     apiKey,
   )
-
-  logger.info(`*** API Key: ${apiKey}`)
 
   // Start purge schedulers if enabled (NATS and Cron are independent)
   const purgeConfig = buildPurgeConfig()

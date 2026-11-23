@@ -1,4 +1,4 @@
-import type { Curve } from '../types'
+import type { Curve, KeyImportEncryptedKey } from '../types'
 import type { X509ExtendedKeyUsage, X509KeyUsage } from '@credo-ts/core'
 
 // Enum remains the same
@@ -241,15 +241,24 @@ export interface DidX509ImportOptionsDto {
   certificateChain: string[]
 
   /**
+   * @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Use `encryptedKey` instead.
+   *
    * Private key of the leaf certificate: PEM (PKCS#8, SEC1 or PKCS#1) or base64 DER (PKCS#8). EC (P-256, P-384,
    * P-521), Ed25519 and RSA keys are supported.
    */
-  privateKey: string
+  privateKey?: string
 
   /**
+   * @deprecated Disabled unless `ALLOW_PLAINTEXT_KEY_IMPORT=true`. Send the passphrase inside `encryptedKey`.
+   *
    * Passphrase of the private key if it is encrypted
    */
   passphrase?: string
+
+  /**
+   * Leaf private key encrypted to a single-use import session (see `POST /dids/import/session` with method `x509`).
+   */
+  encryptedKey?: KeyImportEncryptedKey
 
   /**
    * Policies of the DID. Defaults to the common name of the leaf certificate (`subject:CN`) when omitted.

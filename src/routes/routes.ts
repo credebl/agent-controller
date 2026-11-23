@@ -51,6 +51,11 @@ const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "KmsBackendName": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["askar"]},{"dataType":"enum","enums":["node"]},{"dataType":"enum","enums":["openbao"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Curve": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["Ed25519"]},{"dataType":"enum","enums":["X25519"]},{"dataType":"enum","enums":["P-256"]},{"dataType":"enum","enums":["P-384"]},{"dataType":"enum","enums":["P-521"]},{"dataType":"enum","enums":["secp256k1"]}],"validators":{}},
@@ -194,11 +199,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "KeyImportEncryptedKey": {
+        "dataType": "refObject",
+        "properties": {
+            "sessionId": {"dataType":"string","required":true},
+            "jwe": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "X509ImportCertificateOptionsDto": {
         "dataType": "refObject",
         "properties": {
             "certificate": {"dataType":"string","required":true},
             "privateKey": {"dataType":"string"},
+            "encryptedKey": {"ref":"KeyImportEncryptedKey"},
             "keyType": {"dataType":"any","required":true},
         },
         "additionalProperties": false,
@@ -1041,6 +1056,7 @@ const models: TsoaRoute.Models = {
             "tags": {"ref":"CredentialTags"},
             "holderDidUrl": {"dataType":"string"},
             "bindingPolicy": {"ref":"CredentialBindingPolicy","default":"require"},
+            "sendNotification": {"dataType":"boolean","default":true},
         },
         "additionalProperties": false,
     },
@@ -1425,6 +1441,44 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"string","validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidKmsBackend": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"ref":"KmsBackendName"},{"dataType":"enum","enums":["mixed"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidKeyKms": {
+        "dataType": "refObject",
+        "properties": {
+            "didDocumentRelativeKeyId": {"dataType":"string","required":true},
+            "kmsKeyId": {"dataType":"string","required":true},
+            "kmsBackend": {"ref":"KmsBackendName","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "KeyImportSessionResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "sessionId": {"dataType":"string","required":true},
+            "kid": {"dataType":"string","required":true},
+            "method": {"dataType":"string","required":true},
+            "expiresAt": {"dataType":"string","required":true},
+            "alg": {"dataType":"string","required":true},
+            "enc": {"dataType":"string","required":true},
+            "publicKeyJwk": {"ref":"Record_string.unknown_","required":true},
+            "protectedHeader": {"ref":"Record_string.unknown_","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "KeyImportSessionRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "method": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "KeyAlgorithm": {
         "dataType": "refEnum",
         "enums": ["a128gcm","a256gcm","a128cbchs256","a256cbchs512","a128kw","a256kw","bls12381g1","bls12381g2","c20p","xc20p","ed25519","x25519","k256","p256","p384"],
@@ -1448,19 +1502,56 @@ const models: TsoaRoute.Models = {
             "endorserDid": {"dataType":"string"},
             "didDocument": {"ref":"DidDocument"},
             "privatekey": {"dataType":"string"},
+            "privateKey": {"dataType":"string"},
+            "privateKeyJwk": {"ref":"Record_string.unknown_"},
+            "passphrase": {"dataType":"string"},
+            "encryptedKey": {"ref":"KeyImportEncryptedKey"},
             "endpoint": {"dataType":"string"},
             "verificationMethodType": {"ref":"Ed25519VerificationMethodType"},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DidX509ImportResponse": {
+    "DidWebImportedKey": {
+        "dataType": "refObject",
+        "properties": {
+            "verificationMethodId": {"dataType":"string","required":true},
+            "keyId": {"dataType":"string","required":true},
+            "backend": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidWebImportResponse": {
         "dataType": "refObject",
         "properties": {
             "did": {"dataType":"string","required":true},
             "didDocument": {"ref":"Record_string.unknown_","required":true},
-            "keyId": {"dataType":"string","required":true},
+            "keys": {"dataType":"array","array":{"dataType":"refObject","ref":"DidWebImportedKey"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidWebImportKey": {
+        "dataType": "refObject",
+        "properties": {
             "verificationMethodId": {"dataType":"string","required":true},
+            "encryptedKey": {"ref":"KeyImportEncryptedKey"},
+            "privateKey": {"dataType":"string"},
+            "privateKeyJwk": {"ref":"Record_string.unknown_"},
+            "passphrase": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DidWebImportOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "did": {"dataType":"string","required":true},
+            "didDocument": {"ref":"Record_string.unknown_"},
+            "keys": {"dataType":"array","array":{"dataType":"refObject","ref":"DidWebImportKey"},"required":true},
+            "allowUnresolvedDocument": {"dataType":"boolean"},
+            "replace": {"dataType":"boolean"},
         },
         "additionalProperties": false,
     },
@@ -1490,8 +1581,9 @@ const models: TsoaRoute.Models = {
         "dataType": "refObject",
         "properties": {
             "certificateChain": {"dataType":"array","array":{"dataType":"string"},"required":true},
-            "privateKey": {"dataType":"string","required":true},
+            "privateKey": {"dataType":"string"},
             "passphrase": {"dataType":"string"},
+            "encryptedKey": {"ref":"KeyImportEncryptedKey"},
             "policies": {"dataType":"array","array":{"dataType":"refObject","ref":"DidX509Policy"}},
             "did": {"dataType":"string"},
         },
@@ -1654,34 +1746,28 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"method":{"dataType":"string"},"did":{"dataType":"string"},"publicKeyBase58":{"dataType":"string","required":true},"keyType":{"dataType":"any","required":true},"data":{"dataType":"string","required":true}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Partial_W3cCredentialValidations_": {
-        "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{},"validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "Error": {
+    "BitstringStatusVerificationResult": {
         "dataType": "refObject",
         "properties": {
-            "name": {"dataType":"string","required":true},
-            "message": {"dataType":"string","required":true},
-            "stack": {"dataType":"string"},
+            "checked": {"dataType":"boolean","required":true},
+            "revoked": {"dataType":"boolean","required":true},
+            "verified": {"dataType":"boolean","required":true},
+            "statusListUri": {"dataType":"string"},
+            "statusListIndex": {"dataType":"double"},
+            "statusPurpose": {"dataType":"string"},
+            "error": {"dataType":"string"},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "W3cVerifyResult_W3cCredentialValidations_": {
+    "VerifyCredentialResponse": {
         "dataType": "refObject",
         "properties": {
             "isValid": {"dataType":"boolean","required":true},
-            "validations": {"ref":"Partial_W3cCredentialValidations_","required":true},
-            "error": {"ref":"Error"},
+            "verified": {"dataType":"boolean","required":true},
+            "revocation": {"ref":"BitstringStatusVerificationResult","required":true},
         },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "W3cVerifyCredentialResult": {
-        "dataType": "refAlias",
-        "type": {"ref":"W3cVerifyResult_W3cCredentialValidations_","validators":{}},
+        "additionalProperties": {"dataType":"any"},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "AnonCredsW3cCredentialProofOptions": {
@@ -2280,6 +2366,16 @@ const models: TsoaRoute.Models = {
     "GetCredentialFormatDataReturn__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array_": {
         "dataType": "refAlias",
         "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"credential":{"ref":"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.credential_"},"request":{"ref":"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.request_"},"offerAttributes":{"dataType":"array","array":{"dataType":"refObject","ref":"DidCommCredentialPreviewAttributeOptions"}},"offer":{"ref":"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.offer_"},"proposal":{"ref":"CredentialFormatDataMessagePayload__40_LegacyIndyCredentialFormat-or-DidCommJsonLdCredentialFormat-or-AnonCredsDidCommCredentialFormat_41_-Array.proposal_"},"proposalAttributes":{"dataType":"array","array":{"dataType":"refObject","ref":"DidCommCredentialPreviewAttributeOptions"}}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "RevokeBitstringCredentialOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "listId": {"dataType":"string","required":true},
+            "index": {"dataType":"double","required":true},
+            "issuerDid": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "DidCommProofExchangeRecord": {
@@ -4819,6 +4915,118 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsDidController_getDidKms: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                did: {"in":"path","name":"did","required":true,"ref":"Did"},
+        };
+        app.get('/dids/:did/kms',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(DidController)),
+            ...(fetchMiddlewares<RequestHandler>(DidController.prototype.getDidKms)),
+
+            async function DidController_getDidKms(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsDidController_getDidKms, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<DidController>(DidController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'getDidKms',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsDidController_resolveDid: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                did: {"in":"path","name":"did","required":true,"ref":"Did"},
+                useLocalRecord: {"default":true,"in":"query","name":"useLocalRecord","dataType":"boolean"},
+        };
+        app.get('/dids/:did/resolve',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(DidController)),
+            ...(fetchMiddlewares<RequestHandler>(DidController.prototype.resolveDid)),
+
+            async function DidController_resolveDid(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsDidController_resolveDid, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<DidController>(DidController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'resolveDid',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsDidController_createKeyImportSession: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                options: {"in":"body","name":"options","required":true,"ref":"KeyImportSessionRequest"},
+        };
+        app.post('/dids/import/session',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(DidController)),
+            ...(fetchMiddlewares<RequestHandler>(DidController.prototype.createKeyImportSession)),
+
+            async function DidController_createKeyImportSession(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsDidController_createKeyImportSession, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<DidController>(DidController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'createKeyImportSession',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsDidController_writeDid: Record<string, TsoaRoute.ParameterSchema> = {
                 request: {"in":"request","name":"request","required":true,"dataType":"object"},
                 createDidOptions: {"in":"body","name":"createDidOptions","required":true,"ref":"DidCreate"},
@@ -4845,6 +5053,43 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'writeDid',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsDidController_importDidWeb: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                options: {"in":"body","name":"options","required":true,"ref":"DidWebImportOptions"},
+        };
+        app.post('/dids/web/import',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(DidController)),
+            ...(fetchMiddlewares<RequestHandler>(DidController.prototype.importDidWeb)),
+
+            async function DidController_importDidWeb(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsDidController_importDidWeb, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<DidController>(DidController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'importDidWeb',
                 controller,
                 response,
                 next,
@@ -5772,6 +6017,43 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'credentialFormData',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsCredentialController_revokeBitstringCredential: Record<string, TsoaRoute.ParameterSchema> = {
+                request: {"in":"request","name":"request","required":true,"dataType":"object"},
+                revokeOptions: {"in":"body","name":"revokeOptions","required":true,"ref":"RevokeBitstringCredentialOptions"},
+        };
+        app.post('/didcomm/credentials/revoke',
+            authenticateMiddleware([{"jwt":["tenant","dedicated"]}]),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController)),
+            ...(fetchMiddlewares<RequestHandler>(CredentialController.prototype.revokeBitstringCredential)),
+
+            async function CredentialController_revokeBitstringCredential(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsCredentialController_revokeBitstringCredential, request, response });
+
+                const container: IocContainer = typeof iocContainer === 'function' ? (iocContainer as IocContainerFactory)(request) : iocContainer;
+
+                const controller: any = await container.get<CredentialController>(CredentialController);
+                if (typeof controller['setStatus'] === 'function') {
+                controller.setStatus(undefined);
+                }
+
+              await templateService.apiHandler({
+                methodName: 'revokeBitstringCredential',
                 controller,
                 response,
                 next,

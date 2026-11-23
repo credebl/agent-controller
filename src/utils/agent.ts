@@ -23,13 +23,12 @@ import {
   DidCommConnectionInvitationMessage,
   parseInvitationUrl,
 } from '@credo-ts/didcomm'
-import { IndyVdrAnonCredsRegistry, IndyVdrModule } from '@credo-ts/indy-vdr'
 import { agentDependencies, DidCommHttpInboundTransport } from '@credo-ts/node'
 import { TenantsModule } from '@credo-ts/tenants'
 import { anoncreds } from '@hyperledger/anoncreds-nodejs'
-import { indyVdr } from '@hyperledger/indy-vdr-nodejs'
 import { askar } from '@openwallet-foundation/askar-nodejs'
 
+import { getIndyModules, resolveIndyNetworks } from './indyLedger'
 import { TsLogger } from './logger'
 
 export const setupAgent = async ({
@@ -52,20 +51,12 @@ export const setupAgent = async ({
 
   const legacyIndyCredentialFormat = new LegacyIndyDidCommCredentialFormatService()
   const legacyIndyProofFormat = new LegacyIndyDidCommProofFormatService()
+  // Indy is only registered when BCOVRIN_TEST_GENESIS is set; otherwise the agent runs without an Indy ledger.
+  const indy = getIndyModules(await resolveIndyNetworks({ bcovrinNamespace: 'bcovrin:test' }))
   const agent = new Agent({
     config: config,
     modules: {
-      indyVdr: new IndyVdrModule({
-        indyVdr,
-        networks: [
-          {
-            isProduction: false,
-            indyNamespace: 'bcovrin:test',
-            genesisTransactions: process.env.BCOVRIN_TEST_GENESIS as string,
-            connectOnStartup: true,
-          },
-        ],
-      }),
+      ...(indy.indyVdrModule ? { indyVdr: indy.indyVdrModule } : {}),
       askar: new AskarModule({
         askar,
         store: {
@@ -75,7 +66,7 @@ export const setupAgent = async ({
       }),
 
       anoncreds: new AnonCredsModule({
-        registries: [new IndyVdrAnonCredsRegistry()],
+        registries: [indy.anonCredsRegistry],
         anoncreds,
       }),
 
@@ -87,7 +78,7 @@ export const setupAgent = async ({
       didcomm: new DidCommModule({
         processDidCommMessagesConcurrently: true,
         anoncreds: new AnonCredsModule({
-          registries: [new IndyVdrAnonCredsRegistry()],
+          registries: [indy.anonCredsRegistry],
           anoncreds,
         }),
         oob: true,

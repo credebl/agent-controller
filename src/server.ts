@@ -92,6 +92,15 @@ export const setupServer = async (
   // apply rate limiter to all requests
   app.use(limiter)
 
+  // Key import sessions create an RSA key pair each, so they get a much tighter budget than the global limiter.
+  const keyImportLimiter = rateLimit({
+    windowMs: Number(process.env.KEY_IMPORT_WINDOW_MS) || 60_000,
+    max: Number(process.env.KEY_IMPORT_RATE_LIMIT) || 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+  })
+  app.use('/dids/import/session', keyImportLimiter)
+
   // Note: Having used it above, redirects accordingly
   app.use((req, res, next) => {
     if (req.url == '/') {
@@ -115,10 +124,17 @@ export const setupServer = async (
   app.use((async (err: unknown, req: ExRequest, res: ExResponse, next: NextFunction): Promise<ExResponse | void> => {
     // End tenant session if active
     if (err instanceof ValidateError) {
-      agent.config.logger.warn(`Caught Validation Error for ${req.path}:`, err.fields)
+      // Never log or echo `err.fields[].value`: for a key import request it contains the private key.
+      const details = Object.fromEntries(
+        Object.entries(err.fields ?? {}).map(([name, field]) => [
+          name,
+          { message: (field as { message?: string })?.message ?? 'Invalid value' },
+        ]),
+      )
+      agent.config.logger.warn(`Caught Validation Error for ${req.path}: ${Object.keys(details).join(', ')}`)
       return res.status(422).json({
         message: 'Validation Failed',
-        details: err?.fields,
+        details,
       })
     } else if (err instanceof BaseError) {
       return res.status(err.statusCode).json({

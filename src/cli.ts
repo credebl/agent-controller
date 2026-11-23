@@ -8,6 +8,7 @@ import { hideBin } from 'yargs/helpers'
 dotenv.config()
 
 import { runRestAgent } from './cliAgent.js'
+import { unsetBlankEnv } from './utils/config.js'
 
 function envBoolean(name: string, defaultValue = false): boolean {
   const value = process.env[name]
@@ -39,6 +40,7 @@ interface Parsed {
   'wallet-admin-account': string
   'wallet-admin-password': string
   'indy-ledger': IndyLedger[]
+  'indy-enabled'?: boolean
   endpoint?: string[]
   'log-level': number
   'outbound-transport': ('http' | 'ws')[]
@@ -88,6 +90,9 @@ interface InboundTransport {
 type Transports = 'http' | 'ws'
 
 async function parseArguments(): Promise<Parsed> {
+  // A blank AFJ_REST_INDY_ENABLED= must not turn Indy off; explicit `false` and --no-indy-enabled still do.
+  unsetBlankEnv(['AFJ_REST_INDY_ENABLED'])
+
   return yargs(hideBin(process.argv))
     .command('start', 'Start Credo Rest agent')
     .option('label', { alias: 'l', string: true, demandOption: true })
@@ -108,6 +113,12 @@ async function parseArguments(): Promise<Parsed> {
           genesisTransactions: item.genesisTransactions,
           indyNamespace: item.indyNamespace,
         })),
+    })
+    .option('indy-enabled', {
+      boolean: true,
+      description:
+        'Indy switch (env AFJ_REST_INDY_ENABLED). false: never register Indy. true: fail startup without a ledger. ' +
+        'Unset: Indy is enabled when indy-ledger or BCOVRIN_TEST_GENESIS is set.',
     })
     .option('endpoint', {
       array: true,
@@ -285,6 +296,7 @@ export async function runCliServer() {
       },
     },
     indyLedger: parsed['indy-ledger'],
+    indyEnabled: parsed['indy-enabled'],
     endpoints: parsed.endpoint,
     autoAcceptConnections: parsed['auto-accept-connections'],
     autoAcceptCredentials: parsed['auto-accept-credentials'],

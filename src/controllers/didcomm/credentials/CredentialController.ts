@@ -1,6 +1,6 @@
 import type { PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
 
-import { W3cCredentialService, createPeerDidDocumentFromServices, PeerDidNumAlgo } from '@credo-ts/core'
+import { W3cCredentialService, createPeerDidDocumentFromServices, parseDid, PeerDidNumAlgo } from '@credo-ts/core'
 import {
   DidCommCredentialExchangeRecordProps,
   CredentialProtocolVersionType,
@@ -14,9 +14,11 @@ import { injectable } from 'tsyringe'
 
 import { SCOPES } from '../../../enums'
 import ErrorHandlingService from '../../../errorHandlingService'
+import { ForbiddenError } from '../../../errors/errors'
 import { PurgeRecordType } from '../../../purge/PurgeTypes'
 import { SchedulePurge } from '../../../purge/decorators/SchedulePurge'
 import { AgentType } from '../../../types'
+import { checkAndCreateBitstringStatusList, revokeBitstringInStatusList } from '../../../utils/statusListService'
 import { CredentialExchangeRecordExample, RecordId } from '../../examples'
 import {
   AcceptCredentialRequestOptions,
@@ -26,9 +28,12 @@ import {
   CreateOfferOptions,
   AcceptCredential,
   CreateOfferOobOptions,
+  RevokeBitstringCredentialOptions,
   ThreadId,
 } from '../../types'
 import { OutOfBandController } from '../outofband/OutOfBandController'
+
+const BITSTRING_STATUS_LIST_ENTRY_TYPE = 'BitstringStatusListEntry'
 
 @Tags('DIDComm - Credentials')
 @Security('jwt', [SCOPES.TENANT_AGENT, SCOPES.DEDICATED_AGENT])
@@ -168,6 +173,7 @@ export class CredentialController extends Controller {
   @SchedulePurge(PurgeRecordType.DIDCOMM_CREDENTIAL, (r) => (r as any)?.id)
   public async createOffer(@Request() request: Req, @Body() createOfferOptions: CreateOfferOptions) {
     try {
+      await this.ensureBitstringStatusLists(request.agent as any, createOfferOptions.credentialFormats)
       const offer = await request.agent.modules.didcomm.credentials.offerCredential(createOfferOptions)
       return offer
     } catch (error) {
@@ -208,6 +214,8 @@ export class CredentialController extends Controller {
         })
         invitationDid = did.didState.did
       }
+
+      await this.ensureBitstringStatusLists(request.agent as any, outOfBandOption.credentialFormats)
 
       const offerOob = await request.agent.modules.didcomm.credentials.createOffer({
         protocolVersion: outOfBandOption.protocolVersion as CredentialProtocolVersionType<[]>,
@@ -317,6 +325,87 @@ export class CredentialController extends Controller {
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
+  }
+
+  @Post('/revoke')
+  public async revokeBitstringCredential(
+    @Request() request: Req,
+    @Body() revokeOptions: RevokeBitstringCredentialOptions,
+  ) {
+    try {
+      await this.assertIssuerDidOwnership(request, revokeOptions.issuerDid)
+      await revokeBitstringInStatusList(
+        request.agent as any,
+        revokeOptions.listId,
+        revokeOptions.index,
+        revokeOptions.issuerDid,
+      )
+      return { revoked: true, listId: revokeOptions.listId, index: revokeOptions.index }
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
+   * Ensure the authenticated wallet controls the DID that will sign the status-list update.
+   */
+  private async assertIssuerDidOwnership(request: Req, issuerDid: string): Promise<void> {
+    let did: string
+    try {
+      did = parseDid(issuerDid).did
+    } catch {
+      throw new ForbiddenError(`Caller does not control issuer DID ${issuerDid}`)
+    }
+
+    const [ownedDid] = await request.agent.dids.getCreatedDids({ did })
+    if (!ownedDid) {
+      throw new ForbiddenError(`Caller does not control issuer DID ${issuerDid}`)
+    }
+  }
+
+  private async ensureBitstringStatusLists(agent: AgentType, credentialFormats: unknown): Promise<void> {
+    const seen = new WeakSet<object>()
+
+    const visit = async (value: unknown): Promise<void> => {
+      if (!value || 'object' !== typeof value) {
+        return
+      }
+      if (seen.has(value as object)) {
+        return
+      }
+      seen.add(value as object)
+
+      if (Array.isArray(value)) {
+        await Promise.all(value.map((item) => visit(item)))
+        return
+      }
+
+      const record = value as Record<string, unknown>
+      const issuer = record.issuer
+      const issuerDid = 'string' === typeof issuer ? issuer : (issuer as Record<string, unknown> | undefined)?.id
+      const statuses = Array.isArray(record.credentialStatus) ? record.credentialStatus : [record.credentialStatus]
+
+      for (const item of statuses) {
+        const status = item as Record<string, unknown> | undefined
+        const statusTypes = Array.isArray(status?.type) ? status.type : [status?.type]
+        if (
+          status &&
+          statusTypes.includes(BITSTRING_STATUS_LIST_ENTRY_TYPE) &&
+          'string' === typeof status.statusListCredential
+        ) {
+          const statusListUri = status.statusListCredential
+          const parts = statusListUri.split('/').filter(Boolean)
+          const listId = parts[parts.length - 1]
+          if (listId && 'string' === typeof issuerDid) {
+            await checkAndCreateBitstringStatusList(agent as any, listId, issuerDid)
+          }
+        }
+      }
+
+      await Promise.all(Object.values(record).map((child) => visit(child)))
+    }
+
+    await visit(credentialFormats)
   }
 
   private async ensureLinkSecretExists(agent: AgentType): Promise<void> {

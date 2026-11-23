@@ -12,12 +12,14 @@ import {
 } from '@credo-ts/core'
 import { NodeKeyManagementService } from '@credo-ts/node'
 
+import { NODE_KMS_BACKEND } from './backend'
+
 /**
  * Askar's KMS only handles EC / OKP / oct keys. The Node (node:crypto) KMS is registered next to it so keys that Askar
  * cannot hold, such as the RSA keys that many CA-issued X.509 certificates use, can still be imported and used for
  * signing. Askar stays the default backend, the Node backend is only picked for operations Askar does not support.
  */
-export const NODE_KMS_BACKEND = 'node'
+export { NODE_KMS_BACKEND }
 
 export class NodeKeyRecord extends BaseRecord {
   public static readonly type = 'NodeKeyRecord'

@@ -10,6 +10,7 @@ import {
   buildPolicy,
   parseCertificateChain,
   parsePrivateKey,
+  parsePrivateKeyJwk,
   privateKeyToJwk,
   toX509ChainOption,
 } from '../didX509.utils'
@@ -158,5 +159,38 @@ describe('did:x509 policies and key parsing', () => {
   it('rejects garbage as private key and as certificate', () => {
     expect(() => parsePrivateKey('not a key')).toThrow('Unable to read privateKey')
     expect(() => parseCertificateChain(['not a certificate'])).toThrow('invalid certificate')
+  })
+})
+
+describe('parsePrivateKeyJwk', () => {
+  it.each(['P-256', 'P-384', 'P-521', 'Ed25519', 'RSA'] as const)(
+    'reads a %s private JWK given as an object',
+    (type) => {
+      const { privateKey } = algorithms[type].generate()
+      const jwk = privateKey.export({ format: 'jwk' })
+
+      const parsed = parsePrivateKeyJwk(jwk as Record<string, unknown>)
+      expect(parsed.type).toBe(privateKey.type)
+      expect(parsed.asymmetricKeyType).toBe(privateKey.asymmetricKeyType)
+    },
+  )
+
+  it('reads a private JWK given as a JSON string', () => {
+    const { privateKey } = algorithms['P-256'].generate()
+    const jwk = JSON.stringify(privateKey.export({ format: 'jwk' }))
+
+    const parsed = parsePrivateKeyJwk(jwk)
+    expect(parsed.asymmetricKeyType).toBe('ec')
+  })
+
+  it('rejects public JWKs, symmetric keys and invalid input', () => {
+    const { publicKey } = algorithms['P-256'].generate()
+
+    expect(() => parsePrivateKeyJwk(publicKey.export({ format: 'jwk' }) as Record<string, unknown>)).toThrow(
+      'expected a private JWK',
+    )
+    expect(() => parsePrivateKeyJwk({ kty: 'oct', d: 'c2VjcmV0' })).toThrow('symmetric (oct) keys are not supported')
+    expect(() => parsePrivateKeyJwk('{not json')).toThrow('Unable to read privateKeyJwk')
+    expect(() => parsePrivateKeyJwk({})).toThrow('expected a JWK object with a kty parameter')
   })
 })

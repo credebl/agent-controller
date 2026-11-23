@@ -1,16 +1,23 @@
 import type { DidResolutionResultProps } from '../types'
 import type { PolygonDidCreateOptions } from '@ayanworks/credo-polygon-w3c-module/build/dids/PolygonDidRegistrar.mjs'
-import type { DidDocument, KeyDidCreateOptions, PeerDidNumAlgo2CreateOptions } from '@credo-ts/core'
+import type {
+  DidDocument,
+  DidDocumentKey,
+  KeyDidCreateOptions,
+  PeerDidNumAlgo2CreateOptions,
+  VerificationMethod,
+} from '@credo-ts/core'
 
-import { openBaoKeyId } from '@credebl/credo-ts-openbao'
 import { transformPrivateKeyToPrivateJwk, transformSeedToPrivateJwk } from '@credo-ts/askar'
 import {
   TypedArrayEncoder,
   DidDocumentBuilder,
   getEd25519VerificationKey2018,
   getEd25519VerificationKey2020,
+  getJsonWebKey2020,
   SECURITY_ED25519_2018_CONTEXT_URL,
   SECURITY_ED25519_2020_CONTEXT_URL,
+  SECURITY_JWS_CONTEXT_URL,
   VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2018,
   VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020,
   createPeerDidDocumentFromServices,
@@ -22,29 +29,76 @@ import {
   DidKey,
 } from '@credo-ts/core'
 import { Key, KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
+import { openBaoKeyId } from '@sovio-id/credo-openbao-kms'
 import axios from 'axios'
 import { Request as Req } from 'express'
-import { Body, Controller, Example, Get, Path, Post, Route, Tags, Security, Request } from 'tsoa'
+import { Body, Controller, Example, Get, Path, Post, Query, Route, Tags, Security, Request, Response } from 'tsoa'
 import { injectable } from 'tsyringe'
 import { container } from 'tsyringe'
 
 import { RestMultiTenantAgentModules } from '../../cliAgent'
 import { DidMethod, KeyAlgorithmCurve, Network, Role, SCOPES } from '../../enums'
 import ErrorHandlingService from '../../errorHandlingService'
-import { BadRequestError, InternalServerError } from '../../errors'
+import { BadRequestError, InternalServerError, NotFoundError } from '../../errors'
 import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
+import { assertIndyDidRegistrar } from '../../utils/indyLedgerGuard'
+import { KeyImportEnvelopeError } from '../../utils/keyImport/jwe'
+import { assertPlaintextKeyImportAllowed } from '../../utils/keyImport/plaintextGate'
 import {
+  agentBindingFor,
+  consumeImportSession,
+  consumeImportSessions,
+  createImportSession,
+  inspectImportSession,
+  isKeyImportMethod,
+  KEY_IMPORT_METHODS,
+  KeyImportSessionError,
+  type KeyImportKeyMaterial,
+  type KeyImportMethod,
+} from '../../utils/keyImport/session'
+import { ASKAR_KMS_BACKEND, needsNodeKms, NODE_KMS_BACKEND, selectKmsBackendForJwk } from '../../utils/kms/backend'
+import { describeDidKms } from '../../utils/kms/didKms'
+import {
+  OPENBAO_KMS_BACKEND,
   openBaoBackendForCreate,
   openBaoBackendForDidMethod,
   openBaoBackendForJwk,
   openBaoKeyIdForPrivateJwk,
 } from '../../utils/kms/openBao'
 import { CreateDidResponse, Did, DidRecordExample } from '../examples'
-import { DidCreate, supportedKeyTypesDID } from '../types'
+import {
+  DidCreate,
+  DidWebImportOptions,
+  DidWebImportResponse,
+  KeyImportSessionRequest,
+  KeyImportSessionResponse,
+  supportedKeyTypesDID,
+} from '../types'
 import { didX509Service } from '../x509/didX509.service'
+import { parsePrivateKey, parsePrivateKeyJwk, privateKeyToJwk } from '../x509/didX509.utils'
 import { DidX509ImportOptionsDto } from '../x509/x509.types'
+
+import { assertValidDidWebDomain, encodeDidWebDomain } from './didWebDomain'
+import {
+  assertPrivateKeyMatchesVerificationMethod,
+  assertValidDidWebIdentifier,
+  didDocumentsEqual,
+  normalizeVerificationMethodId,
+  parseDidWebDocument,
+  privateJwkThumbprint,
+  verificationMethodRelativeId,
+  verificationMethodsById,
+} from './didWebImport'
+
+/** A validated, decrypted key paired with the verification method it was published for. */
+type PreparedDidWebImportKey = {
+  method: VerificationMethod
+  privateJwk: Kms.KmsJwkPrivate
+  relativeId: string
+  thumbprint: string
+}
 
 @Tags('Dids')
 @Route('/dids')
@@ -78,12 +132,102 @@ export class DidController extends Controller {
   }
 
   /**
+   * Reports which KMS backend (Askar, Node or OpenBao) stores the keys of a DID this agent created or imported.
+   * Read-only. A DID the agent holds no keys for returns `kmsBackend: null` and no keys.
+   * @param did Decentralized Identifier
+   */
+  @Get('/:did/kms')
+  public async getDidKms(@Request() request: Req, @Path('did') did: Did) {
+    try {
+      return { did, ...(await describeDidKms(request.agent, did)) }
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /** Indy results nest the DID in `didState`, every other method returns it at the top level. */
+  private didOf(result: { did?: string; didState?: { did?: string } } | undefined): string | undefined {
+    return result?.did ?? result?.didState?.did
+  }
+
+  /** The key storage details added to a created DID. They never fail the request that created the DID. */
+  private async describeKmsOf(agent: AgentType, did?: string) {
+    if (!did) return {}
+    try {
+      return await describeDidKms(agent, did)
+    } catch (error) {
+      agent.config.logger.warn(`Unable to read the KMS backend of ${did}`, { error })
+      return {}
+    }
+  }
+
+  /**
+   * Resolves a DID without storing anything in the agent wallet. `GET /dids/{did}` also imports the DID with
+   * `overwrite: true`, so it writes; this is the read-only variant used to check what a DID currently resolves to.
+   * @param did Decentralized Identifier
+   * @param useLocalRecord Resolve a DID this agent created from the agent's own record (default). Pass `false` to
+   * resolve it over the network instead, for example to check that a did:web document is actually hosted.
+   * @returns DidResolutionResult
+   */
+  @Example<DidResolutionResultProps>(DidRecordExample)
+  @Get('/:did/resolve')
+  public async resolveDid(
+    @Request() request: Req,
+    @Path('did') did: Did,
+    @Query('useLocalRecord') useLocalRecord = true,
+  ) {
+    try {
+      const { didDocument, didDocumentMetadata, didResolutionMetadata } = await request.agent.dids.resolve(did, {
+        useLocalCreatedDidRecord: useLocalRecord,
+      })
+      if (!didDocument) {
+        // Credo reports an unresolvable DID in the metadata instead of throwing.
+        const reason = didResolutionMetadata?.message ?? didResolutionMetadata?.error ?? 'unknown reason'
+        throw new NotFoundError(`Unable to resolve ${did}: ${reason}`)
+      }
+
+      return { didResolutionMetadata, didDocumentMetadata, didDocument: didDocument.toJSON() }
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
+   * Creates a single-use key import session and returns the public key the client encrypts the private key to.
+   * The private key material never travels in plaintext through the API gateway, NATS, the agent service or logs.
+   * @body KeyImportSessionRequest
+   * @returns KeyImportSessionResponse
+   */
+  @Post('/import/session')
+  public async createKeyImportSession(
+    @Request() request: Req,
+    @Body() options: KeyImportSessionRequest,
+  ): Promise<KeyImportSessionResponse> {
+    try {
+      if (!isKeyImportMethod(options?.method)) {
+        throw new BadRequestError(`method must be one of ${KEY_IMPORT_METHODS.join(', ')}`)
+      }
+
+      const descriptor = await createImportSession(options.method, agentBindingFor(request.agent))
+      // Import material must never be cached by a browser, proxy or CDN.
+      this.setHeader('Cache-Control', 'no-store')
+      this.setHeader('Pragma', 'no-cache')
+      this.agent.config.logger.info(`Created a key import session for method:${options.method}`)
+
+      return descriptor
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /**
    * Did nym registration
    * @body DidCreateOptions
    * @returns DidResolutionResult
    */
   // @Example<DidResolutionResultProps>(DidRecordExample)
   @Example(CreateDidResponse)
+  @Response(501, 'Indy ledger is not configured')
   @Post('/write')
   public async writeDid(@Request() request: Req, @Body() createDidOptions: DidCreate) {
     let didRes
@@ -93,38 +237,485 @@ export class DidController extends Controller {
         throw new BadRequestError('Method is required')
       }
 
+      const didOptions = this.resolveImportKeyMaterial(request.agent, createDidOptions)
+
       let result
-      switch (createDidOptions.method) {
+      switch (didOptions.method) {
         case DidMethod.Indy:
-          result = await this.handleIndy(request.agent, createDidOptions)
+          result = await this.handleIndy(request.agent, didOptions)
           break
 
         case DidMethod.Key:
-          result = await this.handleKey(request.agent, createDidOptions)
+          result = await this.handleKey(request.agent, didOptions)
           break
 
         case DidMethod.Web:
-          result = await this.handleWeb(request.agent, createDidOptions)
+          result = await this.handleWeb(request.agent, didOptions)
           break
 
         case DidMethod.Polygon:
-          result = await this.handlePolygon(request.agent, createDidOptions)
+          result = await this.handlePolygon(request.agent, didOptions)
           break
 
         case DidMethod.Peer:
-          result = await this.handleDidPeer(request.agent, createDidOptions)
+          result = await this.handleDidPeer(request.agent, didOptions)
           break
 
         default:
-          throw new BadRequestError(`Invalid method: ${createDidOptions.method}`)
+          throw new BadRequestError(`Invalid method: ${didOptions.method}`)
       }
 
-      didRes = { ...result }
+      didRes = { ...result, ...(await this.describeKmsOf(request.agent, this.didOf(result))) }
 
       return didRes
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
+  }
+
+  /**
+   * Imports a `did:web` identity that was created and is hosted by an external authority, for example a government
+   * agency. The authority's document is stored verbatim and each supplied private key is bound to the verification
+   * method it was published for, so signatures reference the authority's ids instead of a regenerated `#key-1`.
+   * @body DidWebImportOptions
+   * @returns DidWebImportResponse
+   */
+  @Post('/web/import')
+  public async importDidWeb(
+    @Request() request: Req,
+    @Body() options: DidWebImportOptions,
+  ): Promise<DidWebImportResponse> {
+    try {
+      assertValidDidWebIdentifier(options?.did)
+      const did = options.did
+      const keyOptions = this.didWebImportKeys(options)
+
+      const didDocument = await this.didWebDocumentForImport(request.agent, did, options)
+      const methods = this.validateDidWebImportKeys(did, didDocument, keyOptions)
+      const prepared = this.prepareDidWebImportKeys(request.agent, did, keyOptions, methods)
+
+      // Re-importing the same document and keys is a no-op. Rebinding an existing DID must be explicit, because an
+      // already issued credential would otherwise silently stop verifying.
+      const existing = await this.matchingDidWebImport(request.agent, did, didDocument, prepared, options.replace)
+
+      // Decryption above does not consume a session, and this runs only once the import is known to be an exact
+      // re-import or certain to be stored, so a rejected request can be retried with the same envelopes.
+      this.consumeDidWebImportSessions(request.agent, keyOptions)
+      if (existing) return existing
+
+      const { bindings, keys } = await this.importDidWebKeys(request.agent, prepared)
+
+      // `overwrite` also repairs a keyless record that `GET /dids/:did` may have stored for this DID.
+      await request.agent.dids.import({ did, didDocument, keys: bindings, overwrite: true })
+
+      return { did, didDocument: didDocument.toJSON(), keys }
+    } catch (error) {
+      throw ErrorHandlingService.handle(error)
+    }
+  }
+
+  /** Fails fast when no key is supplied, before the document is resolved or an envelope is decrypted. */
+  private didWebImportKeys(options: DidWebImportOptions): DidWebImportOptions['keys'] {
+    const keyOptions = options.keys
+    if (!Array.isArray(keyOptions) || keyOptions.length === 0) {
+      throw new BadRequestError('keys must contain at least one verification method key')
+    }
+    return keyOptions
+  }
+
+  /**
+   * Structural validation happens before any envelope is decrypted, so an invalid document does not burn a session.
+   */
+  private validateDidWebImportKeys(
+    did: string,
+    didDocument: DidDocument,
+    keyOptions: DidWebImportOptions['keys'],
+  ): Map<string, VerificationMethod> {
+    const methods = verificationMethodsById(didDocument)
+    const seenMethods = new Set<string>()
+    const seenSessions = new Set<string>()
+
+    for (const keyOption of keyOptions) {
+      if (!keyOption || typeof keyOption.verificationMethodId !== 'string') {
+        throw new BadRequestError('keys[].verificationMethodId is required')
+      }
+
+      const normalizedId = normalizeVerificationMethodId(did, keyOption.verificationMethodId)
+      if (seenMethods.has(normalizedId)) {
+        throw new BadRequestError(
+          `keys contains more than one entry for verification method "${keyOption.verificationMethodId}"`,
+        )
+      }
+      seenMethods.add(normalizedId)
+      if (!methods.has(normalizedId)) {
+        throw new BadRequestError(
+          `Verification method "${keyOption.verificationMethodId}" does not exist in didDocument`,
+        )
+      }
+
+      if (keyOption.encryptedKey) {
+        if (keyOption.privateKey || keyOption.privateKeyJwk || keyOption.passphrase) {
+          throw new BadRequestError('Provide either encryptedKey or plaintext key material per key, not both')
+        }
+        this.validateDidWebImportSession(keyOption.encryptedKey, seenSessions)
+        continue
+      }
+
+      assertPlaintextKeyImportAllowed(keyOption)
+      if (!keyOption.privateKey && !keyOption.privateKeyJwk) {
+        throw new BadRequestError(
+          `Verification method "${keyOption.verificationMethodId}" needs an encryptedKey or plaintext private key`,
+        )
+      }
+    }
+
+    return methods
+  }
+
+  private validateDidWebImportSession(
+    encryptedKey: NonNullable<DidWebImportOptions['keys'][number]['encryptedKey']>,
+    seenSessions: Set<string>,
+  ): void {
+    if (!encryptedKey.sessionId || typeof encryptedKey.jwe !== 'string') {
+      throw new BadRequestError('encryptedKey.sessionId and encryptedKey.jwe are required')
+    }
+    if (seenSessions.has(encryptedKey.sessionId)) {
+      throw new BadRequestError('Each key needs its own import session')
+    }
+    seenSessions.add(encryptedKey.sessionId)
+  }
+
+  /** Decrypts without consuming: a rejected document/key binding must leave every session usable for a retry. */
+  private didWebImportMaterial(agent: AgentType, keyOption: DidWebImportOptions['keys'][number]): KeyImportKeyMaterial {
+    if (!keyOption.encryptedKey) {
+      return {
+        ...(keyOption.privateKey !== undefined ? { privateKey: keyOption.privateKey } : {}),
+        ...(keyOption.privateKeyJwk !== undefined ? { privateKeyJwk: keyOption.privateKeyJwk } : {}),
+        ...(keyOption.passphrase !== undefined ? { passphrase: keyOption.passphrase } : {}),
+      }
+    }
+
+    try {
+      return inspectImportSession({
+        sessionId: keyOption.encryptedKey.sessionId,
+        jwe: keyOption.encryptedKey.jwe,
+        agentBinding: agentBindingFor(agent),
+        method: 'web',
+      })
+    } catch (error) {
+      if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
+  }
+
+  private prepareDidWebImportKeys(
+    agent: AgentType,
+    did: string,
+    keyOptions: DidWebImportOptions['keys'],
+    methods: Map<string, VerificationMethod>,
+  ): PreparedDidWebImportKey[] {
+    const materials = keyOptions.map((keyOption) => this.didWebImportMaterial(agent, keyOption))
+
+    return keyOptions.map((keyOption, index) => {
+      const method = methods.get(
+        normalizeVerificationMethodId(did, keyOption.verificationMethodId),
+      ) as VerificationMethod
+      const privateJwk = this.readImportedPrivateKey(materials[index])
+      this.assertImportedKeySupported('web', privateJwk)
+      assertPrivateKeyMatchesVerificationMethod(privateJwk, method)
+
+      return {
+        method,
+        privateJwk,
+        relativeId: verificationMethodRelativeId(normalizeVerificationMethodId(did, method.id)),
+        thumbprint: privateJwkThumbprint(privateJwk),
+      }
+    })
+  }
+
+  /**
+   * Returns the stored response for an exact re-import and throws for a conflicting binding. Returns `undefined` when
+   * the DID is new or the caller passed `replace`.
+   */
+  private async matchingDidWebImport(
+    agent: AgentType,
+    did: string,
+    didDocument: DidDocument,
+    prepared: PreparedDidWebImportKey[],
+    replace?: boolean,
+  ): Promise<DidWebImportResponse | undefined> {
+    if (replace) return undefined
+
+    const [existing] = await agent.dids.getCreatedDids({ did })
+    const existingDocument = existing?.didDocument
+    const existingKeys = existing?.keys
+    if (!existingDocument || !existingKeys?.length) return undefined
+
+    if (!(await this.existingDidWebImportMatches(agent, didDocument, existingDocument, existingKeys, prepared))) {
+      throw new BadRequestError(
+        `${did} is already imported with a different document or key binding. Pass replace:true to rebind it.`,
+      )
+    }
+
+    return {
+      did,
+      didDocument: existingDocument.toJSON(),
+      keys: prepared.map((key) => ({
+        verificationMethodId: key.method.id,
+        keyId: existingKeys.find(({ didDocumentRelativeKeyId }) => didDocumentRelativeKeyId === key.relativeId)
+          ?.kmsKeyId as string,
+        backend: this.importedKeyBackendName('web', key.privateJwk),
+      })),
+    }
+  }
+
+  private async existingDidWebImportMatches(
+    agent: AgentType,
+    didDocument: DidDocument,
+    existingDocument: DidDocument,
+    existingKeys: DidDocumentKey[],
+    prepared: PreparedDidWebImportKey[],
+  ): Promise<boolean> {
+    if (existingKeys.length !== prepared.length) return false
+    if (!didDocumentsEqual(didDocument, existingDocument)) return false
+
+    const matches = await Promise.all(prepared.map((key) => this.existingDidWebKeyMatches(agent, existingKeys, key)))
+    return matches.every(Boolean)
+  }
+
+  private async existingDidWebKeyMatches(
+    agent: AgentType,
+    existingKeys: DidDocumentKey[],
+    key: PreparedDidWebImportKey,
+  ): Promise<boolean> {
+    const binding = existingKeys.find(({ didDocumentRelativeKeyId }) => didDocumentRelativeKeyId === key.relativeId)
+    return binding !== undefined && (await this.storedKeyMatchesThumbprint(agent, binding.kmsKeyId, key.thumbprint))
+  }
+
+  private async importDidWebKeys(
+    agent: AgentType,
+    prepared: PreparedDidWebImportKey[],
+  ): Promise<{ bindings: DidDocumentKey[]; keys: DidWebImportResponse['keys'] }> {
+    const imported = await Promise.all(
+      prepared.map(async (key) => {
+        const { keyId } = await this.importKey(agent, key.privateJwk, this.importedKeyBackend('web', key.privateJwk))
+        return {
+          binding: { didDocumentRelativeKeyId: key.relativeId, kmsKeyId: keyId },
+          key: {
+            verificationMethodId: key.method.id,
+            keyId,
+            backend: this.importedKeyBackendName('web', key.privateJwk),
+          },
+        }
+      }),
+    )
+
+    return {
+      bindings: imported.map(({ binding }) => binding),
+      keys: imported.map(({ key }) => key),
+    }
+  }
+
+  /** The authority's document: supplied verbatim, or resolved when the caller cannot pass it in. */
+  private async didWebDocumentForImport(
+    agent: AgentType,
+    did: string,
+    options: DidWebImportOptions,
+  ): Promise<DidDocument> {
+    if (options.didDocument === undefined || options.didDocument === null) {
+      return this.resolveDidWebDocumentFromNetwork(agent, did)
+    }
+
+    const supplied = parseDidWebDocument(options.didDocument, did)
+    if (options.allowUnresolvedDocument) return supplied
+
+    let resolved: DidDocument | undefined
+    try {
+      resolved = await this.resolveDidWebDocumentFromNetwork(agent, did)
+    } catch {
+      resolved = undefined
+    }
+
+    if (!resolved) {
+      throw new BadRequestError(
+        `${did} could not be resolved, so the supplied didDocument cannot be checked against the published document. Pass allowUnresolvedDocument:true to import an offline copy.`,
+      )
+    }
+    if (!didDocumentsEqual(supplied, resolved)) {
+      throw new BadRequestError(
+        `didDocument does not match the document published for ${did}. Pass allowUnresolvedDocument:true to import an offline copy.`,
+      )
+    }
+
+    return supplied
+  }
+
+  private async resolveDidWebDocumentFromNetwork(agent: AgentType, did: string): Promise<DidDocument> {
+    const { didDocument, didResolutionMetadata } = await agent.dids.resolve(did, {
+      useLocalCreatedDidRecord: false,
+    })
+    if (!didDocument) {
+      const reason = didResolutionMetadata?.message ?? didResolutionMetadata?.error ?? 'unknown reason'
+      throw new BadRequestError(`Unable to resolve ${did}: ${reason}`)
+    }
+    return didDocument
+  }
+
+  private consumeDidWebImportSessions(agent: AgentType, keyOptions: DidWebImportOptions['keys']): void {
+    const entries = keyOptions.flatMap(({ encryptedKey }) =>
+      encryptedKey ? [{ sessionId: encryptedKey.sessionId, jwe: encryptedKey.jwe }] : [],
+    )
+    if (entries.length === 0) return
+
+    try {
+      consumeImportSessions({ entries, agentBinding: agentBindingFor(agent), method: 'web' })
+    } catch (error) {
+      if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
+  }
+
+  private async storedKeyMatchesThumbprint(agent: AgentType, keyId: string, thumbprint: string): Promise<boolean> {
+    try {
+      const publicJwk = (await agent.kms.getPublicKey({ keyId })) as Kms.KmsJwkPublicAsymmetric
+      return TypedArrayEncoder.toBase64Url(Kms.PublicJwk.fromPublicJwk(publicJwk).getJwkThumbprint()) === thumbprint
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Replaces `encryptedKey` with the decrypted key material. The session is bound to this agent and DID method, is
+   * single use and expires quickly, so the ciphertext can safely transit the platform.
+   */
+  private resolveImportKeyMaterial(agent: AgentType, didOptions: DidCreate): DidCreate {
+    assertPlaintextKeyImportAllowed(didOptions)
+
+    // An existing did:key is imported by resolving its DID document, which would silently drop the private key. Reject
+    // the combination before an encrypted envelope consumes its single-use session.
+    if (
+      didOptions.method === DidMethod.Key &&
+      didOptions.did &&
+      (didOptions.encryptedKey || didOptions.privateKey || didOptions.privateKeyJwk)
+    ) {
+      throw new BadRequestError('Provide either did or key material to import for did:key, not both')
+    }
+
+    // A missing or invalid did:web domain is rejected before an encrypted envelope consumes its single-use session,
+    // so the caller can correct the domain and retry with the same envelope.
+    if (didOptions.method === DidMethod.Web) {
+      assertValidDidWebDomain(didOptions.domain)
+
+      // `create` always regenerates the document from the domain, so accepting a document here would silently discard
+      // it. Importing an externally issued document has its own endpoint.
+      if (didOptions.didDocument) {
+        throw new BadRequestError(
+          'didDocument is not supported by POST /dids/write; use POST /dids/web/import to import an externally issued did:web document and keys',
+        )
+      }
+    }
+
+    if (!didOptions.encryptedKey) return didOptions
+    if (didOptions.privateKey || didOptions.privateKeyJwk || didOptions.passphrase || didOptions.privatekey) {
+      throw new BadRequestError('Provide either encryptedKey or plaintext key material, not both')
+    }
+    if (
+      didOptions.method !== DidMethod.Key &&
+      didOptions.method !== DidMethod.Web &&
+      didOptions.method !== DidMethod.Polygon
+    ) {
+      throw new BadRequestError('encryptedKey is only supported for did:key, did:web and did:polygon')
+    }
+    if (!didOptions.encryptedKey.sessionId || typeof didOptions.encryptedKey.jwe !== 'string') {
+      throw new BadRequestError('encryptedKey.sessionId and encryptedKey.jwe are required')
+    }
+
+    let material: KeyImportKeyMaterial
+    try {
+      material = consumeImportSession({
+        sessionId: didOptions.encryptedKey.sessionId,
+        jwe: didOptions.encryptedKey.jwe,
+        agentBinding: agentBindingFor(agent),
+        method: didOptions.method as KeyImportMethod,
+      })
+    } catch (error) {
+      if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
+
+    if (didOptions.method === DidMethod.Polygon) {
+      return { ...didOptions, privatekey: this.polygonPrivateKeyHex(material) }
+    }
+
+    return { ...didOptions, ...material }
+  }
+
+  /**
+   * did:polygon signs with a raw secp256k1 key. The envelope carries it either as 64 hex characters in `privateKey`
+   * (the format the Polygon key pair endpoint returns) or as a secp256k1 private JWK.
+   */
+  private polygonPrivateKeyHex(material: KeyImportKeyMaterial): string {
+    if (material.passphrase) {
+      throw new BadRequestError('A passphrase is not supported for did:polygon keys')
+    }
+
+    let hex: string | undefined
+    if (material.privateKey !== undefined) {
+      hex = material.privateKey.trim().replace(/^0x/i, '')
+    } else {
+      const jwk = material.privateKeyJwk as { kty?: unknown; crv?: unknown; d?: unknown } | undefined
+      if (jwk?.kty !== 'EC' || jwk?.crv !== 'secp256k1' || typeof jwk?.d !== 'string') {
+        throw new BadRequestError('did:polygon requires a secp256k1 private key')
+      }
+      hex = Buffer.from(jwk.d, 'base64url').toString('hex')
+    }
+
+    if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+      throw new BadRequestError('Invalid private key or key not supported')
+    }
+    return hex.toLowerCase()
+  }
+
+  private resolveX509KeyMaterial(agent: AgentType, options: DidX509ImportOptionsDto): DidX509ImportOptionsDto {
+    assertPlaintextKeyImportAllowed(options)
+
+    if (!options.encryptedKey) {
+      if (!options.privateKey) throw new BadRequestError('privateKey or encryptedKey is required')
+      return options
+    }
+    if (options.privateKey || options.passphrase) {
+      throw new BadRequestError('Provide either encryptedKey or plaintext key material, not both')
+    }
+
+    let material: KeyImportKeyMaterial
+    try {
+      material = consumeImportSession({
+        sessionId: options.encryptedKey.sessionId,
+        jwe: options.encryptedKey.jwe,
+        agentBinding: agentBindingFor(agent),
+        method: 'x509',
+      })
+    } catch (error) {
+      if (error instanceof KeyImportSessionError || error instanceof KeyImportEnvelopeError) {
+        throw new BadRequestError(error.message)
+      }
+      throw error
+    }
+
+    const privateKey =
+      material.privateKey ??
+      (material.privateKeyJwk
+        ? parsePrivateKeyJwk(material.privateKeyJwk).export({ type: 'pkcs8', format: 'pem' }).toString()
+        : undefined)
+    if (!privateKey) throw new BadRequestError('The decrypted key payload does not contain a private key')
+
+    return { ...options, privateKey, ...(material.passphrase ? { passphrase: material.passphrase } : {}) }
   }
 
   private async handleDidPeer(agent: AgentType, createDidOptions: DidCreate) {
@@ -165,6 +756,8 @@ export class DidController extends Controller {
   }
 
   private async handleIndy(agent: AgentType, createDidOptions: DidCreate) {
+    // did:indy needs a ledger; without one the agent has no did:indy registrar, so fail with a clear 501 up front.
+    assertIndyDidRegistrar(agent)
     let result
     if (!createDidOptions.keyType) {
       throw new BadRequestError('keyType is required')
@@ -433,7 +1026,113 @@ export class DidController extends Controller {
       ],
     })
   }
+  /**
+   * `did:key` and `did:web` accept an existing private key instead of deriving one from a seed. The key can be a PEM /
+   * base64 DER string (`privateKey`) or a JWK (`privateKeyJwk`).
+   */
+  private hasImportedPrivateKey(didOptions: DidCreate): boolean {
+    return Boolean(didOptions.privateKey || didOptions.privateKeyJwk)
+  }
+
+  private readImportedPrivateKey(material: {
+    privateKey?: string
+    privateKeyJwk?: Record<string, unknown>
+    passphrase?: string
+  }): Kms.KmsJwkPrivate {
+    if (material.privateKey && material.privateKeyJwk) {
+      throw new BadRequestError('Provide either privateKey or privateKeyJwk, not both')
+    }
+
+    let privateKey
+    if (material.privateKeyJwk) {
+      privateKey = parsePrivateKeyJwk(material.privateKeyJwk)
+    } else if (material.privateKey?.trim().startsWith('{')) {
+      privateKey = parsePrivateKeyJwk(material.privateKey)
+    } else {
+      privateKey = parsePrivateKey(material.privateKey as string, material.passphrase)
+    }
+
+    return privateKeyToJwk(privateKey) as Kms.KmsJwkPrivate
+  }
+
+  /**
+   * `did:key` can represent the key types Credo knows how to embed in a did:key document. `did:web` publishes a
+   * JsonWebKey2020 verification method, so it additionally accepts RSA keys. X25519 cannot sign and is therefore not
+   * accepted for did:web.
+   */
+  private assertImportedKeySupported(method: 'key' | 'web', jwk: { kty: string; crv?: string }): void {
+    const description = jwk.crv ? `${jwk.kty} ${jwk.crv}` : jwk.kty
+
+    if (method === 'key') {
+      const supported = supportedKeyTypesDID[DidMethod.Key].some(
+        (keyType) => keyType.kty === jwk.kty && keyType.crv === jwk.crv,
+      )
+      if (!supported) {
+        throw new BadRequestError(
+          `did:key cannot be created from a ${description} key. Supported key types are Ed25519, X25519, P-256, P-384, P-521 and secp256k1. Use did:web or did:x509 for RSA keys.`,
+        )
+      }
+      return
+    }
+
+    const supportedWebKeyTypes: { kty: string; crv?: string }[] = [
+      { kty: 'OKP', crv: 'Ed25519' },
+      { kty: 'EC', crv: 'P-256' },
+      { kty: 'EC', crv: 'P-384' },
+      { kty: 'EC', crv: 'P-521' },
+      { kty: 'EC', crv: 'secp256k1' },
+      { kty: 'RSA' },
+    ]
+    const supported = supportedWebKeyTypes.some(
+      (keyType) => keyType.kty === jwk.kty && (keyType.crv === undefined || keyType.crv === jwk.crv),
+    )
+    if (!supported) {
+      throw new BadRequestError(
+        `did:web does not support a ${description} private key. Supported key types are Ed25519, P-256, P-384, P-521, secp256k1 and RSA.`,
+      )
+    }
+  }
+
+  /**
+   * OpenBao only holds did:key / did:web keys when the matching opt-in flag is enabled. Otherwise Askar handles the key,
+   * except for key types it cannot sign with, which go to the Node KMS.
+   */
+  private importedKeyBackend(method: 'key' | 'web', jwk: { kty: string; crv?: string }): string | undefined {
+    const selection = selectKmsBackendForJwk(jwk)
+    if (selection.name !== OPENBAO_KMS_BACKEND || openBaoBackendForDidMethod(method)) {
+      return selection.backend
+    }
+    return needsNodeKms(jwk) ? NODE_KMS_BACKEND : undefined
+  }
+
+  /** The human readable backend name reported to the caller; Askar is implicit and therefore has no backend name. */
+  private importedKeyBackendName(method: 'key' | 'web', jwk: { kty: string; crv?: string }): string {
+    const backend = this.importedKeyBackend(method, jwk)
+    if (backend === OPENBAO_KMS_BACKEND) return OPENBAO_KMS_BACKEND
+    if (backend === NODE_KMS_BACKEND) return NODE_KMS_BACKEND
+    return ASKAR_KMS_BACKEND
+  }
+
+  private firstVerificationMethodId(didDocument: DidDocument): string | undefined {
+    const verificationMethod = didDocument.verificationMethod?.[0]
+    if (verificationMethod) {
+      return typeof verificationMethod === 'string' ? verificationMethod : verificationMethod.id
+    }
+
+    const keyAgreement = didDocument.keyAgreement?.[0]
+    if (keyAgreement) {
+      return typeof keyAgreement === 'string' ? keyAgreement : keyAgreement.id
+    }
+
+    return undefined
+  }
+
   private validateDidKeyOptions(didOptions: DidCreate): void {
+    // The key material determines the DID when an existing key is imported, so `keyType` is not required then.
+    if (this.hasImportedPrivateKey(didOptions)) {
+      return
+    }
+
     if (!didOptions.keyType) {
       throw new BadRequestError('keyType is required')
     }
@@ -474,8 +1173,8 @@ export class DidController extends Controller {
       return { keyId: imported.keyId, publicJwk: imported.publicJwk as Kms.KmsJwkPublicAsymmetric }
     } catch (error) {
       if (!(error instanceof Kms.KeyManagementKeyExistsError)) throw error
-      // The key was imported before; the plugin namespaces the id, so bind the id that was actually stored.
-      const keyId = openBaoKeyId(thumbprint)
+      // The key was imported before. Its id is the thumbprint, prefixed when it lives in OpenBao.
+      const keyId = backend === OPENBAO_KMS_BACKEND ? openBaoKeyId(thumbprint) : thumbprint
       const publicJwk = (await agent.kms.getPublicKey({ keyId })) as Kms.KmsJwkPublicAsymmetric
       return { keyId, publicJwk }
     }
@@ -508,6 +1207,42 @@ export class DidController extends Controller {
 
     this.agent.config.logger.info(`This is did:::::: ${did}`)
     this.agent.config.logger.info(`This is verificationMethodId:::::: ${verificationMethodId}`)
+
+    await agent.dids.import({
+      did,
+      didDocument,
+      overwrite: true,
+      keys: [
+        {
+          didDocumentRelativeKeyId: `#${relativeKeyId}`,
+          kmsKeyId: keyId,
+        },
+      ],
+    })
+
+    return { did, didDocument }
+  }
+
+  private async createKeyDidFromPrivateKey(
+    agent: AgentType,
+    didOptions: DidCreate,
+  ): Promise<{ did: string; didDocument: DidDocument }> {
+    this.agent.config.logger.info('Creating DID:key from an imported private key')
+
+    const privateJwk = this.readImportedPrivateKey(didOptions)
+    this.assertImportedKeySupported('key', privateJwk)
+
+    const { keyId, publicJwk } = await this.importKey(agent, privateJwk, this.importedKeyBackend('key', privateJwk))
+
+    const didKey = new DidKey(Kms.PublicJwk.fromPublicJwk(publicJwk))
+    const didDocument = didKey.didDocument
+    const did = didDocument.id
+
+    const verificationMethodId = this.firstVerificationMethodId(didDocument)
+    if (!verificationMethodId) {
+      throw new BadRequestError('The key does not produce a usable did:key document')
+    }
+    const relativeKeyId = verificationMethodId.split('#')[1]
 
     await agent.dids.import({
       did,
@@ -583,6 +1318,10 @@ export class DidController extends Controller {
       const result = await this.importExistingKeyDid(agent, didOptions.did)
       did = result.did
       didDocument = result.didDocument
+    } else if (this.hasImportedPrivateKey(didOptions)) {
+      const result = await this.createKeyDidFromPrivateKey(agent, didOptions)
+      did = result.did
+      didDocument = result.didDocument
     } else if (didOptions.seed) {
       const result = await this.createKeyDidFromSeed(agent, didOptions, keyType)
       did = result.did
@@ -600,20 +1339,21 @@ export class DidController extends Controller {
   }
 
   private validateDidWebOptions(didOptions: DidCreate): string {
-    if (!didOptions.domain) {
-      throw new BadRequestError('For create did:web, domain is required')
+    assertValidDidWebDomain(didOptions.domain)
+
+    const hasImportedKey = this.hasImportedPrivateKey(didOptions)
+    if (!hasImportedKey && !didOptions.seed) {
+      throw new BadRequestError('Seed or privateKey is required')
     }
 
-    if (!didOptions.seed) {
-      throw new BadRequestError('Seed is required')
-    }
+    if (!hasImportedKey) {
+      if (!didOptions.keyType) {
+        throw new BadRequestError('keyType is required')
+      }
 
-    if (!didOptions.keyType) {
-      throw new BadRequestError('keyType is required')
-    }
-
-    if (didOptions.keyType !== KeyAlgorithm.Ed25519) {
-      throw new BadRequestError('Only ed25519 key type supported')
+      if (didOptions.keyType !== KeyAlgorithm.Ed25519) {
+        throw new BadRequestError('Only ed25519 key type supported')
+      }
     }
 
     const verificationMethodType =
@@ -637,34 +1377,61 @@ export class DidController extends Controller {
     keyId: string,
     verificationMethodType: string,
   ): Promise<{ key: { keyId: string }; didDocument: DidDocument }> {
-    const { privateJwk } = transformPrivateKeyToPrivateJwk({
-      type: {
-        crv: 'Ed25519',
-        kty: 'OKP',
-      },
-      privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed as string),
-    })
+    const hasImportedKey = this.hasImportedPrivateKey(didOptions)
 
-    const openBao = openBaoBackendForDidMethod('web')
-    const backend = openBao && openBaoBackendForJwk(privateJwk) ? openBao : undefined
+    let privateJwk: Kms.KmsJwkPrivate
+    if (hasImportedKey) {
+      privateJwk = this.readImportedPrivateKey(didOptions)
+      this.assertImportedKeySupported('web', privateJwk)
+    } else {
+      privateJwk = transformPrivateKeyToPrivateJwk({
+        type: {
+          crv: 'Ed25519',
+          kty: 'OKP',
+        },
+        privateKey: TypedArrayEncoder.fromUtf8String(didOptions.seed as string),
+      }).privateJwk
+    }
+
+    let backend: string | undefined
+    if (hasImportedKey) {
+      backend = this.importedKeyBackend('web', privateJwk)
+    } else if (openBaoBackendForDidMethod('web') && openBaoBackendForJwk(privateJwk)) {
+      backend = OPENBAO_KMS_BACKEND
+    }
     const key = await this.importKey(agent, privateJwk, backend)
 
-    const publicJwk = Kms.PublicJwk.fromPublicJwk(
-      key.publicJwk as Kms.KmsJwkPublicOkp,
-    ) as Kms.PublicJwk<Kms.Ed25519PublicJwk>
+    if (privateJwk.kty === 'OKP' && privateJwk.crv === 'Ed25519') {
+      const publicJwk = Kms.PublicJwk.fromPublicJwk(
+        key.publicJwk as Kms.KmsJwkPublicOkp,
+      ) as Kms.PublicJwk<Kms.Ed25519PublicJwk>
+      const didDocument = new DidDocumentBuilder(did)
+        .addContext(
+          verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
+            ? SECURITY_ED25519_2020_CONTEXT_URL
+            : SECURITY_ED25519_2018_CONTEXT_URL,
+        )
+        .addVerificationMethod(
+          verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
+            ? getEd25519VerificationKey2020({ id: keyId, publicJwk, controller: did })
+            : getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }),
+        )
+        .addAuthentication(keyId)
+        .addAssertionMethod(keyId)
+        .build()
+
+      return { key, didDocument }
+    }
+
+    // EC and RSA keys are published as a JsonWebKey2020 verification method.
+    const publicJwk = Kms.PublicJwk.fromPublicJwk(key.publicJwk)
     const didDocument = new DidDocumentBuilder(did)
-      .addContext(
-        verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
-          ? SECURITY_ED25519_2020_CONTEXT_URL
-          : SECURITY_ED25519_2018_CONTEXT_URL,
-      )
-      .addVerificationMethod(
-        verificationMethodType === VERIFICATION_METHOD_TYPE_ED25519_VERIFICATION_KEY_2020
-          ? getEd25519VerificationKey2020({ id: keyId, publicJwk, controller: did })
-          : getEd25519VerificationKey2018({ id: keyId, publicJwk, controller: did }),
-      )
+      .addContext(SECURITY_JWS_CONTEXT_URL)
+      .addVerificationMethod(getJsonWebKey2020({ did, publicJwk, verificationMethodId: keyId }))
       .addAuthentication(keyId)
       .addAssertionMethod(keyId)
+      .addCapabilityInvocation(keyId)
+      .addCapabilityDelegation(keyId)
       .build()
 
     return { key, didDocument }
@@ -675,7 +1442,8 @@ export class DidController extends Controller {
     const verificationMethodType = this.validateDidWebOptions(didOptions)
 
     const domain = didOptions.domain as string
-    const did = `did:${didOptions.method}:${domain}`
+    // `~` is percent-encoded so the identifier conforms to the DID Core method-specific-id syntax.
+    const did = `did:${didOptions.method}:${encodeDidWebDomain(domain)}`
     const keyId = `${did}#key-1`
 
     const { key, didDocument } = await this.createWebDidDocument(agent, didOptions, did, keyId, verificationMethodType)
@@ -707,7 +1475,7 @@ export class DidController extends Controller {
     if (networkName !== 'mainnet' && networkName !== 'testnet') {
       throw new BadRequestError('Invalid network type')
     }
-    if (!privatekey || typeof privatekey !== 'string' || !privatekey.trim() || privatekey.length !== 64) {
+    if (!privatekey || typeof privatekey !== 'string' || !/^[0-9a-fA-F]{64}$/.test(privatekey)) {
       throw new BadRequestError('Invalid private key or key not supported')
     }
 
@@ -736,7 +1504,9 @@ export class DidController extends Controller {
   @Post('/x509/import')
   public async importDidX509(@Request() request: Req, @Body() options: DidX509ImportOptionsDto) {
     try {
-      return await didX509Service.importDidX509(request.agent, options)
+      const resolvedOptions = this.resolveX509KeyMaterial(request.agent, options)
+      const imported = await didX509Service.importDidX509(request.agent, resolvedOptions)
+      return { ...imported, ...(await this.describeKmsOf(request.agent, imported.did)) }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
