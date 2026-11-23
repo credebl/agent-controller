@@ -146,14 +146,7 @@ function assertRequirementCount(
   }
 }
 
-export function applyPresentationExchangeSelection(
-  credentialsForRequest: DifPexCredentialsForRequest,
-  autoSelection: DifPexInputDescriptorToCredentials,
-  selection?: ProofRequestCredentialSelection,
-  definition?: PexDefinitionForSelection,
-): DifPexInputDescriptorToCredentials {
-  if (!hasSelection(selection)) return autoSelection
-
+function offeredPexCredentials(credentialsForRequest: DifPexCredentialsForRequest) {
   const offered = new Map<string, SubmissionEntryCredential[]>()
   for (const requirement of credentialsForRequest.requirements) {
     for (const entry of requirement.submissionEntry) {
@@ -166,9 +159,15 @@ export function applyPresentationExchangeSelection(
       offered.set(entry.inputDescriptorId, credentials)
     }
   }
+  return offered
+}
 
+function resolveSelectedPexCredentials(
+  offered: Map<string, SubmissionEntryCredential[]>,
+  selection: ProofRequestCredentialSelection,
+): DifPexInputDescriptorToCredentials {
   const selectedCredentials: DifPexInputDescriptorToCredentials = {}
-  for (const [inputDescriptorId, credentialIds] of Object.entries(selection as ProofRequestCredentialSelection)) {
+  for (const [inputDescriptorId, credentialIds] of Object.entries(selection)) {
     const available = offered.get(inputDescriptorId)
     if (!available) {
       throw new BadRequestError(`The proof request has no input descriptor "${inputDescriptorId}"`)
@@ -185,16 +184,23 @@ export function applyPresentationExchangeSelection(
       return credential
     })
   }
+  return selectedCredentials
+}
 
-  const selectedDescriptorIds = new Set(Object.keys(selectedCredentials))
+/**
+ * A caller selection replaces Credo's automatic choice for the requirements it belongs to.
+ * Automatic entries stay untouched for requirements the caller did not select. Shared entries
+ * are only added back when an affected requirement still needs them to reach its minimum.
+ */
+function retainedAutoDescriptorIds(
+  requirements: EffectivePexRequirement[],
+  autoSelection: DifPexInputDescriptorToCredentials,
+  selectedDescriptorIds: Set<string>,
+): Set<string> {
   const autoDescriptorIds = Object.entries(autoSelection)
     .filter(([, credentials]) => credentials.length > 0)
     .map(([descriptorId]) => descriptorId)
-  const requirements = effectivePexRequirements(definition, credentialsForRequest.requirements)
 
-  // A caller selection replaces Credo's automatic choice for the requirements it belongs to.
-  // Automatic entries stay untouched for requirements the caller did not select. Shared entries
-  // are only added back when an affected requirement still needs them to reach its minimum.
   const retainedDescriptorIds = new Set(selectedDescriptorIds)
   const untouchedRequirements = requirements.filter(
     (requirement) => !requirement.descriptorIds.some((id) => selectedDescriptorIds.has(id)),
@@ -205,24 +211,41 @@ export function applyPresentationExchangeSelection(
     }
   }
 
-  for (const requirement of requirements) {
-    if (!requirement.descriptorIds.some((id) => selectedDescriptorIds.has(id))) continue
-    if (requirement.descriptorIds.filter((id) => retainedDescriptorIds.has(id)).length >= requirement.min) continue
-
+  const touchedRequirements = requirements.filter((requirement) =>
+    requirement.descriptorIds.some((id) => selectedDescriptorIds.has(id)),
+  )
+  for (const requirement of touchedRequirements) {
+    const retainedCount = () => requirement.descriptorIds.filter((id) => retainedDescriptorIds.has(id)).length
     for (const descriptorId of requirement.descriptorIds) {
-      if (requirement.descriptorIds.filter((id) => retainedDescriptorIds.has(id)).length >= requirement.min) break
+      if (retainedCount() >= requirement.min) break
       if (selectedDescriptorIds.has(descriptorId) || !autoDescriptorIds.includes(descriptorId)) continue
       retainedDescriptorIds.add(descriptorId)
     }
   }
+  return retainedDescriptorIds
+}
+
+export function applyPresentationExchangeSelection(
+  credentialsForRequest: DifPexCredentialsForRequest,
+  autoSelection: DifPexInputDescriptorToCredentials,
+  selection?: ProofRequestCredentialSelection,
+  definition?: PexDefinitionForSelection,
+): DifPexInputDescriptorToCredentials {
+  if (!hasSelection(selection)) return autoSelection
+
+  const selectedCredentials = resolveSelectedPexCredentials(
+    offeredPexCredentials(credentialsForRequest),
+    selection as ProofRequestCredentialSelection,
+  )
+  const selectedDescriptorIds = new Set(Object.keys(selectedCredentials))
+  const requirements = effectivePexRequirements(definition, credentialsForRequest.requirements)
+  const retainedDescriptorIds = retainedAutoDescriptorIds(requirements, autoSelection, selectedDescriptorIds)
 
   const result: DifPexInputDescriptorToCredentials = {}
   for (const [descriptorId, credentials] of Object.entries(autoSelection)) {
     if (retainedDescriptorIds.has(descriptorId)) result[descriptorId] = credentials
   }
-  for (const [descriptorId, credentials] of Object.entries(selectedCredentials)) {
-    result[descriptorId] = credentials
-  }
+  Object.assign(result, selectedCredentials)
 
   for (const requirement of requirements) {
     assertRequirementCount(requirement, result)
@@ -328,7 +351,7 @@ export function applyDcqlSelection(
   return result
 }
 
-const OPENID4VP_CLIENT_ID_PREFIXES = [
+const OPENID4VP_CLIENT_ID_PREFIXES = new Set([
   'pre-registered',
   'redirect_uri',
   'verifier_attestation',
@@ -341,14 +364,77 @@ const OPENID4VP_CLIENT_ID_PREFIXES = [
   'x509_san_dns',
   'origin',
   'web-origin',
-]
-const DC_API_RESPONSE_MODES = ['dc_api', 'dc_api.jwt', 'w3c_dc_api.jwt', 'w3c_dc_api']
-const IAE_RESPONSE_MODES = ['iae_post', 'iae_post.jwt']
+])
+const DC_API_RESPONSE_MODES = new Set(['dc_api', 'dc_api.jwt', 'w3c_dc_api.jwt', 'w3c_dc_api'])
+const IAE_RESPONSE_MODES = new Set(['iae_post', 'iae_post.jwt'])
 
 type VersionRequirement = readonly [operator: '<' | '>=', version: number]
 
-function asRecord(value: unknown): Record<string, any> {
-  return value !== null && typeof value === 'object' ? (value as Record<string, any>) : {}
+type PayloadRecord = Record<string, unknown>
+
+function asRecord(value: unknown): PayloadRecord {
+  return value !== null && typeof value === 'object' ? (value as PayloadRecord) : {}
+}
+
+function clientIdRequirements(request: PayloadRecord, clientId: string | undefined): VersionRequirement[] {
+  const requirements: VersionRequirement[] = []
+  if (clientId?.startsWith('openid_federation:') || clientId?.startsWith('decentralized_identifier:')) {
+    requirements.push(['>=', 26])
+  }
+  if (clientId?.startsWith('did:')) requirements.push(['<', 26])
+  if (clientId?.startsWith('x509_san_uri:')) requirements.push(['<', 25])
+  if (clientId?.startsWith('x509_hash:')) requirements.push(['>=', 25])
+  if (clientId?.startsWith('web-origin:')) requirements.push(['<', 25])
+  if (clientId?.startsWith('origin:')) requirements.push(['>=', 25])
+  if (clientId) {
+    const scheme = clientId.substring(0, clientId.indexOf(':'))
+    if (OPENID4VP_CLIENT_ID_PREFIXES.has(scheme) && scheme !== 'did' && scheme !== 'https') {
+      requirements.push(['>=', 22])
+    }
+  } else {
+    requirements.push(['>=', 21])
+  }
+  if (request.client_id_scheme) requirements.push(['<', 22])
+  if (request.client_id_scheme === 'verifier_attestation') requirements.push(['>=', 20])
+  if (request.client_id_scheme === 'x509_san_dns' || request.client_id_scheme === 'x509_san_uri') {
+    requirements.push(['>=', 19])
+  }
+  return requirements
+}
+
+function responseModeRequirements(request: PayloadRecord, responseMode: string | undefined) {
+  const requirements: VersionRequirement[] = []
+  const isDcApi = responseMode !== undefined && DC_API_RESPONSE_MODES.has(responseMode)
+
+  if (responseMode !== undefined && IAE_RESPONSE_MODES.has(responseMode)) requirements.push(['>=', 101])
+  if (responseMode === 'w3c_dc_api' || responseMode === 'w3c_dc_api.jwt') requirements.push(['<', 23], ['>=', 21])
+  if (responseMode === 'dc_api' || responseMode === 'dc_api.jwt') requirements.push(['>=', 23])
+  if (isDcApi && (request.transaction_data || request.dcql_query)) requirements.push(['>=', 23])
+  if (isDcApi) requirements.push(['>=', 21])
+  return requirements
+}
+
+function clientMetadataRequirements(clientMetadata: PayloadRecord): VersionRequirement[] {
+  const requirements: VersionRequirement[] = []
+  const mdocFormats = asRecord(asRecord(clientMetadata.vp_formats_supported).mso_mdoc)
+
+  if (mdocFormats.deviceauth_alg_values || mdocFormats.issuerauth_alg_values) requirements.push(['>=', 28])
+  if (mdocFormats.issuer_signed_alg_values || mdocFormats.device_signed_alg_values) requirements.push(['<', 28])
+  if (clientMetadata.vp_formats_supported) requirements.push(['>=', 27])
+  if (clientMetadata.vp_formats) requirements.push(['<', 27])
+  return requirements
+}
+
+function payloadFieldRequirements(request: PayloadRecord): VersionRequirement[] {
+  const requirements: VersionRequirement[] = []
+  if (request.verifier_info) requirements.push(['>=', 100])
+  if (request.verifier_attestations) requirements.push(['<', 100], ['>=', 26])
+  if (request.presentation_definition || request.presentation_definition_uri) requirements.push(['<', 26])
+  if (request.transaction_data) requirements.push(['>=', 22])
+  if (request.dcql_query) requirements.push(['>=', 21])
+  if (request.client_metadata_uri) requirements.push(['<', 21])
+  if (request.request_uri_method || request.wallet_nonce) requirements.push(['>=', 21])
+  return requirements
 }
 
 /**
@@ -358,53 +444,14 @@ function asRecord(value: unknown): Record<string, any> {
  */
 function parseAuthorizationRequestVersionNumber(payload: unknown): number {
   const request = asRecord(payload)
-  const requirements: VersionRequirement[] = []
   const clientId = typeof request.client_id === 'string' ? request.client_id : undefined
   const responseMode = typeof request.response_mode === 'string' ? request.response_mode : undefined
-  const clientMetadata = asRecord(request.client_metadata)
-  const vpFormatsSupported = asRecord(clientMetadata.vp_formats_supported)
-  const mdocFormats = asRecord(vpFormatsSupported.mso_mdoc)
-  const isDcApi = responseMode !== undefined && DC_API_RESPONSE_MODES.includes(responseMode)
-
-  if (responseMode !== undefined && IAE_RESPONSE_MODES.includes(responseMode)) requirements.push(['>=', 101])
-  if (request.verifier_info) requirements.push(['>=', 100])
-  if (request.verifier_attestations) requirements.push(['<', 100])
-  if (mdocFormats.deviceauth_alg_values || mdocFormats.issuerauth_alg_values) requirements.push(['>=', 28])
-  if (mdocFormats.issuer_signed_alg_values || mdocFormats.device_signed_alg_values) requirements.push(['<', 28])
-  if (clientMetadata.vp_formats_supported) requirements.push(['>=', 27])
-  if (clientMetadata.vp_formats) requirements.push(['<', 27])
-  if (clientId?.startsWith('openid_federation:') || clientId?.startsWith('decentralized_identifier:')) {
-    requirements.push(['>=', 26])
-  }
-  if (clientId?.startsWith('did:')) requirements.push(['<', 26])
-  if (request.presentation_definition || request.presentation_definition_uri) requirements.push(['<', 26])
-  if (request.verifier_attestations) requirements.push(['>=', 26])
-  if (clientId?.startsWith('x509_san_uri:')) requirements.push(['<', 25])
-  if (clientId?.startsWith('x509_hash:')) requirements.push(['>=', 25])
-  if (clientId?.startsWith('web-origin:')) requirements.push(['<', 25])
-  if (clientId?.startsWith('origin:')) requirements.push(['>=', 25])
-  if (isDcApi && (responseMode === 'w3c_dc_api' || responseMode === 'w3c_dc_api.jwt')) {
-    requirements.push(['<', 23], ['>=', 21])
-  }
-  if (isDcApi && (responseMode === 'dc_api' || responseMode === 'dc_api.jwt')) requirements.push(['>=', 23])
-  if (isDcApi && (request.transaction_data || request.dcql_query)) requirements.push(['>=', 23])
-  if (request.transaction_data) requirements.push(['>=', 22])
-  if (request.client_id_scheme) requirements.push(['<', 22])
-  if (clientId) {
-    const scheme = clientId.substring(0, clientId.indexOf(':'))
-    if (OPENID4VP_CLIENT_ID_PREFIXES.includes(scheme) && scheme !== 'did' && scheme !== 'https') {
-      requirements.push(['>=', 22])
-    }
-  }
-  if (!clientId) requirements.push(['>=', 21])
-  if (request.dcql_query) requirements.push(['>=', 21])
-  if (request.client_metadata_uri) requirements.push(['<', 21])
-  if (isDcApi) requirements.push(['>=', 21])
-  if (request.request_uri_method || request.wallet_nonce) requirements.push(['>=', 21])
-  if (request.client_id_scheme === 'verifier_attestation') requirements.push(['>=', 20])
-  if (request.client_id_scheme === 'x509_san_dns' || request.client_id_scheme === 'x509_san_uri') {
-    requirements.push(['>=', 19])
-  }
+  const requirements: VersionRequirement[] = [
+    ...responseModeRequirements(request, responseMode),
+    ...clientMetadataRequirements(asRecord(request.client_metadata)),
+    ...clientIdRequirements(request, clientId),
+    ...payloadFieldRequirements(request),
+  ]
 
   const upperBounds = requirements.filter(([operator]) => operator === '<').map(([, version]) => version)
   const lowerBounds = requirements.filter(([operator]) => operator === '>=').map(([, version]) => version)
