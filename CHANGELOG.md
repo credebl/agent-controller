@@ -4,6 +4,11 @@
 
 ### Features
 
+- **revocation:** W3C JSON-LD credentials (`ldp_vc` and `jwt_vc_json-ld`, including VCDM 2.0) can be revoked with a W3C Bitstring Status List. OID4VCI issuance creates a `BitstringStatusListEntry` in `credentialStatus` and records `mechanism: "bitstring"` in the session metadata; SD-JWT credentials keep using `status_list`. See [docs/bitstring-status-list.md](docs/bitstring-status-list.md).
+  - `revokeBySessionId` dispatches by the stored mechanism, so existing SD-JWT sessions continue to revoke as before.
+  - `POST /agent/credential/verify` detects VCDM 2.0, verifies the signature with the matching Credo API, checks bitstring status and returns `verified` plus a `revocation` summary. `isValid` now also reflects revocation verification. Credo's built-in status check is disabled only for bitstring entries, which are verified explicitly.
+  - Verification-session responses include an aggregated `revocation` summary for presented credentials. The outcome is persisted on the session and returned by the stored-response endpoint.
+  - Status-list verification allowlists origins from `STATUS_LIST_ALLOWED_ORIGINS` (plus the origin of `STATUS_LIST_SERVER_URL`), verifies the status-list credential proof, and fails closed when no origin is configured.
 - **oid4vc holder:** `POST /openid4vc/holder/request-credential` sends OID4VCI notifications to the issuer's `notification_endpoint` for each credential response that has a `notification_id`: `credential_accepted` once the credential is stored, and `credential_failure` when it cannot be stored or fails the holder DID binding check. A failed store still fails the request; a notification that cannot be sent is logged and never fails it.
   - Notifications are sent one at a time, after all credentials are stored, so an issuer that records them on the issuance session cannot lose one to a concurrent update.
   - Each returned credential has a `notification` field: `{ status: "sent", event }`, `{ status: "skipped", reason }` (no `notification_endpoint`, no `notification_id`, or turned off) or `{ status: "failed", event, reason }`. The reason includes the issuer's HTTP status and error code, e.g. `HTTP 400 invalid_notification_id`.
@@ -13,6 +18,9 @@
 
 ### API
 
+- OpenAPI: `POST /didcomm/credentials/revoke` revokes a bitstring status-list entry. The body is `RevokeBitstringCredentialOptions` (`listId`, `index`, `issuerDid`) and the response is `{ revoked: true, listId, index }`. The wallet must control `issuerDid`, and the list's `issuer` must match it, or the request returns 403 before signing or sending an update. Bitstring `listSize` values are bit counts: invalid values (below 131072 or not a multiple of 8) return 400.
+- OpenAPI: `/agent/credential/verify` responses gain `verified` and `revocation` and are typed as `VerifyCredentialResponse`; `isValid` is now false when a valid credential is revoked or its status cannot be verified. Unsupported VCDM 2.0 proof types and `trustedIssuers` on a JSON-LD object credential return a verification failure / 400 instead of throwing. OID4VC verification responses gain a `revocation` summary.
+- Environment: `STATUS_LIST_ALLOWED_ORIGINS` is a comma-separated list of additional status-list origins accepted during verification. The origin of `STATUS_LIST_SERVER_URL` is always accepted.
 - OpenAPI: `RequestCredentialBody` gains `sendNotification` (default `true`). Each credential returned by `request-credential` gains `notification`; the record fields are unchanged.
 - **oid4vc issuer:** issuers advertise a `notification_endpoint` (`{baseUrl}/{issuerId}/notification`) and return a `notification_id` with each credential response (OpenID4VCI 1.0 §11). A wallet notification (`credential_accepted`, `credential_failure` or `credential_deleted`) is checked against the access token of the session that issued the `notification_id`, recorded on the issuance session (`notifications[]`), and posted to the issuance webhook topic `/openid4vc-issuance`: the session record, whose state is unchanged, plus a `notification` object (`notificationId`, `credentialConfigurationId`, `event`, `eventDescription?`, `receivedAt`). It is also sent on the web socket. Webhooks posted on a state change also carry `notifications[]`. Set `OID4VCI_NOTIFICATION_ENDPOINT_ENABLED=false` to turn the endpoint off.
   - A repeated identical notification (same `notification_id`, `event` and `event_description`) returns 204 without being recorded or posted again.
@@ -21,6 +29,7 @@
 
 ### Dependencies
 
+- `@digitalcredentials/credentials-v2-context` supplies the bundled VCDM 2.0 JSON-LD context, so signing and verification do not fetch it over the network.
 - The `@credo-ts/openid4vc` 0.7.4 patch adds the issuer notification endpoint from openwallet-foundation/credo-ts#3215, which is not released yet. The existing changes in the patch are kept. Remove this part of the patch once a Credo release includes it.
 
 ## [2.3.2](https://github.com/credebl/agent-controller/compare/v2.3.1...v2.3.2) (2026-11-04)

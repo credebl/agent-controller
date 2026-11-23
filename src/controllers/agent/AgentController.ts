@@ -2,6 +2,7 @@ import type {
   AgentInfo,
   AgentToken,
   SafeW3cJsonLdVerifyCredentialOptions,
+  VerifyCredentialResponse,
   CustomW3cJsonLdSignCredentialOptions,
   SignDataOptions,
   VerifyDataOptions,
@@ -14,6 +15,7 @@ import {
   ClaimFormat,
   W3cCredentialRecord,
   DidDocument,
+  Jwt,
   verkeyToPublicJwk,
   getKmsKeyIdForVerifiacationMethod,
   getPublicJwkFromVerificationMethod,
@@ -27,7 +29,12 @@ import { injectable } from 'tsyringe'
 import { AgentRole, SCOPES } from '../../enums'
 import ErrorHandlingService from '../../errorHandlingService'
 import { BadRequestError } from '../../errors/errors'
+import { verifyBitstringStatus } from '../../utils/bitstringStatusVerifier'
 import { ALGORITHM_MAP } from '../../utils/constant'
+import { CREDENTIALS_V2_CONTEXT_URL } from '../../vc-jsonld/constants'
+import { verifyV2Credential } from '../../vc-jsonld/verifyV2Credential'
+
+const BITSTRING_STATUS_LIST_ENTRY_TYPE = 'BitstringStatusListEntry'
 
 @Tags('Agent')
 @Route('/agent')
@@ -242,21 +249,111 @@ export class AgentController extends Controller {
   public async verifyCredential(
     @Request() request: Req,
     @Body() credentialToVerify: SafeW3cJsonLdVerifyCredentialOptions | any,
-  ) {
+  ): Promise<VerifyCredentialResponse> {
     try {
-      const { credential, ...credentialOptions } = credentialToVerify
-      const transformedCredential = JsonTransformer.fromJSON(
-        credentialToVerify?.credential,
-        W3cJsonLdVerifiableCredential,
-      )
-      const signedCred = await request.agent.w3cCredentials.verifyCredential({
-        credential: transformedCredential,
-        ...credentialOptions,
-      })
-      return signedCred
+      const { credential, ...credentialOptions } = credentialToVerify ?? {}
+      if (!credential) {
+        throw new BadRequestError('Missing "credential" to verify.')
+      }
+
+      const isV2 = this.isVcdm2Credential(credential)
+      const credoVerificationOptions = this.withDisabledCredoStatusCheck(credential, credentialOptions)
+      let signedCred: any
+
+      if (typeof credential === 'string') {
+        signedCred = isV2
+          ? await request.agent.w3cV2Credentials.verifyCredential({ credential, ...credoVerificationOptions })
+          : ((await request.agent.w3cCredentials.verifyCredential({
+              credential,
+              ...credoVerificationOptions,
+            })) as unknown as {
+              isValid: boolean
+              [key: string]: unknown
+            })
+      } else if (isV2) {
+        if (credentialOptions.trustedIssuers !== undefined) {
+          throw new BadRequestError('"trustedIssuers" is not supported for VCDM 2.0 JSON-LD credentials.')
+        }
+        signedCred = await verifyV2Credential(request.agent.context, { credential, ...credentialOptions })
+      } else {
+        const transformedCredential = JsonTransformer.fromJSON(credential, W3cJsonLdVerifiableCredential)
+        signedCred = (await request.agent.w3cCredentials.verifyCredential({
+          credential: transformedCredential,
+          ...credoVerificationOptions,
+        })) as unknown as { isValid: boolean; [key: string]: unknown }
+      }
+
+      const status = await verifyBitstringStatus(request.agent.context, credential)
+      const verified = signedCred.isValid && status.verified && !status.revoked
+
+      return {
+        ...signedCred,
+        isValid: verified,
+        verified,
+        revocation: status,
+      }
     } catch (error) {
       throw ErrorHandlingService.handle(error)
     }
+  }
+
+  private withDisabledCredoStatusCheck(credential: unknown, options: Record<string, unknown>): Record<string, unknown> {
+    if ('verifyCredentialStatus' in options || !this.hasBitstringStatusEntry(credential)) {
+      return options
+    }
+    return { ...options, verifyCredentialStatus: false }
+  }
+
+  private hasBitstringStatusEntry(credential: unknown): boolean {
+    let claims: Record<string, unknown> | undefined
+
+    if (typeof credential === 'string') {
+      try {
+        const additionalClaims = (Jwt.fromSerializedJwt(credential).payload.additionalClaims ?? {}) as Record<
+          string,
+          unknown
+        >
+        claims = (additionalClaims.vc as Record<string, unknown> | undefined) ?? additionalClaims
+      } catch {
+        return false
+      }
+    } else if (credential && typeof credential === 'object') {
+      claims = credential as Record<string, unknown>
+    }
+
+    const raw = claims?.credentialStatus
+    const statuses = Array.isArray(raw) ? raw : [raw]
+    return statuses.some((status) => {
+      if (!status || typeof status !== 'object' || Array.isArray(status)) {
+        return false
+      }
+      const type = (status as Record<string, unknown>).type
+      const types = typeof type === 'string' ? [type] : Array.isArray(type) ? type : []
+      return types.includes(BITSTRING_STATUS_LIST_ENTRY_TYPE)
+    })
+  }
+
+  private isVcdm2Credential(credential: unknown): boolean {
+    if (typeof credential === 'string') {
+      try {
+        const claims = (Jwt.fromSerializedJwt(credential).payload.additionalClaims ?? {}) as Record<string, unknown>
+        const vc = claims.vc as Record<string, unknown> | undefined
+        return this.hasV2Context(vc ?? claims)
+      } catch {
+        return false
+      }
+    }
+
+    return this.hasV2Context(credential)
+  }
+
+  private hasV2Context(credential: unknown): boolean {
+    if (!credential || typeof credential !== 'object') {
+      return false
+    }
+    const context = (credential as Record<string, unknown>)['@context']
+    const contexts = Array.isArray(context) ? context : [context]
+    return contexts.includes(CREDENTIALS_V2_CONTEXT_URL)
   }
 }
 
