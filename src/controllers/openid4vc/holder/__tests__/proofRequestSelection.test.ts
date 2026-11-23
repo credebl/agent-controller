@@ -15,6 +15,7 @@ jest.mock('@credo-ts/core', () => ({
     DiVc: 'di_vc',
     MsoMdoc: 'mso_mdoc',
     LdpVc: 'ldp_vc',
+    JwtVc: 'jwt_vc',
     JwtW3cVc: 'vc+jwt',
   },
 }))
@@ -452,6 +453,32 @@ describe('applyDcqlSelection', () => {
 
     expect(entry.claimFormat).toBe(ClaimFormat.LdpVc)
     expect(entry.credentialRecord.id).toBe('w3c-1')
+    expect(entry.disclosedPayload).toBe(jsonCredential)
+  })
+
+  it('builds a JWT W3C credential selection entry from the JSON credential', () => {
+    const jsonCredential = { '@context': ['https://www.w3.org/2018/credentials/v1'], type: ['VerifiableCredential'] }
+    const jwtVc = {
+      record: {
+        id: 'jwt-vc-1',
+        type: 'W3cCredentialRecord',
+        firstCredential: { claimFormat: ClaimFormat.JwtVc, jsonCredential },
+      },
+      claims: { valid_claim_sets: [{ output: { ignored: true } }] },
+    } as never
+    const queryResult = {
+      credential_matches: { 'query-1': { success: true, valid_credentials: [jwtVc] } },
+    } as never
+
+    const result = applyDcqlSelection(queryResult, dcqlAutoSelection, { 'query-1': ['jwt-vc-1'] })
+    const entry = result['query-1'][0] as {
+      claimFormat: ClaimFormat
+      credentialRecord: { id: string }
+      disclosedPayload: Record<string, unknown>
+    }
+
+    expect(entry.claimFormat).toBe(ClaimFormat.JwtVc)
+    expect(entry.credentialRecord.id).toBe('jwt-vc-1')
     expect(entry.disclosedPayload).toBe(jsonCredential)
   })
 

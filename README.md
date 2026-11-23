@@ -234,6 +234,7 @@ startup. See [Optional Indy ledger](docs/indy-ledger.md).
 ## Guides
 
 - [Bitstring Status List revocation: configuration, API, verification, and limitations](docs/bitstring-status-list.md)
+- [Choosing which credentials to present: `selectedCredentials` on `accept-proof-request`](docs/oid4vp-credential-selection.md)
 - [did:x509: import a CA issued certificate chain as a DID](docs/did-x509.md)
 - [Optional Indy ledger: running without Indy](docs/indy-ledger.md)
 - [Optional OpenBao KMS: configuration, key routing, and rollback](docs/openbao.md)
