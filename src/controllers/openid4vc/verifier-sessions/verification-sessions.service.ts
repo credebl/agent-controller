@@ -1,3 +1,5 @@
+import type { JsonObject } from '@credo-ts/core'
+
 import {
   JsonTransformer,
   Mdoc,
@@ -7,11 +9,16 @@ import {
   W3cJwtVerifiablePresentation,
   X509Service,
 } from '@credo-ts/core'
-import { OpenId4VcJwtIssuerDid, OpenId4VcVerificationSessionState } from '@credo-ts/openid4vc'
+import {
+  OpenId4VcJwtIssuerDid,
+  OpenId4VcVerificationSessionRepository,
+  type OpenId4VcVerificationSessionState,
+} from '@credo-ts/openid4vc'
 import { Request as Req } from 'express'
 import { injectable } from 'tsyringe'
 
 import { SignerMethod } from '../../../enums'
+import { verifyBitstringStatus } from '../../../utils/bitstringStatusVerifier'
 import { assertDcqlLdpVcTypeValuesExpanded } from '../../../utils/dcql'
 import {
   CreateAuthorizationRequest,
@@ -20,6 +27,15 @@ import {
   OpenId4VcIssuerX5cOptions,
   ResponseModeEnum,
 } from '../types/verifier.types'
+
+const BITSTRING_STATUS_METADATA_KEY = 'bitstringStatus'
+
+interface StoredRevocationOutcome {
+  checked: boolean
+  revoked: boolean
+  verified: boolean
+  presentations: unknown[]
+}
 
 @injectable()
 export class VerificationSessionsService {
@@ -201,6 +217,9 @@ export class VerificationSessionsService {
           }
         }) ?? [],
     )
+    const storedRevocation = verificationSession.metadata?.get(BITSTRING_STATUS_METADATA_KEY) as
+      StoredRevocationOutcome | null | undefined
+
     const dcqlSubmission = verified?.dcql
       ? Object.entries(verified.dcql.presentations).flatMap(([queryCredentialId, presentations]) =>
           presentations.map((_, presentationIndex) => ({
@@ -214,6 +233,7 @@ export class VerificationSessionsService {
       verificationSessionId: verificationSession?.id,
       responseStatus: verificationSession?.state,
       error: verificationSession?.errorMessage,
+      revocation: storedRevocation ?? undefined,
       //authorizationRequest,
 
       presentations: presentations,
@@ -238,6 +258,89 @@ export class VerificationSessionsService {
       throw new Error('OID4VC verifier module not initialized')
     }
     const result = (await verifier.verifyAuthorizationResponse({ ...verifydcqlProofRquest })) as any
-    return result
+    const revocation = await this.buildRevocationMetadata(agentReq, result)
+    await this.persistRevocationOutcome(agentReq, verifydcqlProofRquest.verificationSessionId, revocation)
+    return { ...result, revocation }
+  }
+
+  private async persistRevocationOutcome(
+    agentReq: Req,
+    verificationSessionId: string | undefined,
+    revocation: StoredRevocationOutcome,
+  ): Promise<void> {
+    if (!verificationSessionId) {
+      return
+    }
+
+    const verifier = agentReq.agent.modules.openid4vc.verifier
+    const verificationSession = await verifier.getVerificationSessionById(verificationSessionId)
+    if (!verificationSession) {
+      throw new Error(`Verification session with id ${verificationSessionId} not found`)
+    }
+
+    verificationSession.metadata.set(BITSTRING_STATUS_METADATA_KEY, revocation)
+    const repository = agentReq.agent.dependencyManager.resolve(OpenId4VcVerificationSessionRepository)
+    await repository.update(agentReq.agent.context, verificationSession)
+  }
+
+  private async buildRevocationMetadata(agentReq: Req, result: any) {
+    const presentations = [
+      ...Object.values(result?.presentationExchange?.presentations ?? {}),
+      ...Object.values(result?.dcql?.presentations ?? {}),
+    ].flat() as any[]
+
+    const results = await Promise.all(
+      presentations.map(async (presentation, presentationIndex) => {
+        const credentials = this.extractPresentationCredentials(presentation)
+        const credentialResults = await Promise.all(
+          credentials.map(async (credential, credentialIndex) => ({
+            credentialIndex,
+            ...(await verifyBitstringStatus(agentReq.agent.context, credential)),
+          })),
+        )
+        return { presentationIndex, credentials: credentialResults }
+      }),
+    )
+
+    const credentials = results.flatMap((presentation) => presentation.credentials)
+    return {
+      checked: credentials.some((credential) => credential.checked),
+      revoked: credentials.some((credential) => credential.revoked),
+      verified: credentials.every((credential) => credential.verified),
+      presentations: results,
+    }
+  }
+
+  private extractPresentationCredentials(presentation: any): Array<JsonObject | string> {
+    const raw =
+      presentation?.verifiableCredential ??
+      presentation?.presentation?.verifiableCredential ??
+      presentation?.toJson?.()?.verifiableCredential
+
+    let credentials: unknown[]
+    if (Array.isArray(raw)) {
+      credentials = raw
+    } else if (raw) {
+      credentials = [raw]
+    } else {
+      credentials = []
+    }
+    return credentials
+      .map((credential: any) => {
+        if (typeof credential === 'string') {
+          return credential
+        }
+        if (typeof credential?.serializedJwt === 'string') {
+          return credential.serializedJwt
+        }
+        if (typeof credential?.encoded === 'string') {
+          return credential.encoded
+        }
+        if (typeof credential?.toJson === 'function') {
+          return credential.toJson() as JsonObject
+        }
+        return credential && typeof credential === 'object' ? (credential as JsonObject) : undefined
+      })
+      .filter((credential: JsonObject | string | undefined): credential is JsonObject | string => Boolean(credential))
   }
 }

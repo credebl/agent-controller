@@ -32,7 +32,7 @@ import { Key, KeyAlgorithm } from '@openwallet-foundation/askar-nodejs'
 import { openBaoKeyId } from '@sovio-id/credo-openbao-kms'
 import axios from 'axios'
 import { Request as Req } from 'express'
-import { Body, Controller, Example, Get, Path, Post, Query, Route, Tags, Security, Request } from 'tsoa'
+import { Body, Controller, Example, Get, Path, Post, Query, Route, Tags, Security, Request, Response } from 'tsoa'
 import { injectable } from 'tsyringe'
 import { container } from 'tsyringe'
 
@@ -43,6 +43,7 @@ import { BadRequestError, InternalServerError, NotFoundError } from '../../error
 import { AgentType } from '../../types'
 import { keyAlgorithmToCurve, p521, verkey } from '../../utils/constant'
 import { getTypeFromCurve } from '../../utils/helpers'
+import { assertIndyDidRegistrar } from '../../utils/indyLedgerGuard'
 import { KeyImportEnvelopeError } from '../../utils/keyImport/jwe'
 import { assertPlaintextKeyImportAllowed } from '../../utils/keyImport/plaintextGate'
 import {
@@ -226,6 +227,7 @@ export class DidController extends Controller {
    */
   // @Example<DidResolutionResultProps>(DidRecordExample)
   @Example(CreateDidResponse)
+  @Response(501, 'Indy ledger is not configured')
   @Post('/write')
   public async writeDid(@Request() request: Req, @Body() createDidOptions: DidCreate) {
     let didRes
@@ -754,6 +756,8 @@ export class DidController extends Controller {
   }
 
   private async handleIndy(agent: AgentType, createDidOptions: DidCreate) {
+    // did:indy needs a ledger; without one the agent has no did:indy registrar, so fail with a clear 501 up front.
+    assertIndyDidRegistrar(agent)
     let result
     if (!createDidOptions.keyType) {
       throw new BadRequestError('keyType is required')

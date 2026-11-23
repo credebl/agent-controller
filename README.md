@@ -227,9 +227,16 @@ The agent can be configured in three ways:
 2. **JSON config file**: When providing a lot of configuration options, pass a JSON file with `--config`. All properties should use camelCase for the key names. See [samples/cliConfig.json](samples/cliConfig.json) for a complete example.
 3. **Environment variables**: All properties are prefixed with `AFJ_REST` and use UPPER_SNAKE_CASE (e.g. `AFJ_REST_WALLET_KEY=my-secret-key ./bin/afj-rest.js start ...`).
 
+The Indy ledger is optional: with an empty `indyLedger`, no `BCOVRIN_TEST_GENESIS` and `indyEnabled` unset or `false`,
+the agent starts without Indy and never contacts an Indy pool. With `indyEnabled: true` the same configuration fails
+startup. See [Optional Indy ledger](docs/indy-ledger.md).
+
 ## Guides
 
+- [Bitstring Status List revocation: configuration, API, verification, and limitations](docs/bitstring-status-list.md)
+- [Choosing which credentials to present: `selectedCredentials` on `accept-proof-request`](docs/oid4vp-credential-selection.md)
 - [did:x509: import a CA issued certificate chain as a DID](docs/did-x509.md)
+- [Optional Indy ledger: running without Indy](docs/indy-ledger.md)
 - [Optional OpenBao KMS: configuration, key routing, and rollback](docs/openbao.md)
 - [OpenBao KMS end-to-end checklist](docs/openbao-e2e.md)
 
@@ -305,3 +312,31 @@ So in this case when a connection event is triggered, it will be sent to: http:/
 The payload of the webhook contains the serialized record related to the topic of the event. For the `connections` topic this will be a `ConnectionRecord`, for the `credentials` topic it will be a `CredentialRecord`, and so on.
 
 For the WebSocket clients, the events are sent as JSON stringified objects
+
+## Release notes and versioning
+
+Release notes are collected with [Changesets](https://github.com/changesets/changesets) while the work is done, instead of being reconstructed at release time. The version of the `agent-controller` package is the same number as the `vX.Y.Z` release tag.
+
+### When to add a changeset
+
+Add one to every pull request that changes behaviour a user of the API or a deployer can notice: features, fixes, API changes, configuration changes, and dependency updates that matter at runtime. Pull requests that only touch documentation, samples, CI or tests pass the **Changeset check** without one. A change that is neither and still needs no release note (a pure refactor, for example) takes an empty changeset: `yarn changeset --empty`.
+
+### How to add a changeset
+
+```bash
+yarn changeset
+```
+
+The prompt asks for the bump type and a summary. Write the summary for the people reading the release notes: what changed and what a user or deployer has to do about it. Commit the generated `.changeset/*.md` file with your pull request.
+
+| Bump    | Use it for                                                                                     |
+| ------- | ---------------------------------------------------------------------------------------------- |
+| `patch` | Bug fixes, security updates and internal changes with no visible effect                        |
+| `minor` | New features and new, backwards-compatible endpoints or options                                |
+| `major` | Breaking changes to the REST API, webhooks, configuration or stored data that need a migration |
+
+### How a release is cut
+
+1. Changesets merged into `main` are collected by the **Version Packages** workflow into a pull request named `chore: version packages`. It bumps the version in `package.json` and prepends the entries to `CHANGELOG.md`.
+2. A maintainer reviews that pull request and merges it when the release is ready.
+3. A maintainer then pushes the `vX.Y.Z` tag for the merge commit. The tag starts the existing **Continuous Delivery** workflow, which builds and pushes the Docker image. The Changesets workflows never publish or tag anything.

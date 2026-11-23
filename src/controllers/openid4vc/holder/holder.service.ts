@@ -11,7 +11,7 @@ import type {
   ResolveCredentialOfferBody,
   ResolveProofRequest,
 } from '../types/holder.types'
-import type { BaseRecordAny, DcqlCredentialsForRequest } from '@credo-ts/core'
+import type { BaseRecordAny } from '@credo-ts/core'
 import type {
   OpenId4VcAuthorizationCodeTokenRequestOptions,
   OpenId4VciCredentialResponse,
@@ -22,7 +22,6 @@ import type {
 import type { Request as Req } from 'express'
 
 import {
-  DcqlError,
   Mdoc,
   SdJwtVcRecord,
   MdocRecord,
@@ -49,7 +48,11 @@ import {
   getCredentialBindingResolver,
 } from './credentialBindingResolver'
 import { withReadableErrors } from './holderErrors'
-import { restrictDcqlQueryResult, restrictPexCredentials } from './presentationSelection'
+import {
+  applyDcqlSelection,
+  applyPresentationExchangeSelection,
+  assertDcqlSelectionResponseCompatibility,
+} from './proofRequestSelection'
 type FilterValue = string | string[] | undefined
 
 class NotificationTimeoutError extends Error {}
@@ -699,29 +702,34 @@ export class HolderService {
       body.proofRequestUri,
       body.options,
     )
-    const selected = body.selectedCredentials
 
-    const acceptOptions: any = {
+    let acceptOptions: any = {
       authorizationRequestPayload: resolved.authorizationRequestPayload,
       origin: body.options?.origin,
     }
 
     if (resolved.dcql) {
-      const queryResult = selected
-        ? restrictDcqlQueryResult(resolved.dcql.queryResult, selected)
-        : resolved.dcql.queryResult
-      const dcqlCredentials = await this.selectOrBadRequest(() =>
-        agentReq.agent.modules.openid4vc.holder.selectCredentialsForDcqlRequest(queryResult),
+      assertDcqlSelectionResponseCompatibility(body.selectedCredentials, resolved.authorizationRequestPayload)
+
+      const autoSelection = await agentReq.agent.modules.openid4vc.holder.selectCredentialsForDcqlRequest(
+        resolved.dcql.queryResult,
       )
-      acceptOptions.dcql = { credentials: dcqlCredentials as DcqlCredentialsForRequest }
+      acceptOptions.dcql = {
+        credentials: applyDcqlSelection(resolved.dcql.queryResult, autoSelection, body.selectedCredentials),
+      }
     } else if (resolved.presentationExchange) {
-      const credentialsForRequest = selected
-        ? restrictPexCredentials(resolved.presentationExchange.credentialsForRequest, selected)
-        : resolved.presentationExchange.credentialsForRequest
-      const pexCredentials = await this.selectOrBadRequest(() =>
-        agentReq.agent.modules.openid4vc.holder.selectCredentialsForPresentationExchangeRequest(credentialsForRequest),
-      )
-      acceptOptions.presentationExchange = { credentials: pexCredentials }
+      const autoSelection =
+        await agentReq.agent.modules.openid4vc.holder.selectCredentialsForPresentationExchangeRequest(
+          resolved.presentationExchange.credentialsForRequest,
+        )
+      acceptOptions.presentationExchange = {
+        credentials: applyPresentationExchangeSelection(
+          resolved.presentationExchange.credentialsForRequest,
+          autoSelection,
+          body.selectedCredentials,
+          resolved.presentationExchange.definition as Parameters<typeof applyPresentationExchangeSelection>[3],
+        ),
+      }
     } else {
       throw new Error('Missing DCQL or Presentation Exchange on request')
     }
@@ -734,30 +742,12 @@ export class HolderService {
       return {
         ...serverResponse,
         body: rest,
-        // The verifier's own response body; `body` above is the holder's submission, kept for existing clients.
-        verifierResponse: serverResponse.body,
       } as any
     }
     return {
       status: 200,
       body: submissionResult,
     } as any
-  }
-
-  /** Credo's credential selection; a request the chosen credentials cannot satisfy is the caller's error, not ours. */
-  private async selectOrBadRequest<T>(select: () => T | Promise<T>): Promise<T> {
-    try {
-      return await select()
-    } catch (error) {
-      // Credo raises a DcqlError when a DCQL query cannot be satisfied, and this CredoError for Presentation Exchange.
-      if (
-        error instanceof DcqlError ||
-        (error instanceof Error && error.message.startsWith('Could not find the required credentials'))
-      ) {
-        throw new BadRequestError(error.message)
-      }
-      throw error
-    }
   }
 
   public async deleteCredential(agentReq: Req, { credentialId, credentialType }: DeleteCredentialBody) {
