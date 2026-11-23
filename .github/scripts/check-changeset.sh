@@ -14,15 +14,15 @@ set -euo pipefail
 base="origin/${BASE_REF:?BASE_REF is required}"
 exempt="${CHANGESET_EXEMPT_REGEX:?CHANGESET_EXEMPT_REGEX is required}"
 
-added=$(git diff --name-only --diff-filter=A "${base}...HEAD" -- '.changeset/*.md' | grep -v '^\.changeset/README\.md$' || true)
-if [ -n "$added" ]; then
+added=$(git diff --name-only --no-renames --diff-filter=A "${base}...HEAD" -- '.changeset/*.md' | grep -v '^\.changeset/README\.md$' || true)
+if [[ -n "$added" ]]; then
   echo "Changeset found:"
   echo "$added" | sed 's/^/  /'
   exit 0
 fi
 
 needs=$(git diff --name-only "${base}...HEAD" | grep -Ev "$exempt" || true)
-if [ -z "$needs" ]; then
+if [[ -z "$needs" ]]; then
   echo "Only documentation, CI or test files changed; no changeset needed."
   exit 0
 fi
