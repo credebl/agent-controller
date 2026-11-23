@@ -311,6 +311,27 @@ function dcqlCredentialForRequest(credential: DcqlValidCredential): DcqlCredenti
   throw new BadRequestError('Unsupported credential record type for DCQL selection')
 }
 
+/**
+ * With DCQL `credential_sets`, Credo's automatic selection presents the first option it can fulfil, which may be an
+ * option the caller did not choose. When the caller selected credentials, every query they left out is emptied, so
+ * only the option made of the chosen queries (plus options without any query) can be fulfilled. Without credential
+ * sets, or without a selection, the result is returned unchanged and unselected queries stay automatic.
+ */
+export function restrictDcqlQueryResultToSelection(
+  queryResult: DcqlQueryResult,
+  selection?: ProofRequestCredentialSelection,
+): DcqlQueryResult {
+  if (!hasSelection(selection) || !queryResult.credential_sets?.length) return queryResult
+
+  const credentialMatches = Object.fromEntries(
+    Object.entries(queryResult.credential_matches).map(([queryId, match]) => [
+      queryId,
+      queryId in (selection as ProofRequestCredentialSelection) ? match : { ...match, valid_credentials: [] },
+    ]),
+  )
+  return { ...queryResult, credential_matches: credentialMatches } as DcqlQueryResult
+}
+
 export function applyDcqlSelection(
   queryResult: DcqlQueryResult,
   autoSelection: DcqlCredentialsForRequest,

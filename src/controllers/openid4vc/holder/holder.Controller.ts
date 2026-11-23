@@ -114,7 +114,9 @@ export class HolderController extends Controller {
   }
 
   /**
-   * Accept a proof request
+   * Accept a proof request. Without `selectedCredentials` the agent picks a matching credential for each query; with it,
+   * the chosen credentials are presented. `verifierResponse` is the verifier's response body, e.g. its `error` and
+   * `error_description` when it rejects the presentation.
    */
   @Post('accept-proof-request')
   public async acceptProofRequest(@Request() request: Req, @Body() body: AcceptProofRequest) {

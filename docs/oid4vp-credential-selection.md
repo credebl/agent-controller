@@ -111,17 +111,44 @@ Queries you do not list keep the automatic selection. Here only `pid` is chosen 
 { "selectedCredentials": { "pid": ["3f1c9b7e-0a53-4a47-9b8c-2f6d1e7a9c10"] } }
 ```
 
-### Optional queries and `credential_sets`
+### `credential_sets`: choosing which alternative to present
 
-If the request has `credential_sets` with alternatives (for example `pid` or `passport`), select the credential for the
-alternative you want to answer and leave the other out:
+A DCQL query can group queries into `credential_sets`, each with `options` (alternatives) and `required`. Example: the
+verifier accepts a `pid` **or** a `passport`:
+
+```json
+{
+  "credentials": [
+    { "id": "pid", "format": "dc+sd-jwt" },
+    { "id": "passport", "format": "dc+sd-jwt" }
+  ],
+  "credential_sets": [{ "required": true, "options": [["pid"], ["passport"]] }]
+}
+```
+
+Without a selection the agent presents the first option it can fulfil, which is `pid` when the wallet holds one. To
+present the passport, select a credential for `passport` only:
 
 ```json
 { "selectedCredentials": { "passport": ["d4a1b2c3-5e6f-4789-a0b1-c2d3e4f5a6b7"] } }
 ```
 
-Selecting a query is an explicit choice and is sent. A query you do not select is answered or skipped by the automatic
-selection, as without `selectedCredentials`.
+When the request has `credential_sets` and you send `selectedCredentials`, **queries you leave out are not presented**,
+so the option made of the queries you chose is the one answered. Select every query of the option you want:
+
+```json
+{
+  "selectedCredentials": {
+    "pid": ["3f1c9b7e-0a53-4a47-9b8c-2f6d1e7a9c10"],
+    "address": ["9c2e7f10-4b3a-4d58-8a61-e0f1a2b3c4d5"]
+  }
+}
+```
+
+for `"options": [["pid", "address"], ["passport"]]`. If the queries you chose do not complete any option of a required
+set, the request fails with `400` (Credo reports that the query cannot be satisfied).
+
+Without `credential_sets`, queries you leave out stay automatic, as described above.
 
 ### Several credentials for one query (`multiple: true`)
 
@@ -185,3 +212,40 @@ Submission requirement `pick` with `count: 1` over descriptors `passport` and `i
 Selecting both descriptors in that case answers `400` (`expected at most 1, received 2`). Selecting fewer than the
 minimum answers `400` (`expected at least N`). A credential not offered for a descriptor, or an unknown descriptor id,
 also answers `400`.
+
+## Response
+
+The endpoint returns the HTTP outcome of the submission to the verifier:
+
+```json
+{
+  "status": 200,
+  "body": { "presentationExchange": {}, "dcql": {} },
+  "verifierResponse": { "redirect_uri": "https://verifier.example/done" }
+}
+```
+
+- `status` is the verifier's HTTP status.
+- `body` is what the holder submitted. It is unchanged, so existing clients keep working.
+- `verifierResponse` is the verifier's own response body. When the verifier rejects the presentation, it carries the
+  reason, which `body` never did:
+
+```json
+{
+  "status": 400,
+  "body": { "dcql": {} },
+  "verifierResponse": {
+    "error": "invalid_request",
+    "error_description": "One or more presentations failed verification."
+  }
+}
+```
+
+`verifierResponse` is present when the verifier answered; show its `error_description` to the user or log it for support.
+When the verifier sends no body, it is absent or empty.
+
+## Errors when no credentials can be selected
+
+If the wallet cannot satisfy the request at all, for example no credential matches a required query, the endpoint
+answers `400` with Credo's message. Before this change it answered `500`. Nothing is sent to the verifier in that case.
+Other failures, such as storage errors, stay `500`.

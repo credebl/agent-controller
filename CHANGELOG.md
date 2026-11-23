@@ -4,6 +4,9 @@
 
 ### Features
 
+- **oid4vc holder:** `POST /openid4vc/holder/accept-proof-request` returns the verifier's response body as `verifierResponse` (for example `error` and `error_description` when the verifier rejects the presentation). `status` and `body` are unchanged.
+- **oid4vc holder:** `accept-proof-request` answers 400 instead of 500 when Credo cannot select credentials for the request (a DCQL query or Presentation Exchange definition the wallet's credentials cannot satisfy).
+- **oid4vc holder:** with DCQL `credential_sets` and `selectedCredentials`, queries the caller left out are not presented automatically, so the option made of the chosen queries is the one presented. Without credential sets, queries left out stay automatic as before.
 - **revocation:** W3C JSON-LD credentials (`ldp_vc` and `jwt_vc_json-ld`, including VCDM 2.0) can be revoked with a W3C Bitstring Status List. OID4VCI issuance creates a `BitstringStatusListEntry` in `credentialStatus` and records `mechanism: "bitstring"` in the session metadata; SD-JWT credentials keep using `status_list`. See [docs/bitstring-status-list.md](docs/bitstring-status-list.md).
   - `revokeBySessionId` dispatches by the stored mechanism, so existing SD-JWT sessions continue to revoke as before.
   - `POST /agent/credential/verify` detects VCDM 2.0, verifies the signature with the matching Credo API, checks bitstring status and returns `verified` plus a `revocation` summary. `isValid` now also reflects revocation verification. Credo's built-in status check is disabled only for bitstring entries, which are verified explicitly.
