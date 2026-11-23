@@ -20,3 +20,16 @@ export const isCustomDocumentLoaderEnabled = (): boolean => {
 
   return isCustomDocumentLoaderEnabled
 }
+
+/**
+ * Removes the given environment variables when they are blank. yargs reads a blank boolean such as
+ * `AFJ_REST_INDY_ENABLED=` (common in deployment templates) as `false`, which would silently switch a feature off.
+ * A blank value is treated as unset instead, so the config file or the automatic default applies.
+ */
+export function unsetBlankEnv(names: string[], env: NodeJS.ProcessEnv = process.env): void {
+  for (const name of names) {
+    if (env[name] !== undefined && env[name]?.trim() === '') {
+      delete env[name]
+    }
+  }
+}

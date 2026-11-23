@@ -81,6 +81,19 @@ class RecordDuplicateError extends ConflictError {
   }
 }
 
+class NotImplementedError extends BaseError {
+  public constructor(message: string = 'Not Implemented') {
+    super(message, 501)
+  }
+}
+
+/** Thrown by routes that need an Indy ledger when the agent was started without one. */
+class IndyLedgerNotConfiguredError extends NotImplementedError {
+  public constructor(message: string = 'Indy ledger is not configured') {
+    super(message)
+  }
+}
+
 const errorMap: Record<string, new (message: string) => BaseError> = {
   InternalServerError,
   NotFoundError,
@@ -94,6 +107,8 @@ const errorMap: Record<string, new (message: string) => BaseError> = {
   ConflictError,
   RecordDuplicateError,
   UnprocessableEntityError,
+  NotImplementedError,
+  IndyLedgerNotConfiguredError,
 }
 
 export {
@@ -110,5 +125,7 @@ export {
   BaseError,
   RecordDuplicateError,
   UnprocessableEntityError,
+  NotImplementedError,
+  IndyLedgerNotConfiguredError,
   errorMap,
 }
