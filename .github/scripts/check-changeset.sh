@@ -21,7 +21,7 @@ if [[ -n "$added" ]]; then
   exit 0
 fi
 
-needs=$(git diff --name-only "${base}...HEAD" | grep -Ev "$exempt" || true)
+needs=$(git diff --name-only --no-renames "${base}...HEAD" | grep -Ev "$exempt" || true)
 if [[ -z "$needs" ]]; then
   echo "Only documentation, CI or test files changed; no changeset needed."
   exit 0
