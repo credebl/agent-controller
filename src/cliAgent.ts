@@ -20,6 +20,7 @@ import { AskarModule, AskarMultiWalletDatabaseScheme } from '@credo-ts/askar'
 import {
   DidsModule,
   W3cCredentialsModule,
+  W3cV2CredentialsModule,
   KeyDidRegistrar,
   KeyDidResolver,
   CacheModule,
@@ -221,6 +222,7 @@ const getModules = (
           documentLoader: CustomDocumentLoader,
         })
       : new W3cCredentialsModule(),
+    w3cV2Credentials: new W3cV2CredentialsModule(),
     didcomm: new DidCommModule({
       processDidCommMessagesConcurrently: true,
       mediationRecipient: true,

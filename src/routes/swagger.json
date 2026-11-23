@@ -1881,7 +1881,8 @@
 						"properties": {
 							"listSize": {
 								"type": "number",
-								"format": "double"
+								"format": "double",
+								"description": "Number of entries for SD-JWT status lists; for bitstring status lists this is the\nnumber of bits (multiple of 8, at least 131072)."
 							},
 							"index": {
 								"type": "number",
@@ -2032,7 +2033,8 @@
 						"properties": {
 							"listSize": {
 								"type": "number",
-								"format": "double"
+								"format": "double",
+								"description": "Number of entries for SD-JWT status lists; for bitstring status lists this is the\nnumber of bits (multiple of 8, at least 131072)."
 							},
 							"index": {
 								"type": "number",
@@ -2129,7 +2131,8 @@
 						"properties": {
 							"listSize": {
 								"type": "number",
-								"format": "double"
+								"format": "double",
+								"description": "Number of entries for SD-JWT status lists; for bitstring status lists this is the\nnumber of bits (multiple of 8, at least 131072)."
 							},
 							"index": {
 								"type": "number",
@@ -2322,7 +2325,8 @@
 						"properties": {
 							"listSize": {
 								"type": "number",
-								"format": "double"
+								"format": "double",
+								"description": "Number of entries for SD-JWT status lists; for bitstring status lists this is the\nnumber of bits (multiple of 8, at least 131072)."
 							},
 							"index": {
 								"type": "number",
@@ -4206,54 +4210,59 @@
 				],
 				"type": "object"
 			},
-			"Partial_W3cCredentialValidations_": {
-				"properties": {},
-				"type": "object",
-				"description": "Make all properties in T optional"
-			},
-			"Error": {
+			"BitstringStatusVerificationResult": {
 				"properties": {
-					"name": {
+					"checked": {
+						"type": "boolean"
+					},
+					"revoked": {
+						"type": "boolean"
+					},
+					"verified": {
+						"type": "boolean"
+					},
+					"statusListUri": {
 						"type": "string"
 					},
-					"message": {
+					"statusListIndex": {
+						"type": "number",
+						"format": "double"
+					},
+					"statusPurpose": {
 						"type": "string"
 					},
-					"stack": {
+					"error": {
 						"type": "string"
 					}
 				},
 				"required": [
-					"name",
-					"message"
+					"checked",
+					"revoked",
+					"verified"
 				],
 				"type": "object",
 				"additionalProperties": false
 			},
-			"W3cVerifyResult_W3cCredentialValidations_": {
+			"VerifyCredentialResponse": {
+				"description": "Verification response returned by `POST /agent/credential/verify`.",
 				"properties": {
 					"isValid": {
-						"type": "boolean",
-						"description": "Whether the verification as a whole is valid. This means that\nall validations inside the validations object should have passed."
+						"type": "boolean"
 					},
-					"validations": {
-						"$ref": "#/components/schemas/Partial_W3cCredentialValidations_",
-						"description": "Validations that have been performed"
+					"verified": {
+						"type": "boolean"
 					},
-					"error": {
-						"$ref": "#/components/schemas/Error",
-						"description": "Error that was caught during verification not related to\nany of the specific validations that are performed"
+					"revocation": {
+						"$ref": "#/components/schemas/BitstringStatusVerificationResult"
 					}
 				},
 				"required": [
 					"isValid",
-					"validations"
+					"verified",
+					"revocation"
 				],
 				"type": "object",
-				"additionalProperties": false
-			},
-			"W3cVerifyCredentialResult": {
-				"$ref": "#/components/schemas/W3cVerifyResult_W3cCredentialValidations_"
+				"additionalProperties": {}
 			},
 			"AnonCredsW3cCredentialProofOptions": {
 				"properties": {
@@ -5682,6 +5691,30 @@
 				},
 				"type": "object",
 				"description": "Get format data return value. Each key holds a mapping of credential format key to format data."
+			},
+			"RevokeBitstringCredentialOptions": {
+				"properties": {
+					"listId": {
+						"type": "string",
+						"description": "Identifier of the published bitstring status list."
+					},
+					"index": {
+						"type": "number",
+						"format": "double",
+						"description": "Zero-based status index of the credential to revoke."
+					},
+					"issuerDid": {
+						"type": "string",
+						"description": "DID that issued the status list credential."
+					}
+				},
+				"required": [
+					"listId",
+					"index",
+					"issuerDid"
+				],
+				"type": "object",
+				"additionalProperties": false
 			},
 			"DidCommProofExchangeRecord": {
 				"$ref": "#/components/schemas/Record_string.unknown_"
@@ -10765,7 +10798,7 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/W3cVerifyCredentialResult"
+									"$ref": "#/components/schemas/VerifyCredentialResponse"
 								}
 							}
 						}
@@ -11837,6 +11870,62 @@
 						}
 					}
 				]
+			}
+		},
+		"/didcomm/credentials/revoke": {
+			"post": {
+				"operationId": "RevokeBitstringCredential",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"index": {
+											"type": "number",
+											"format": "double"
+										},
+										"listId": {
+											"type": "string"
+										},
+										"revoked": {
+											"type": "boolean"
+										}
+									},
+									"required": [
+										"index",
+										"listId",
+										"revoked"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"tags": [
+					"DIDComm - Credentials"
+				],
+				"security": [
+					{
+						"jwt": [
+							"tenant",
+							"dedicated"
+						]
+					}
+				],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RevokeBitstringCredentialOptions"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/didcomm/proofs": {

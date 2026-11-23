@@ -173,6 +173,8 @@ The `samples/cliConfig.json` file must reference a PostgreSQL wallet (it already
 
 This method uses the official prebuilt image and connects to your local PostgreSQL instance.
 
+> **Architectures and tags**: The image is published for `linux/amd64` and `linux/arm64` behind one multi-arch tag (for example `v2.4.0` or `latest`), with optional `-amd64` / `-arm64` tags. See [docs/container-images.md](docs/container-images.md) for the available tags, how to choose, and notes on PostgreSQL with TLS (for example AWS RDS on ARM64).
+
 > **Note**: The Docker image is still published under the legacy name `ghcr.io/credebl/credo-controller`. The prebuilt image and `docker compose` entry points have not yet been renamed to match the new "Agent Controller" project name.
 >
 > **OS Compatibility**: This containerized method has been tested and works on **WSL**, **Ubuntu**, and **Fedora**.
@@ -231,6 +233,7 @@ startup. See [Optional Indy ledger](docs/indy-ledger.md).
 
 ## Guides
 
+- [Bitstring Status List revocation: configuration, API, verification, and limitations](docs/bitstring-status-list.md)
 - [did:x509: import a CA issued certificate chain as a DID](docs/did-x509.md)
 - [Optional Indy ledger: running without Indy](docs/indy-ledger.md)
 - [Optional OpenBao KMS: configuration, key routing, and rollback](docs/openbao.md)
