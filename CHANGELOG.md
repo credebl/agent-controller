@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.3
+
+### Patch Changes
+
+- [#501](https://github.com/credebl/agent-controller/pull/501) [`8ffb13f`](https://github.com/credebl/agent-controller/commit/8ffb13f5218f4b22d71eeb7f070f5b792701ca9b) Thanks [@ajile-in](https://github.com/ajile-in)! - `POST /openid4vc/holder/accept-proof-request` returns the verifier's response body as `verifierResponse`, answers 400 instead of 500 when Credo cannot select credentials for the request, and, with DCQL `credential_sets` and `selectedCredentials`, presents only the option made of the chosen queries.
+
+- [#500](https://github.com/credebl/agent-controller/pull/500) [`10ecf58`](https://github.com/credebl/agent-controller/commit/10ecf58e94c00ecf35aac84aafe678f7d9ea9818) Thanks [@ajile-in](https://github.com/ajile-in)! - `POST /openid4vc/holder/accept-proof-request` accepts optional `selectedCredentials`, a map of Presentation Exchange input descriptor ids to the credential to present, so callers can choose which credential answers each request. `@openid4vc/openid4vp` is now a direct dependency.
+
+- [#502](https://github.com/credebl/agent-controller/pull/502) [`fd2ea27`](https://github.com/credebl/agent-controller/commit/fd2ea2741d599297c9afde5128d65e1c2236ffb5) Thanks [@ajile-in](https://github.com/ajile-in)! - `POST /openid4vc/verification-sessions/create-presentation-request` accepts the whole DCQL query of OpenID4VP 1.0: claim `id` and `values`, `null` and numeric path segments, and on a credential query `multiple`, `trusted_authorities` and `claim_sets`. They were refused with 422 by request validation.
+
 ## Unreleased
 
 ### Features
