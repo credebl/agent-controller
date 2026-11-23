@@ -5,6 +5,7 @@ import type { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 export interface OpenId4VciOfferCredentials {
   credentialSupportedId: string
   format: OpenId4VciCredentialFormatProfile
+  isRevocable?: boolean
   signerOptions: {
     method: SignerMethod
     did?: string

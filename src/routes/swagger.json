@@ -1854,6 +1854,9 @@
 					"format": {
 						"$ref": "#/components/schemas/OpenId4VciCredentialFormatProfile"
 					},
+					"isRevocable": {
+						"type": "boolean"
+					},
 					"signerOptions": {
 						"properties": {
 							"keyId": {
@@ -2006,6 +2009,9 @@
 					"format": {
 						"$ref": "#/components/schemas/OpenId4VciCredentialFormatProfile"
 					},
+					"isRevocable": {
+						"type": "boolean"
+					},
 					"signerOptions": {
 						"properties": {
 							"keyId": {
@@ -2103,6 +2109,9 @@
 					},
 					"format": {
 						"$ref": "#/components/schemas/OpenId4VciCredentialFormatProfile"
+					},
+					"isRevocable": {
+						"type": "boolean"
 					},
 					"signerOptions": {
 						"properties": {

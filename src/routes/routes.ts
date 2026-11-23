@@ -886,6 +886,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "credentialSupportedId": {"dataType":"string","required":true},
             "format": {"ref":"OpenId4VciCredentialFormatProfile","required":true},
+            "isRevocable": {"dataType":"boolean"},
             "signerOptions": {"dataType":"nestedObjectLiteral","nestedProperties":{"keyId":{"dataType":"string"},"x5c":{"dataType":"array","array":{"dataType":"string"}},"did":{"dataType":"string"},"method":{"ref":"SignerMethod","required":true}},"required":true},
             "statusListDetails": {"dataType":"nestedObjectLiteral","nestedProperties":{"listSize":{"dataType":"double"},"index":{"dataType":"double","required":true},"listId":{"dataType":"string","required":true}}},
             "payload": {"dataType":"nestedObjectLiteral","nestedProperties":{"validUntil":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"datetime"}]},"validFrom":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"datetime"}]},"credentialSubject":{"dataType":"union","subSchemas":[{"ref":"CredentialSubject"},{"dataType":"array","array":{"dataType":"refObject","ref":"CredentialSubject"}}]},"issuer":{"dataType":"union","subSchemas":[{"dataType":"string"},{"ref":"IssuerObject"}]},"vct":{"dataType":"string"}},"additionalProperties":{"dataType":"any"},"required":true},
@@ -914,6 +915,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "credentialSupportedId": {"dataType":"string","required":true},
             "format": {"ref":"OpenId4VciCredentialFormatProfile","required":true},
+            "isRevocable": {"dataType":"boolean"},
             "signerOptions": {"dataType":"nestedObjectLiteral","nestedProperties":{"keyId":{"dataType":"string"},"x5c":{"dataType":"array","array":{"dataType":"string"}},"did":{"dataType":"string"},"method":{"ref":"SignerMethod","required":true}},"required":true},
             "statusListDetails": {"dataType":"nestedObjectLiteral","nestedProperties":{"listSize":{"dataType":"double"},"index":{"dataType":"double","required":true},"listId":{"dataType":"string","required":true}}},
             "payload": {"dataType":"nestedObjectLiteral","nestedProperties":{"namespaces":{"ref":"MdocNameSpaces","required":true},"validityInfo":{"ref":"Partial_ValidityInfo_"},"docType":{"dataType":"union","subSchemas":[{"dataType":"enum","enums":["org.iso.18013.5.1.mDL"]},{"dataType":"intersection","subSchemas":[{"dataType":"string"},{"dataType":"nestedObjectLiteral","nestedProperties":{}}]}],"required":true}},"required":true},
@@ -926,6 +928,7 @@ const models: TsoaRoute.Models = {
         "properties": {
             "credentialSupportedId": {"dataType":"string","required":true},
             "format": {"ref":"OpenId4VciCredentialFormatProfile","required":true},
+            "isRevocable": {"dataType":"boolean"},
             "signerOptions": {"dataType":"nestedObjectLiteral","nestedProperties":{"keyId":{"dataType":"string"},"x5c":{"dataType":"array","array":{"dataType":"string"}},"did":{"dataType":"string"},"method":{"ref":"SignerMethod","required":true}},"required":true},
             "statusListDetails": {"dataType":"nestedObjectLiteral","nestedProperties":{"listSize":{"dataType":"double"},"index":{"dataType":"double","required":true},"listId":{"dataType":"string","required":true}}},
             "payload": {"dataType":"nestedObjectLiteral","nestedProperties":{"type":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"array","array":{"dataType":"string"}}]},"@context":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"array","array":{"dataType":"string"}}]},"validUntil":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"datetime"}]},"validFrom":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"datetime"}]},"issuer":{"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"nestedObjectLiteral","nestedProperties":{"id":{"dataType":"string","required":true}},"additionalProperties":{"dataType":"any"}}]},"credentialSubject":{"dataType":"union","subSchemas":[{"ref":"CredentialSubject"},{"dataType":"array","array":{"dataType":"refObject","ref":"CredentialSubject"}}]},"verificationMethod":{"dataType":"string"}},"additionalProperties":{"dataType":"any"},"required":true},

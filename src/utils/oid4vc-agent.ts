@@ -345,6 +345,10 @@ function handleMsoMdocFormat(
       `issuerx509certificate is not provided or empty for credential type ${OpenId4VciCredentialFormatProfile.MsoMdoc}`,
     )
 
+  if (credential.isRevocable === true) {
+    throw new Error('Revocation is not supported for mdoc credentials')
+  }
+
   if (!credentialConfiguration.doctype) {
     throw new Error(`'doctype' not found in credential configuration,`)
   }
@@ -515,6 +519,10 @@ function mapW3cCredentialBinding(
     type: payload.type,
     issuer: finalIssuer,
     credentialSubject: rawSubject,
+  }
+
+  if (payload.credentialStatus) {
+    credentialJson.credentialStatus = payload.credentialStatus
   }
 
   if (isV2) {

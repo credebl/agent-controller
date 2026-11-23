@@ -15,10 +15,13 @@ Status-list verification fails closed if no origins are configured. A status lis
 
 ## Issuance
 
-When a credential offer has `isRevocable: true`, the issuer creates or reuses a status list and adds a status entry to the credential:
+Revocation is resolved per credential as `credential.isRevocable ?? offer.isRevocable ?? false`. An explicit credential flag wins over the offer flag; omitting it keeps compatibility with older callers that set only the offer flag. If the effective value is `true`, the issuer creates or reuses a status list and adds a status entry to the credential:
 
-- JSON-LD credentials receive `credentialStatus` with type `BitstringStatusListEntry`, purpose `revocation`, the status list URL and the zero-based index.
+- JSON-LD credentials receive `credentialStatus` with type `BitstringStatusListEntry`, purpose `revocation`, the status list URL and the zero-based index. The entry is preserved when the credential is signed.
 - SD-JWT credentials keep the existing `status_list` block.
+- mdoc credentials cannot be revocable and are rejected before signing.
+
+`issuanceMetadata.isRevocable` still records the offer-level flag for backward compatibility, but revocation processing never reads it.
 
 An existing list is reused only when it is a revocation bitstring status list issued by the credential's issuer DID. Reusing an SD-JWT list or a list with another purpose/status size fails the offer before any credential is issued.
 

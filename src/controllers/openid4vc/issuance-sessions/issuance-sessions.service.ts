@@ -135,13 +135,17 @@ class IssuanceSessionsService {
     }
   }
 
+  private resolveIsRevocable(cred: any, options: OpenId4VcIssuanceSessionsCreateOffer): boolean {
+    return cred.isRevocable ?? options.isRevocable ?? false
+  }
+
   private async processStatusList(
     cred: any,
     options: OpenId4VcIssuanceSessionsCreateOffer,
     agentReq: Req,
     offerStatusInfo: any[],
   ) {
-    if (!options.isRevocable) {
+    if (!this.resolveIsRevocable(cred, options)) {
       return undefined
     }
 

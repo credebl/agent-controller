@@ -41,6 +41,7 @@ function makeRequest() {
     credentialConfigurationsSupported: {
       'ldp-credential': { format: CredentialFormat.LdpVc, vct: 'degree' },
       'sdjwt-credential': { format: CredentialFormat.VcSdJwt, vct: 'identity' },
+      'mdoc-credential': { format: 'mso_mdoc' },
     },
   }
   const offerResult = { credentialOffer: { offer: true }, issuanceSession: { id: 'session-1' } }
@@ -143,6 +144,98 @@ describe('IssuanceSessionsService.createCredentialOffer', () => {
       status_list: { uri: 'https://status.example.com/status-lists/list-1', idx: 7 },
     })
     expect(options.issuanceMetadata.StatusListInfo[0].mechanism).toBeUndefined()
+  })
+
+  it('uses the per-credential revocable flag when the offer flag is false', async () => {
+    const request = makeRequest()
+    const options: any = {
+      publicIssuerId: 'issuer-1',
+      isRevocable: false,
+      credentials: [
+        {
+          credentialSupportedId: 'sdjwt-credential',
+          format: CredentialFormat.VcSdJwt,
+          isRevocable: true,
+          payload: {},
+          signerOptions: { method: SignerMethod.Did, did: ISSUER_DID },
+          statusListDetails: statusListDetails(),
+        },
+      ],
+    }
+
+    await issuanceSessionService.createCredentialOffer(options, request)
+
+    expect(createStatusMock).toHaveBeenCalledWith(request.agent, 'list-1', ISSUER_DID, 131072)
+    expect(options.issuanceMetadata.credentials[0].payload.status).toBeDefined()
+  })
+
+  it('does not add status for a credential explicitly marked non-revocable', async () => {
+    const request = makeRequest()
+    const options: any = {
+      publicIssuerId: 'issuer-1',
+      isRevocable: true,
+      credentials: [
+        {
+          credentialSupportedId: 'sdjwt-credential',
+          format: CredentialFormat.VcSdJwt,
+          isRevocable: false,
+          payload: {},
+          signerOptions: { method: SignerMethod.Did, did: ISSUER_DID },
+          statusListDetails: statusListDetails(),
+        },
+      ],
+    }
+
+    await issuanceSessionService.createCredentialOffer(options, request)
+
+    expect(createStatusMock).not.toHaveBeenCalled()
+    expect(options.issuanceMetadata.credentials[0].payload.status).toBeUndefined()
+    expect(options.issuanceMetadata.StatusListInfo).toBeUndefined()
+  })
+
+  it('falls back to the offer-level revocable flag when the credential flag is omitted', async () => {
+    const request = makeRequest()
+    const options: any = {
+      publicIssuerId: 'issuer-1',
+      isRevocable: true,
+      credentials: [
+        {
+          credentialSupportedId: 'sdjwt-credential',
+          format: CredentialFormat.VcSdJwt,
+          payload: {},
+          signerOptions: { method: SignerMethod.Did, did: ISSUER_DID },
+          statusListDetails: statusListDetails(),
+        },
+      ],
+    }
+
+    await issuanceSessionService.createCredentialOffer(options, request)
+
+    expect(createStatusMock).toHaveBeenCalled()
+    expect(options.issuanceMetadata.credentials[0].payload.status).toBeDefined()
+  })
+
+  it('skips status processing for a non-revocable mdoc even when the offer flag is true', async () => {
+    const request = makeRequest()
+    const options: any = {
+      publicIssuerId: 'issuer-1',
+      isRevocable: true,
+      credentials: [
+        {
+          credentialSupportedId: 'mdoc-credential',
+          format: 'mso_mdoc' as any,
+          isRevocable: false,
+          payload: { namespaces: {} },
+          signerOptions: { method: SignerMethod.Did, did: ISSUER_DID },
+        },
+      ],
+    }
+
+    await issuanceSessionService.createCredentialOffer(options, request)
+
+    expect(createStatusMock).not.toHaveBeenCalled()
+    expect(createBitstringMock).not.toHaveBeenCalled()
+    expect(options.issuanceMetadata.StatusListInfo).toBeUndefined()
   })
 })
 
