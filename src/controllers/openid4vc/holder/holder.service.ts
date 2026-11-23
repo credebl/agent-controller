@@ -1,4 +1,5 @@
 import type {
+  AcceptProofRequest,
   AuthorizeRequestCredentialOffer,
   CredentialListQuery,
   CredentialNotificationEvent,
@@ -10,7 +11,7 @@ import type {
   ResolveCredentialOfferBody,
   ResolveProofRequest,
 } from '../types/holder.types'
-import type { BaseRecordAny, DcqlCredentialsForRequest } from '@credo-ts/core'
+import type { BaseRecordAny } from '@credo-ts/core'
 import type {
   OpenId4VcAuthorizationCodeTokenRequestOptions,
   OpenId4VciCredentialResponse,
@@ -47,6 +48,11 @@ import {
   getCredentialBindingResolver,
 } from './credentialBindingResolver'
 import { withReadableErrors } from './holderErrors'
+import {
+  applyDcqlSelection,
+  applyPresentationExchangeSelection,
+  assertDcqlSelectionResponseCompatibility,
+} from './proofRequestSelection'
 type FilterValue = string | string[] | undefined
 
 class NotificationTimeoutError extends Error {}
@@ -691,12 +697,11 @@ export class HolderService {
     )) as any
   }
 
-  public async acceptPresentationRequest(agentReq: Req, body: ResolveProofRequest) {
+  public async acceptPresentationRequest(agentReq: Req, body: AcceptProofRequest) {
     const resolved = await agentReq.agent.modules.openid4vc.holder.resolveOpenId4VpAuthorizationRequest(
       body.proofRequestUri,
       body.options,
     )
-    // const presentationExchangeService = agent.dependencyManager.resolve(DifPresentationExchangeService)
 
     let acceptOptions: any = {
       authorizationRequestPayload: resolved.authorizationRequestPayload,
@@ -704,16 +709,27 @@ export class HolderService {
     }
 
     if (resolved.dcql) {
-      const dcqlCredentials = await agentReq.agent.modules.openid4vc.holder.selectCredentialsForDcqlRequest(
+      assertDcqlSelectionResponseCompatibility(body.selectedCredentials, resolved.authorizationRequestPayload)
+
+      const autoSelection = await agentReq.agent.modules.openid4vc.holder.selectCredentialsForDcqlRequest(
         resolved.dcql.queryResult,
       )
-      acceptOptions.dcql = { credentials: dcqlCredentials as DcqlCredentialsForRequest }
+      acceptOptions.dcql = {
+        credentials: applyDcqlSelection(resolved.dcql.queryResult, autoSelection, body.selectedCredentials),
+      }
     } else if (resolved.presentationExchange) {
-      const pexCredentials =
+      const autoSelection =
         await agentReq.agent.modules.openid4vc.holder.selectCredentialsForPresentationExchangeRequest(
           resolved.presentationExchange.credentialsForRequest,
         )
-      acceptOptions.presentationExchange = { credentials: pexCredentials }
+      acceptOptions.presentationExchange = {
+        credentials: applyPresentationExchangeSelection(
+          resolved.presentationExchange.credentialsForRequest,
+          autoSelection,
+          body.selectedCredentials,
+          resolved.presentationExchange.definition as Parameters<typeof applyPresentationExchangeSelection>[3],
+        ),
+      }
     } else {
       throw new Error('Missing DCQL or Presentation Exchange on request')
     }
