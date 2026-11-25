@@ -233,12 +233,24 @@ export function assertOfferAcceptsNewKeyBinding(
         credentialFormat: configuration.format,
       })
 
-      selectFreshKeySignatureAlgorithm({
-        signatureAlgorithm,
-        algorithms: configuration.proof_types_supported?.jwt?.proof_signing_alg_values_supported,
-        didMethod: selectedDidMethod,
-        isBackendAvailable: availability,
-      })
+      const jwtProof = configuration.proof_types_supported?.jwt
+      // As in the require-policy DID preflight, missing proof metadata states no requirements to check.
+      // Credo narrows the algorithms to the wallet's capabilities when it creates the proof, so leave the
+      // algorithm choice to the resolver for those offers instead of rejecting an empty algorithm list.
+      if (jwtProof) {
+        if (jwtProof.key_attestations_required) {
+          throw new BindingValidationError(
+            BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM,
+            'Issuer requires key attestations for jwt proofs; fresh-key binding does not support them',
+          )
+        }
+        selectFreshKeySignatureAlgorithm({
+          signatureAlgorithm,
+          algorithms: jwtProof.proof_signing_alg_values_supported,
+          didMethod: selectedDidMethod,
+          isBackendAvailable: availability,
+        })
+      }
     } catch (error) {
       throw prefixedBindingError(error, configurationId)
     }

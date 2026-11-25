@@ -24,7 +24,8 @@ export interface RequestCredentialBody {
   /**
    * What to do when the issuer does not support `holderDidUrl` (DID method or key algorithm):
    * `require` fails the request, `prefer` binds to a new key instead. Ignored without `holderDidUrl`.
-   * @default "require"
+   * Defaults to `require` when omitted; no tsoa default is emitted here so a nested `binding.policy`
+   * can be used on its own without appearing to conflict with this field.
    */
   bindingPolicy?: CredentialBindingPolicy
   /**

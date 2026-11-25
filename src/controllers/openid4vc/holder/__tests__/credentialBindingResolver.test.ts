@@ -608,6 +608,44 @@ describe('assertOfferAcceptsNewKeyBinding', () => {
       }),
     ).toThrow(`IecSdJwt: ${BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM}`)
   })
+
+  it('skips the algorithm check when the issuer publishes no proof metadata', () => {
+    const { options } = setup({})
+    const offer = {
+      offeredCredentialConfigurations: {
+        IecSdJwt: {
+          format: 'dc+sd-jwt',
+          cryptographic_binding_methods_supported: ['did:jwk', 'jwk'],
+        },
+      },
+    } as any
+
+    expect(() => assertOfferAcceptsNewKeyBinding(options.agentContext, offer, ['IecSdJwt'], {})).not.toThrow()
+    expect(() =>
+      assertOfferAcceptsNewKeyBinding(options.agentContext, offer, ['IecSdJwt'], {
+        signatureAlgorithm: 'RS256',
+      }),
+    ).not.toThrow()
+  })
+
+  it('rejects key-attestation offers before token redemption', () => {
+    const { options } = setup({})
+    const offer = {
+      offeredCredentialConfigurations: {
+        IecSdJwt: {
+          format: 'dc+sd-jwt',
+          cryptographic_binding_methods_supported: ['did:jwk'],
+          proof_types_supported: {
+            jwt: { proof_signing_alg_values_supported: ['ES256'], key_attestations_required: {} },
+          },
+        },
+      },
+    } as any
+
+    expect(() => assertOfferAcceptsNewKeyBinding(options.agentContext, offer, ['IecSdJwt'], {})).toThrow(
+      `${BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM}: Issuer requires key attestations`,
+    )
+  })
 })
 
 describe('assertW3cCredentialsBoundToHolderDid', () => {

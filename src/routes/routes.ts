@@ -1086,7 +1086,7 @@ const models: TsoaRoute.Models = {
             "txCode": {"dataType":"string"},
             "tags": {"ref":"CredentialTags"},
             "holderDidUrl": {"dataType":"string"},
-            "bindingPolicy": {"ref":"CredentialBindingPolicy","default":"require"},
+            "bindingPolicy": {"ref":"CredentialBindingPolicy"},
             "binding": {"ref":"CredentialBindingOptions"},
             "sendNotification": {"dataType":"boolean","default":true},
         },

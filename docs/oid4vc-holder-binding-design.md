@@ -323,7 +323,9 @@ This section is repository-specific and does not change the canonical contract a
   to a 400 `INVALID_BINDING_MODE`.
 - Pre-redemption validation runs for every requested configuration. With `bindingPolicy: 'prefer'`, a DID method or
   proof-algorithm mismatch still falls back to a fresh key; `mso_mdoc` with `existing-did` is always rejected because
-  Credo cannot bind an mDoc to a DID.
+  Credo cannot bind an mDoc to a DID. A fresh-key request is also rejected before token redemption when the issuer
+  requires JWT key attestations. Offers without `proof_types_supported` skip the metadata algorithm check and let
+  Credo narrow the algorithm list when creating the proof.
 - Fresh-key DID method preference remains `did:jwk`, then `did:key`, then plain JWK, with `did:key` when an issuer
   advertises no binding methods. A caller may only select `did:key` or `did:jwk` explicitly, since those are the
   methods this agent can create for a fresh key.
