@@ -28,6 +28,7 @@ import {
   BINDING_ERROR_CODES,
   BindingValidationError,
   KeyCreationError,
+  assertAlgorithmCanBeCreated,
   getKeyTypeForAlgorithm,
   kmsBackendAvailability,
   selectFreshKeyDidMethod,
@@ -233,11 +234,23 @@ export function assertOfferAcceptsNewKeyBinding(
         credentialFormat: configuration.format,
       })
 
-      const jwtProof = configuration.proof_types_supported?.jwt
-      // As in the require-policy DID preflight, missing proof metadata states no requirements to check.
+      const proofTypes = configuration.proof_types_supported
+      const jwtProof = proofTypes?.jwt
+      if (proofTypes && !jwtProof) {
+        throw new BindingValidationError(
+          BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM,
+          'Issuer offers no jwt proof type; fresh-key binding supports only jwt proofs',
+        )
+      }
+      // As in the require-policy DID preflight, omitted proof metadata states no issuer requirements to check.
       // Credo narrows the algorithms to the wallet's capabilities when it creates the proof, so leave the
-      // algorithm choice to the resolver for those offers instead of rejecting an empty algorithm list.
-      if (jwtProof) {
+      // implicit algorithm choice to the resolver instead of rejecting an empty algorithm list.
+      if (!jwtProof) {
+        if (signatureAlgorithm) {
+          // Wallet-side constraints are known independently of issuer metadata, so still fail before redemption.
+          assertAlgorithmCanBeCreated(signatureAlgorithm, selectedDidMethod, availability)
+        }
+      } else {
         if (jwtProof.key_attestations_required) {
           throw new BindingValidationError(
             BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM,

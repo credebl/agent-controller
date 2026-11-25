@@ -326,7 +326,7 @@ function canCreateAlgorithm(
   )
 }
 
-function assertAlgorithmCanBeCreated(
+export function assertAlgorithmCanBeCreated(
   algorithm: string,
   didMethod: string | undefined,
   isAvailable: BackendAvailability,

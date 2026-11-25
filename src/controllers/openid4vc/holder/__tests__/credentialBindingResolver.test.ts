@@ -646,6 +646,56 @@ describe('assertOfferAcceptsNewKeyBinding', () => {
       `${BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM}: Issuer requires key attestations`,
     )
   })
+
+  it('rejects proof metadata that declares no jwt proof before token redemption', () => {
+    const { options } = setup({})
+    const offer = {
+      offeredCredentialConfigurations: {
+        IecSdJwt: {
+          format: 'dc+sd-jwt',
+          cryptographic_binding_methods_supported: ['did:jwk'],
+          proof_types_supported: { attestation: { proof_signing_alg_values_supported: ['ES256'] } },
+        },
+      },
+    } as any
+
+    expect(() => assertOfferAcceptsNewKeyBinding(options.agentContext, offer, ['IecSdJwt'], {})).toThrow(
+      `${BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM}: Issuer offers no jwt proof type`,
+    )
+  })
+
+  it('checks explicit wallet constraints even without issuer proof metadata', () => {
+    const incompatible = setup({})
+    const incompatibleOffer = {
+      offeredCredentialConfigurations: {
+        IecSdJwt: {
+          format: 'dc+sd-jwt',
+          cryptographic_binding_methods_supported: ['did:key'],
+        },
+      },
+    } as any
+    expect(() =>
+      assertOfferAcceptsNewKeyBinding(incompatible.options.agentContext, incompatibleOffer, ['IecSdJwt'], {
+        didMethod: 'did:key',
+        signatureAlgorithm: 'RS256',
+      }),
+    ).toThrow(BINDING_ERROR_CODES.INCOMPATIBLE_DID_METHOD_AND_ALGORITHM)
+
+    const missingBackend = setup({ availableBackends: ['askar'] })
+    const jwkOffer = {
+      offeredCredentialConfigurations: {
+        IecSdJwt: {
+          format: 'dc+sd-jwt',
+          cryptographic_binding_methods_supported: ['jwk'],
+        },
+      },
+    } as any
+    expect(() =>
+      assertOfferAcceptsNewKeyBinding(missingBackend.options.agentContext, jwkOffer, ['IecSdJwt'], {
+        signatureAlgorithm: 'RS256',
+      }),
+    ).toThrow(BINDING_ERROR_CODES.KEY_CREATION_FAILED)
+  })
 })
 
 describe('assertW3cCredentialsBoundToHolderDid', () => {
