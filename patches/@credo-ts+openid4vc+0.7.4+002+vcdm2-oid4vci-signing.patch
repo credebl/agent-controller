@@ -1,0 +1,36 @@
+diff --git a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
+index 1f89467..ec2f19d 100644
+--- a/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
++++ b/node_modules/@credo-ts/openid4vc/build/openid4vc-issuer/OpenId4VcIssuerService.mjs
+@@ -21,7 +21,7 @@ import { OpenId4VcIssuerRepository } from "./repository/OpenId4VcIssuerRepositor
+ import "./repository/index.mjs";
+ import { withIssuanceSessionLock } from "./util/issuanceSessionLock.mjs";
+ import { generateTxCode } from "./util/txCode.mjs";
+-import { ClaimFormat, CredoError, EventEmitter, JwsService, Jwt, JwtPayload, Kms, MdocApi, SdJwtVcApi, TypedArrayEncoder, W3cCredentialService, W3cV2CredentialService, injectable, joinUriParts, utils } from "@credo-ts/core";
++import { ClaimFormat, CredoError, EventEmitter, JsonTransformer, JwsService, Jwt, JwtPayload, Kms, MdocApi, SdJwtVcApi, TypedArrayEncoder, W3cCredentialService, W3cV2Credential, W3cV2CredentialService, injectable, joinUriParts, utils } from "@credo-ts/core";
+ import { HashAlgorithm, Oauth2AuthorizationServer, Oauth2Client, Oauth2ErrorCodes, Oauth2ResourceServer, Oauth2ServerErrorResponseError, PkceCodeChallengeMethod, SupportedClientAuthenticationMethod, authorizationCodeGrantIdentifier, calculateJwkThumbprint, preAuthorizedCodeGrantIdentifier, refreshTokenGrantIdentifier } from "@openid4vc/oauth2";
+ import { Openid4vciIssuer, Openid4vciVersion, extractScopesForCredentialConfigurationIds, getCredentialConfigurationsMatchingRequestFormat } from "@openid4vc/openid4vci";
+ //#region src/openid4vc-issuer/OpenId4VcIssuerService.ts
+@@ -1252,6 +1252,22 @@ let OpenId4VcIssuerService = class OpenId4VcIssuerService {
+ 	}
+ 	async signW3cCredential(agentContext, format, options) {
+ 		const publicJwk = await getPublicJwkFromDid(agentContext, options.verificationMethod);
++		if (options.credential instanceof W3cV2Credential) {
++			// VCDM 2.0: the V1 W3cCredentialService cannot sign a W3cV2Credential.
++			if (format === ClaimFormat.JwtVc) return await this.w3cV2CredentialService.signCredential(agentContext, {
++				format: ClaimFormat.JwtW3cVc,
++				credential: options.credential,
++				verificationMethod: options.verificationMethod,
++				alg: publicJwk.signatureAlgorithm
++			});
++			// ldp_vc: Credo has no VCDM 2.0 JSON-LD signer, so the host registers one (see agent-controller src/vc-jsonld/registerOid4vciV2Signer.ts).
++			const signV2JsonLd = globalThis.__credeblOid4vciSignV2JsonLd;
++			if (typeof signV2JsonLd !== "function") throw new CredoError("Issuing a VCDM 2.0 ldp_vc needs a signer on globalThis.__credeblOid4vciSignV2JsonLd");
++			return { encoded: await signV2JsonLd(agentContext, {
++				credential: JsonTransformer.toJSON(options.credential),
++				verificationMethod: options.verificationMethod
++			}) };
++		}
+ 		if (format === ClaimFormat.JwtVc) return await this.w3cCredentialService.signCredential(agentContext, {
+ 			format: ClaimFormat.JwtVc,
+ 			credential: options.credential,

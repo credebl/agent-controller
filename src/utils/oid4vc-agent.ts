@@ -28,12 +28,16 @@ import { container } from 'tsyringe'
 
 import { getStoredX509Chain } from '../controllers/x509/didX509.utils'
 import { SignerMethod } from '../enums/enum'
+import { registerOid4vciV2Signer } from '../vc-jsonld/registerOid4vciV2Signer'
 
 import { validateAuthConfig } from './auth'
 import { checkX509Certificates, processIsoImages } from './helpers'
 import { TsLogger } from './logger'
 import { buildMdocValidityInfo } from './mdocValidity'
 import { bindW3cCredentialSubject } from './w3cCredentialSubject'
+
+// Credo's OID4VCI issuer cannot sign a VCDM 2.0 ldp_vc itself; the patched issuer calls this signer.
+registerOid4vciV2Signer()
 
 const logger = new TsLogger(LogLevel.Info)
 
