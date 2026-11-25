@@ -25,6 +25,7 @@ import { BadRequestError, UnprocessableEntityError } from '../../../errors/error
 import { selectKmsBackendForCreate } from '../../../utils/kms/backend'
 
 import {
+  type BackendAvailability,
   BINDING_ERROR_CODES,
   BindingValidationError,
   KeyCreationError,
@@ -34,6 +35,10 @@ import {
   selectFreshKeyDidMethod,
   selectFreshKeySignatureAlgorithm,
 } from './credentialBindingOptions'
+
+type OfferedCredentialConfiguration = NonNullable<
+  OpenId4VciResolvedCredentialOffer['offeredCredentialConfigurations'][string]
+>
 
 export interface CredentialBindingResolverOptions {
   requestBatch?: boolean | number
@@ -169,29 +174,8 @@ export async function assertOfferAcceptsHolderDid(
     // Credo rejects configurations with unknown formats itself
     if (!configuration) continue
 
-    const bindingMethods = configuration.cryptographic_binding_methods_supported
     try {
-      assertDidBindingAllowed(
-        verificationMethodId,
-        configuration.format,
-        bindingMethods?.filter((method) => method.startsWith('did:')),
-        bindingMethods?.includes('did') ?? false,
-      )
-      // Without proof_types_supported the issuer states no proof requirements to check
-      const proofTypes = configuration.proof_types_supported
-      if (proofTypes) {
-        const jwt = proofTypes.jwt
-        assertJwtProofAllowed(
-          verificationMethod,
-          verificationMethodId,
-          jwt
-            ? {
-                keyAttestationsRequired: Boolean(jwt.key_attestations_required),
-                algorithms: jwt.proof_signing_alg_values_supported,
-              }
-            : undefined,
-        )
-      }
+      assertHolderDidForConfiguration(configuration, verificationMethod, verificationMethodId)
     } catch (error) {
       if (error instanceof HolderBindingNotSupportedError) {
         throw new HolderBindingNotSupportedError(`${configurationId}: ${error.message}`)
@@ -201,9 +185,43 @@ export async function assertOfferAcceptsHolderDid(
   }
 }
 
+function assertHolderDidForConfiguration(
+  configuration: OfferedCredentialConfiguration,
+  verificationMethod: VerificationMethod,
+  verificationMethodId: string,
+): void {
+  const bindingMethods = configuration.cryptographic_binding_methods_supported
+  assertDidBindingAllowed(
+    verificationMethodId,
+    configuration.format,
+    bindingMethods?.filter((method) => method.startsWith('did:')),
+    bindingMethods?.includes('did') ?? false,
+  )
+  // Without proof_types_supported the issuer states no proof requirements to check
+  const proofTypes = configuration.proof_types_supported
+  if (!proofTypes) return
+
+  const jwt = proofTypes.jwt
+  assertJwtProofAllowed(
+    verificationMethod,
+    verificationMethodId,
+    jwt
+      ? {
+          keyAttestationsRequired: Boolean(jwt.key_attestations_required),
+          algorithms: jwt.proof_signing_alg_values_supported,
+        }
+      : undefined,
+  )
+}
+
 export interface NewKeyBindingSelection {
   didMethod?: string
   signatureAlgorithm?: string
+}
+
+function normalizeDidMethodInput(didMethod?: string): string | undefined {
+  if (!didMethod) return undefined
+  return didMethod.startsWith('did:') ? didMethod : `did:${didMethod}`
 }
 
 /**
@@ -225,49 +243,53 @@ export function assertOfferAcceptsNewKeyBinding(
     if (!configuration) continue
 
     try {
-      const bindingMethods = configuration.cryptographic_binding_methods_supported
-      const selectedDidMethod = selectFreshKeyDidMethod({
-        didMethod,
-        supportedDidMethods: bindingMethods?.filter((method) => method.startsWith('did:')),
-        supportsAllDidMethods: bindingMethods?.includes('did') ?? false,
-        supportsJwk: Boolean(bindingMethods?.includes('jwk') || bindingMethods?.includes('cose_key')),
-        credentialFormat: configuration.format,
-      })
-
-      const proofTypes = configuration.proof_types_supported
-      const jwtProof = proofTypes?.jwt
-      if (proofTypes && !jwtProof) {
-        throw new BindingValidationError(
-          BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM,
-          'Issuer offers no jwt proof type; fresh-key binding supports only jwt proofs',
-        )
-      }
-      // As in the require-policy DID preflight, omitted proof metadata states no issuer requirements to check.
-      // Credo narrows the algorithms to the wallet's capabilities when it creates the proof, so leave the
-      // implicit algorithm choice to the resolver instead of rejecting an empty algorithm list.
-      if (!jwtProof) {
-        if (signatureAlgorithm) {
-          // Wallet-side constraints are known independently of issuer metadata, so still fail before redemption.
-          assertAlgorithmCanBeCreated(signatureAlgorithm, selectedDidMethod, availability)
-        }
-      } else {
-        if (jwtProof.key_attestations_required) {
-          throw new BindingValidationError(
-            BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM,
-            'Issuer requires key attestations for jwt proofs; fresh-key binding does not support them',
-          )
-        }
-        selectFreshKeySignatureAlgorithm({
-          signatureAlgorithm,
-          algorithms: jwtProof.proof_signing_alg_values_supported,
-          didMethod: selectedDidMethod,
-          isBackendAvailable: availability,
-        })
-      }
+      assertNewKeyBindingForConfiguration(configuration, { didMethod, signatureAlgorithm }, availability)
     } catch (error) {
       throw prefixedBindingError(error, configurationId)
     }
   }
+}
+
+function assertNewKeyBindingForConfiguration(
+  configuration: OfferedCredentialConfiguration,
+  { didMethod, signatureAlgorithm }: NewKeyBindingSelection,
+  availability: BackendAvailability,
+): void {
+  const bindingMethods = configuration.cryptographic_binding_methods_supported
+  const selectedDidMethod = selectFreshKeyDidMethod({
+    didMethod,
+    supportedDidMethods: bindingMethods?.filter((method) => method.startsWith('did:')),
+    supportsAllDidMethods: bindingMethods?.includes('did') ?? false,
+    supportsJwk: Boolean(bindingMethods?.includes('jwk') || bindingMethods?.includes('cose_key')),
+    credentialFormat: configuration.format,
+  })
+
+  const proofTypes = configuration.proof_types_supported
+  const jwtProof = proofTypes?.jwt
+  if (proofTypes && !jwtProof) {
+    throw new BindingValidationError(
+      BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM,
+      'Issuer offers no jwt proof type; fresh-key binding supports only jwt proofs',
+    )
+  }
+  // As in the require-policy DID preflight, omitted proof metadata states no issuer requirements to check.
+  if (!jwtProof) {
+    // Wallet-side constraints are known independently of issuer metadata, so still fail before redemption.
+    if (signatureAlgorithm) assertAlgorithmCanBeCreated(signatureAlgorithm, selectedDidMethod, availability)
+    return
+  }
+  if (jwtProof.key_attestations_required) {
+    throw new BindingValidationError(
+      BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM,
+      'Issuer requires key attestations for jwt proofs; fresh-key binding does not support them',
+    )
+  }
+  selectFreshKeySignatureAlgorithm({
+    signatureAlgorithm,
+    algorithms: jwtProof.proof_signing_alg_values_supported,
+    didMethod: selectedDidMethod,
+    isBackendAvailable: availability,
+  })
 }
 
 function prefixedBindingError(error: unknown, configurationId: string): never {
@@ -275,9 +297,8 @@ function prefixedBindingError(error: unknown, configurationId: string): never {
     throw new BindingValidationError(error.code, `${configurationId}: ${error.message}`)
   }
   if (error instanceof KeyCreationError) {
-    throw new KeyCreationError(
-      `${configurationId}: ${error.message.replace(`${BINDING_ERROR_CODES.KEY_CREATION_FAILED}: `, '')}`,
-    )
+    const prefix = `${BINDING_ERROR_CODES.KEY_CREATION_FAILED}: `
+    throw new KeyCreationError(`${configurationId}: ${error.message.replace(prefix, '')}`)
   }
   throw error
 }
@@ -399,11 +420,7 @@ async function createNewKeyBinding(
   }
 
   const didMethod = selectFreshKeyDidMethod({
-    didMethod: requestedDidMethod
-      ? requestedDidMethod.startsWith('did:')
-        ? requestedDidMethod
-        : `did:${requestedDidMethod}`
-      : undefined,
+    didMethod: normalizeDidMethodInput(requestedDidMethod),
     supportedDidMethods,
     supportsAllDidMethods,
     supportsJwk,

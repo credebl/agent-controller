@@ -1,8 +1,13 @@
-import type { CredentialBindingMode, CredentialBindingPolicy, RequestCredentialBody } from '../types/holder.types'
+import type {
+  CredentialBindingMode,
+  CredentialBindingOptions,
+  CredentialBindingPolicy,
+  RequestCredentialBody,
+} from '../types/holder.types'
 import type { Kms } from '@credo-ts/core'
 
 import { BadRequestError, InternalServerError } from '../../../errors/errors'
-import { ASKAR_KMS_BACKEND, NODE_KMS_BACKEND, selectKmsBackendForCreate } from '../../../utils/kms/backend'
+import { selectKmsBackendForCreate } from '../../../utils/kms/backend'
 
 export const BINDING_ERROR_CODES = {
   INVALID_BINDING_MODE: 'INVALID_BINDING_MODE',
@@ -97,6 +102,13 @@ export function normalizeCredentialBinding(body: BindingRequestBody): Normalized
     )
   }
 
+  const policy = resolveBindingPolicy(body, binding)
+  return mode === 'existing-did'
+    ? normalizeExistingDidBinding(body, binding, policy)
+    : normalizeNewKeyBinding(body, binding, policy)
+}
+
+function resolveBindingPolicy(body: BindingRequestBody, binding: CredentialBindingOptions): CredentialBindingPolicy {
   if (body.bindingPolicy && binding.policy && body.bindingPolicy !== binding.policy) {
     throw new BindingValidationError(
       BINDING_ERROR_CODES.INVALID_BINDING_MODE,
@@ -110,35 +122,46 @@ export function normalizeCredentialBinding(body: BindingRequestBody): Normalized
       `binding policy must be 'require' or 'prefer' (received '${policy}')`,
     )
   }
+  return policy
+}
 
-  if (mode === 'existing-did') {
-    if (binding.didMethod) {
-      throw new BindingValidationError(
-        BINDING_ERROR_CODES.UNSUPPORTED_DID_METHOD,
-        'binding.didMethod is only valid when binding.mode is new-key',
-      )
-    }
-    if (binding.signatureAlgorithm) {
-      throw new BindingValidationError(
-        BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM,
-        'binding.signatureAlgorithm is only valid when binding.mode is new-key',
-      )
-    }
-    if (!binding.holderDidUrl) {
-      throw new BindingValidationError(
-        BINDING_ERROR_CODES.MISSING_HOLDER_DID_URL,
-        'binding.holderDidUrl is required when binding.mode is existing-did',
-      )
-    }
-    if (body.holderDidUrl && body.holderDidUrl !== binding.holderDidUrl) {
-      throw new BindingValidationError(
-        BINDING_ERROR_CODES.CONFLICTING_HOLDER_DID_URL,
-        `binding.holderDidUrl '${binding.holderDidUrl}' conflicts with holderDidUrl '${body.holderDidUrl}'`,
-      )
-    }
-    return { mode, holderDidUrl: binding.holderDidUrl, policy }
+function normalizeExistingDidBinding(
+  body: BindingRequestBody,
+  binding: CredentialBindingOptions,
+  policy: CredentialBindingPolicy,
+): NormalizedCredentialBinding {
+  if (binding.didMethod) {
+    throw new BindingValidationError(
+      BINDING_ERROR_CODES.UNSUPPORTED_DID_METHOD,
+      'binding.didMethod is only valid when binding.mode is new-key',
+    )
   }
+  if (binding.signatureAlgorithm) {
+    throw new BindingValidationError(
+      BINDING_ERROR_CODES.UNSUPPORTED_PROOF_ALGORITHM,
+      'binding.signatureAlgorithm is only valid when binding.mode is new-key',
+    )
+  }
+  if (!binding.holderDidUrl) {
+    throw new BindingValidationError(
+      BINDING_ERROR_CODES.MISSING_HOLDER_DID_URL,
+      'binding.holderDidUrl is required when binding.mode is existing-did',
+    )
+  }
+  if (body.holderDidUrl && body.holderDidUrl !== binding.holderDidUrl) {
+    throw new BindingValidationError(
+      BINDING_ERROR_CODES.CONFLICTING_HOLDER_DID_URL,
+      `binding.holderDidUrl '${binding.holderDidUrl}' conflicts with holderDidUrl '${body.holderDidUrl}'`,
+    )
+  }
+  return { mode: 'existing-did', holderDidUrl: binding.holderDidUrl, policy }
+}
 
+function normalizeNewKeyBinding(
+  body: BindingRequestBody,
+  binding: CredentialBindingOptions,
+  policy: CredentialBindingPolicy,
+): NormalizedCredentialBinding {
   if (binding.holderDidUrl || body.holderDidUrl) {
     const holderDidUrl = binding.holderDidUrl ?? body.holderDidUrl
     throw new BindingValidationError(
@@ -146,9 +169,8 @@ export function normalizeCredentialBinding(body: BindingRequestBody): Normalized
       `binding.mode 'new-key' conflicts with holderDidUrl '${holderDidUrl}'`,
     )
   }
-
   return {
-    mode,
+    mode: 'new-key',
     policy,
     didMethod: binding.didMethod ? normalizeFreshKeyDidMethod(binding.didMethod) : undefined,
     signatureAlgorithm: binding.signatureAlgorithm
@@ -230,13 +252,12 @@ export function selectFreshKeyDidMethod({
     return didMethod
   }
 
-  let selected: string | undefined
-  if (credentialFormat !== 'mso_mdoc') {
-    if (supportsAllDidMethods || supportedDidMethods?.includes('did:jwk')) selected = 'did:jwk'
-    else if (supportedDidMethods?.includes('did:key')) selected = 'did:key'
-    // MATTR launchpad does not advertise binding methods, but requires did:key
-    else if (!supportedDidMethods && !supportsJwk) selected = 'did:key'
-  }
+  const selected = selectImplicitFreshKeyDidMethod({
+    supportedDidMethods,
+    supportsAllDidMethods,
+    supportsJwk,
+    credentialFormat,
+  })
 
   if (!selected) {
     if (!supportsJwk) {
@@ -254,6 +275,25 @@ export function selectFreshKeyDidMethod({
   }
 
   return selected
+}
+
+function selectImplicitFreshKeyDidMethod({
+  supportedDidMethods,
+  supportsAllDidMethods,
+  supportsJwk,
+  credentialFormat,
+}: {
+  supportedDidMethods?: string[]
+  supportsAllDidMethods: boolean
+  supportsJwk: boolean
+  credentialFormat: string
+}): string | undefined {
+  if (credentialFormat === 'mso_mdoc') return undefined
+  if (supportsAllDidMethods || supportedDidMethods?.includes('did:jwk')) return 'did:jwk'
+  if (supportedDidMethods?.includes('did:key')) return 'did:key'
+  // MATTR launchpad does not advertise binding methods, but requires did:key
+  if (!supportedDidMethods && !supportsJwk) return 'did:key'
+  return undefined
 }
 
 /** Returns whether a backend is registered for an algorithm, or undefined when the wallet does not expose that. */
@@ -378,4 +418,4 @@ export function kmsBackendAvailability(kms: unknown): BackendAvailability {
   }
 }
 
-export { ASKAR_KMS_BACKEND, NODE_KMS_BACKEND }
+export { ASKAR_KMS_BACKEND, NODE_KMS_BACKEND } from '../../../utils/kms/backend'

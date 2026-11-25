@@ -412,7 +412,7 @@ export class HolderService {
     if (notOffered.length > 0) {
       throw new BadRequestError(`Credentials not in the offer: ${notOffered.join(', ')}`)
     }
-    if (credentialsToRequest && credentialsToRequest.length === 0) {
+    if (credentialsToRequest?.length === 0) {
       throw new BadRequestError('credentialsToRequest must not be empty')
     }
 
