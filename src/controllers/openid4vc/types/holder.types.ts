@@ -28,6 +28,11 @@ export interface RequestCredentialBody {
    */
   bindingPolicy?: CredentialBindingPolicy
   /**
+   * Per-offer choice of how the credential is bound to the holder. The flat `holderDidUrl` and `bindingPolicy`
+   * fields remain valid; when both forms are supplied, their values must agree.
+   */
+  binding?: CredentialBindingOptions
+  /**
    * Send OID4VCI notifications to the issuer: `credential_accepted` for each stored credential and
    * `credential_failure` for each one that could not be stored. Only for credentials with a
    * `notification_id`, and only when the issuer has a `notification_endpoint`.
@@ -37,6 +42,23 @@ export interface RequestCredentialBody {
 }
 
 export type CredentialBindingPolicy = 'require' | 'prefer'
+
+/** `new-key` creates a fresh, unlinkable key; `existing-did` binds to a DID already in the wallet. */
+export type CredentialBindingMode = 'new-key' | 'existing-did'
+
+/**
+ * Holder-controlled binding selection for one credential offer. `holderDidUrl` is required for `existing-did` and
+ * forbidden for `new-key`. `didMethod` and `signatureAlgorithm` only apply to fresh keys.
+ */
+export interface CredentialBindingOptions {
+  mode: CredentialBindingMode
+  holderDidUrl?: string
+  policy?: CredentialBindingPolicy
+  /** DID method for a fresh key, e.g. `did:jwk` or `did:key`. */
+  didMethod?: string
+  /** JWA algorithm for the fresh key's proof of possession, e.g. `EdDSA`, `ES256` or `RS256`. */
+  signatureAlgorithm?: string
+}
 
 export type CredentialNotificationEvent = 'credential_accepted' | 'credential_failure'
 

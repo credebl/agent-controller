@@ -19,6 +19,7 @@ import { ValidateError } from 'tsoa'
 import { container } from 'tsyringe'
 
 import { setDynamicApiKey } from './authentication'
+import { BINDING_ERROR_CODES } from './controllers/openid4vc/holder/credentialBindingOptions'
 import { ErrorMessages } from './enums'
 import { BaseError } from './errors/errors'
 import { basicMessageEvents } from './events/BasicMessageEvents'
@@ -124,6 +125,18 @@ export const setupServer = async (
   app.use((async (err: unknown, req: ExRequest, res: ExResponse, next: NextFunction): Promise<ExResponse | void> => {
     // End tenant session if active
     if (err instanceof ValidateError) {
+      // tsoa rejects an unknown binding.mode with 422. The contract requires a stable 400 for this user choice.
+      const invalidBindingMode = Object.keys(err.fields ?? {}).some(
+        (field) => field.includes('binding') && field.endsWith('.mode'),
+      )
+      if (invalidBindingMode) {
+        const message = `${BINDING_ERROR_CODES.INVALID_BINDING_MODE}: binding.mode must be 'new-key' or 'existing-did'`
+        agent.config.logger.warn(`Caught invalid credential binding mode for ${req.path}`)
+        return res.status(400).json({
+          message,
+          details: { 'body.binding.mode': { message } },
+        })
+      }
       // Never log or echo `err.fields[].value`: for a key import request it contains the private key.
       const details = Object.fromEntries(
         Object.entries(err.fields ?? {}).map(([name, field]) => [

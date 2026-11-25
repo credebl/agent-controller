@@ -22,6 +22,17 @@ import {
 } from '@credo-ts/openid4vc'
 
 import { BadRequestError, UnprocessableEntityError } from '../../../errors/errors'
+import { selectKmsBackendForCreate } from '../../../utils/kms/backend'
+
+import {
+  BINDING_ERROR_CODES,
+  BindingValidationError,
+  KeyCreationError,
+  getKeyTypeForAlgorithm,
+  kmsBackendAvailability,
+  selectFreshKeyDidMethod,
+  selectFreshKeySignatureAlgorithm,
+} from './credentialBindingOptions'
 
 export interface CredentialBindingResolverOptions {
   requestBatch?: boolean | number
@@ -31,6 +42,10 @@ export interface CredentialBindingResolverOptions {
    */
   holderDidUrl?: string
   bindingPolicy?: CredentialBindingPolicy
+  /** DID method for a fresh key, e.g. `did:jwk` or `did:key`. Only used when `holderDidUrl` is absent. */
+  didMethod?: string
+  /** JWA algorithm for a fresh key's proof of possession. Only used when `holderDidUrl` is absent. */
+  signatureAlgorithm?: string
 }
 
 /**
@@ -66,6 +81,8 @@ export function getCredentialBindingResolver({
   requestBatch,
   holderDidUrl,
   bindingPolicy = 'require',
+  didMethod,
+  signatureAlgorithm,
 }: CredentialBindingResolverOptions): OpenId4VciCredentialBindingResolver {
   return async (options) => {
     if (holderDidUrl) {
@@ -73,14 +90,20 @@ export function getCredentialBindingResolver({
         const didUrl = await resolveHolderDidBinding(options, holderDidUrl)
         return { method: 'did', didUrls: [didUrl] }
       } catch (error) {
-        if (!(error instanceof HolderBindingNotSupportedError) || bindingPolicy === 'require') throw error
+        if (
+          !(error instanceof HolderBindingNotSupportedError) ||
+          bindingPolicy === 'require' ||
+          options.credentialFormat === OpenId4VciCredentialFormatProfile.MsoMdoc
+        ) {
+          throw error
+        }
         options.agentContext.config.logger.warn(
           `Issuer does not support binding to '${holderDidUrl}', falling back to a new key: ${error.message}`,
         )
       }
     }
 
-    return createNewKeyBinding(options, requestBatch)
+    return createNewKeyBinding(options, requestBatch, { didMethod, signatureAlgorithm })
   }
 }
 
@@ -127,6 +150,17 @@ export async function assertOfferAcceptsHolderDid(
   { holderDidUrl, bindingPolicy = 'require' }: { holderDidUrl: string; bindingPolicy?: CredentialBindingPolicy },
 ) {
   const { verificationMethod, verificationMethodId } = await resolveHolderVerificationMethod(agentContext, holderDidUrl)
+
+  // mso_mdoc cannot be DID-bound at all, so prefer cannot fall back to a key that was never requested.
+  for (const configurationId of credentialConfigurationIds) {
+    const configuration = resolvedCredentialOffer.offeredCredentialConfigurations[configurationId]
+    if (configuration?.format === OpenId4VciCredentialFormatProfile.MsoMdoc) {
+      throw new BindingValidationError(
+        BINDING_ERROR_CODES.DID_BINDING_NOT_SUPPORTED_FOR_FORMAT,
+        `${configurationId}: DID binding is not supported for the '${configuration.format}' format`,
+      )
+    }
+  }
   if (bindingPolicy === 'prefer') return
 
   for (const configurationId of credentialConfigurationIds) {
@@ -166,6 +200,63 @@ export async function assertOfferAcceptsHolderDid(
   }
 }
 
+export interface NewKeyBindingSelection {
+  didMethod?: string
+  signatureAlgorithm?: string
+}
+
+/**
+ * Checks a fresh-key selection against every requested configuration before the token request, so an unsupported DID
+ * method, proof algorithm or KMS backend cannot consume an offer or tx code. The resolver repeats the checks with the
+ * algorithm list Credo has already narrowed to the wallet's capabilities.
+ */
+export function assertOfferAcceptsNewKeyBinding(
+  agentContext: AgentContext,
+  resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
+  credentialConfigurationIds: string[],
+  { didMethod, signatureAlgorithm }: NewKeyBindingSelection,
+): void {
+  const availability = kmsBackendAvailability(agentContext.resolve(Kms.KeyManagementApi))
+
+  for (const configurationId of credentialConfigurationIds) {
+    const configuration = resolvedCredentialOffer.offeredCredentialConfigurations[configurationId]
+    // Credo rejects configurations with unknown formats itself
+    if (!configuration) continue
+
+    try {
+      const bindingMethods = configuration.cryptographic_binding_methods_supported
+      const selectedDidMethod = selectFreshKeyDidMethod({
+        didMethod,
+        supportedDidMethods: bindingMethods?.filter((method) => method.startsWith('did:')),
+        supportsAllDidMethods: bindingMethods?.includes('did') ?? false,
+        supportsJwk: Boolean(bindingMethods?.includes('jwk') || bindingMethods?.includes('cose_key')),
+        credentialFormat: configuration.format,
+      })
+
+      selectFreshKeySignatureAlgorithm({
+        signatureAlgorithm,
+        algorithms: configuration.proof_types_supported?.jwt?.proof_signing_alg_values_supported,
+        didMethod: selectedDidMethod,
+        isBackendAvailable: availability,
+      })
+    } catch (error) {
+      throw prefixedBindingError(error, configurationId)
+    }
+  }
+}
+
+function prefixedBindingError(error: unknown, configurationId: string): never {
+  if (error instanceof BindingValidationError) {
+    throw new BindingValidationError(error.code, `${configurationId}: ${error.message}`)
+  }
+  if (error instanceof KeyCreationError) {
+    throw new KeyCreationError(
+      `${configurationId}: ${error.message.replace(`${BINDING_ERROR_CODES.KEY_CREATION_FAILED}: `, '')}`,
+    )
+  }
+  throw error
+}
+
 function assertDidBindingAllowed(
   verificationMethodId: string,
   credentialFormat: string,
@@ -173,7 +264,9 @@ function assertDidBindingAllowed(
   supportsAllDidMethods: boolean,
 ) {
   if (credentialFormat === OpenId4VciCredentialFormatProfile.MsoMdoc) {
-    throw new HolderBindingNotSupportedError(`DID binding is not supported for the '${credentialFormat}' format`)
+    throw new HolderBindingNotSupportedError(
+      `${BINDING_ERROR_CODES.DID_BINDING_NOT_SUPPORTED_FOR_FORMAT}: DID binding is not supported for the '${credentialFormat}' format`,
+    )
   }
 
   // supportedDidMethods is undefined when the issuer lists no binding methods at all
@@ -229,7 +322,9 @@ async function resolveHolderVerificationMethod(
   try {
     ;({ didDocument } = await agentContext.resolve(DidsApi).resolveCreatedDidDocumentWithKeys(did))
   } catch {
-    throw new BadRequestError(`Holder DID '${did}' was not created in this wallet`)
+    throw new BadRequestError(
+      `${BINDING_ERROR_CODES.DID_NOT_CONTROLLED_BY_HOLDER_TENANT}: Holder DID '${did}' was not created in this wallet`,
+    )
   }
 
   let keyId = holderDidUrl
@@ -246,7 +341,9 @@ async function resolveHolderVerificationMethod(
   try {
     verificationMethod = didDocument.dereferenceKey(keyId)
   } catch {
-    throw new BadRequestError(`Verification method '${keyId}' not found in the DID document of '${did}'`)
+    throw new BadRequestError(
+      `${BINDING_ERROR_CODES.DID_NOT_CONTROLLED_BY_HOLDER_TENANT}: Verification method '${keyId}' not found in the DID document of '${did}'`,
+    )
   }
 
   // DID documents may use relative ids such as '#key-1'
@@ -266,25 +363,33 @@ async function createNewKeyBinding(
     credentialFormat,
     agentContext,
   }: OpenId4VciCredentialBindingOptions,
-  requestBatch?: boolean | number,
+  requestBatch: boolean | number | undefined,
+  { didMethod: requestedDidMethod, signatureAlgorithm: requestedSignatureAlgorithm }: NewKeyBindingSelection,
 ) {
   const kms = agentContext.resolve(Kms.KeyManagementApi)
 
-  // First, we try to pick a did method
-  // Prefer did:jwk, otherwise use did:key, otherwise use undefined
-  let didMethod: 'key' | 'jwk' | undefined =
-    supportsAllDidMethods || supportedDidMethods?.includes('did:jwk')
-      ? 'jwk'
-      : supportedDidMethods?.includes('did:key')
-        ? 'key'
-        : undefined
-
-  // If supportedDidMethods is undefined, and supportsJwk is false, we will default to did:key
-  // this is important as part of MATTR launchpad support which MUST use did:key but doesn't
-  // define which did methods they support
-  if (!supportedDidMethods && !supportsJwk) {
-    didMethod = 'key'
+  // TODO: support key attestations
+  if (!proofTypes.jwt || proofTypes.jwt.keyAttestationsRequired) {
+    throw new Error('Unable to request credentials. Only jwt proof type without key attestations supported')
   }
+
+  const didMethod = selectFreshKeyDidMethod({
+    didMethod: requestedDidMethod
+      ? requestedDidMethod.startsWith('did:')
+        ? requestedDidMethod
+        : `did:${requestedDidMethod}`
+      : undefined,
+    supportedDidMethods,
+    supportsAllDidMethods,
+    supportsJwk,
+    credentialFormat,
+  })
+  const signatureAlgorithm = selectFreshKeySignatureAlgorithm({
+    signatureAlgorithm: requestedSignatureAlgorithm,
+    algorithms: proofTypes.jwt.supportedSignatureAlgorithms,
+    didMethod,
+    isBackendAvailable: kmsBackendAvailability(kms),
+  })
 
   // We don't want to request more than 10 credentials
   const batchSize =
@@ -293,34 +398,37 @@ async function createNewKeyBinding(
       : typeof requestBatch === 'number'
         ? Math.min(issuerMaxBatchSize, requestBatch)
         : 1
-  // TODO: support key attestations
-  if (!proofTypes.jwt || proofTypes.jwt.keyAttestationsRequired) {
-    throw new Error('Unable to request credentials. Only jwt proof type without key attestations supported')
+
+  // Do not force Askar here: it cannot create RSA or P-521 keys. The helper leaves the backend implicit for
+  // EC/OKP keys (Credo's default fallback) and selects Node KMS or OpenBao where they are required.
+  const keyType = getKeyTypeForAlgorithm(signatureAlgorithm)
+  const backend = keyType ? selectKmsBackendForCreate(keyType as Kms.KmsCreateKeyType) : undefined
+  const createKeyOptions = {
+    algorithm: signatureAlgorithm as Kms.KnownJwaSignatureAlgorithm,
+    ...(backend?.backend ? { backend: backend.backend } : {}),
   }
 
-  const signatureAlgorithm = proofTypes.jwt?.supportedSignatureAlgorithms?.[0]
-
-  if (!signatureAlgorithm) {
-    throw new Error('No supported signature algorithms found for JWT proof type')
+  let keys
+  try {
+    keys = await Promise.all(
+      new Array(batchSize)
+        .fill(0)
+        .map(() =>
+          kms.createKeyForSignatureAlgorithm(createKeyOptions).then((key) => Kms.PublicJwk.fromUnknown(key.publicJwk)),
+        ),
+    )
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    throw new KeyCreationError(`Unable to create a key for '${signatureAlgorithm}': ${reason}`)
   }
-  const keys = await Promise.all(
-    new Array(batchSize).fill(0).map(() =>
-      kms
-        .createKeyForSignatureAlgorithm({
-          algorithm: signatureAlgorithm!,
-          backend: 'askar',
-        })
-        .then((key) => Kms.PublicJwk.fromUnknown(key.publicJwk)),
-    ),
-  )
 
   if (didMethod) {
-    const dm = didMethod
+    const dm = didMethod.replace(/^did:/, '')
     const didsApi = agentContext.dependencyManager.resolve(DidsApi)
     const didResults = await Promise.all(
       keys.map(async (key) => {
         const didResult = await didsApi.create<JwkDidCreateOptions | KeyDidCreateOptions>({
-          method: dm,
+          method: dm as 'key' | 'jwk',
           options: {
             keyId: key.keyId,
           },
@@ -331,7 +439,7 @@ async function createNewKeyBinding(
         }
 
         let verificationMethodId: string
-        if (didMethod === 'jwk') {
+        if (dm === 'jwk') {
           const didJwk = DidJwk.fromDid(didResult.didState.did)
           verificationMethodId = didJwk.verificationMethodId
         } else {
@@ -349,14 +457,13 @@ async function createNewKeyBinding(
     }
   }
 
-  // Otherwise we also support plain jwk for sd-jwt only
+  // Plain JWK is only accepted by Credo for these formats; ldp_vc requires a DID method.
   if (
     supportsJwk &&
     (credentialFormat === OpenId4VciCredentialFormatProfile.SdJwtVc ||
       credentialFormat === OpenId4VciCredentialFormatProfile.SdJwtDc ||
       credentialFormat === OpenId4VciCredentialFormatProfile.JwtVcJsonLd ||
       credentialFormat === OpenId4VciCredentialFormatProfile.JwtVcJson ||
-      credentialFormat === OpenId4VciCredentialFormatProfile.LdpVc ||
       credentialFormat === OpenId4VciCredentialFormatProfile.MsoMdoc)
   ) {
     return {
@@ -365,9 +472,8 @@ async function createNewKeyBinding(
     }
   }
 
-  throw new Error(
-    `No supported binding method could be found. Supported methods are did:key and did:jwk, or plain jwk for sd-jwt/mdoc. Issuer supports ${
-      supportsJwk ? 'jwk, ' : ''
-    }${supportedDidMethods?.join(', ') ?? 'Unknown'}`,
+  throw new BindingValidationError(
+    BINDING_ERROR_CODES.UNSUPPORTED_DID_METHOD,
+    `No supported binding method could be found for '${credentialFormat}' credentials. Use did:key or did:jwk.`,
   )
 }
