@@ -2,15 +2,6 @@ diff --git a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs b/no
 index 15b71d3..f3fa190 100644
 --- a/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
 +++ b/node_modules/@credo-ts/core/build/modules/dcql/DcqlService.mjs
-@@ -80,7 +80,7 @@ let DcqlService = class DcqlService {
- 		if (formats.has("ldp_vc")) {
- 			const w3cRecords = await w3cCredentialRepository.findByQuery(agentContext, {
- 				claimFormat: "ldp_vc",
--				$or: dcqlQuery.credentials.flatMap((c) => c.format === "jwt_vc_json" ? c.meta.type_values : []).map((typeValues) => ({ expandedTypes: typeValues }))
-+				$or: dcqlQuery.credentials.flatMap((c) => c.format === "ldp_vc" ? c.meta.type_values : []).map((typeValues) => ({ expandedTypes: typeValues }))
- 			});
- 			allRecords.push(...w3cRecords);
- 		}
 @@ -617,11 +617,20 @@ let DcqlService = class DcqlService {
  	getProofTypeForLdpVc(agentContext, verificationMethod) {
  		const signatureSuiteRegistry = agentContext.dependencyManager.resolve(SignatureSuiteRegistry);

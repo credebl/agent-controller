@@ -609,25 +609,25 @@
     human-id "^4.1.1"
     prettier "^2.7.1"
 
-"@credo-ts/anoncreds@0.7.4":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@credo-ts/anoncreds/-/anoncreds-0.7.4.tgz#6a5d8195a2eb37bcc27ab58d9f959cdcc620864b"
-  integrity sha512-TlXgwkjnT9zuhC2dvv66JjN3uFgznoVl2sItoQcmBxSopmmg3RKwouKZGQb6k098SsHL+qIPYxqnCK1eFYDVsg==
+"@credo-ts/anoncreds@0.7.5":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@credo-ts/anoncreds/-/anoncreds-0.7.5.tgz#17a91f4d8a0f48af194cc7e3dd8689d7d799fcf2"
+  integrity sha512-BebboZQmXmOlAWnJ83IMQfj8/8tojUfQ1BDGLhy8+OtOhkPQNIP6iWShT4RKb6ORxMDf61suncEO8bRRMKNMdA==
   dependencies:
     "@astronautlabs/jsonpath" "^1.1.2"
-    "@credo-ts/core" "0.7.4"
-    "@credo-ts/didcomm" "0.7.4"
+    "@credo-ts/core" "0.7.5"
+    "@credo-ts/didcomm" "0.7.5"
     "@sphereon/pex-models" "^2.3.2"
     class-transformer "0.5.1"
     class-validator "^0.14.3"
     reflect-metadata "0.2.2"
 
-"@credo-ts/askar@0.7.4", "@credo-ts/askar@^0.6.1":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@credo-ts/askar/-/askar-0.7.4.tgz#e623917ecd22c43936547fd8d170b5b13740baa6"
-  integrity sha512-ovBUc2JaJk0vk99CBEaWgfsTsnTUj7r5kkShmucuh8V4NZgZp50QgsI0sQnvYOtellPIrRWfsIFmhe1XI/ekFQ==
+"@credo-ts/askar@0.7.5", "@credo-ts/askar@^0.6.1":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@credo-ts/askar/-/askar-0.7.5.tgz#7428e8ee575cc4271cc32f6f87d5c7d977ef25c2"
+  integrity sha512-NQ/nG+xxM/5JB6nxgdcb0E0JmFm0fBWi4Gb5FknU4/MpfxfSp5Y29Nmnk7501+efvBF3iAZXDeJb6qC+Y9L2eA==
   dependencies:
-    "@credo-ts/core" "0.7.4"
+    "@credo-ts/core" "0.7.5"
     "@noble/curves" "^2.0.1"
     "@panva/hpke-noble" "^1.1.4"
     class-transformer "0.5.1"
@@ -636,10 +636,10 @@
     rxjs "^7.8.2"
     tsyringe "^4.10.0"
 
-"@credo-ts/core@0.7.4", "@credo-ts/core@^0.6.1":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@credo-ts/core/-/core-0.7.4.tgz#00205312b998c5e877f2455d5e3f3627bfee74ab"
-  integrity sha512-pBPwAWOttA2795567BHS8FxWxtnj5RYNowC6U6j7WQ6y4kED1o3ueRAgsP9dpogWMZ97ilaVUyk9eDScN86+9g==
+"@credo-ts/core@0.7.5", "@credo-ts/core@^0.6.1":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@credo-ts/core/-/core-0.7.5.tgz#d483cb41a562d1292a9f3c52f650b3a7bbc83087"
+  integrity sha512-ooKDoEh7ePpk6TByUmG/zeg5JRhoFDUxCDFXK3oxK/1iTK2qMpvfOHOee9RgzdW8nSK+uTSXohx0iNoAJnlZzA==
   dependencies:
     "@animo-id/pex" "^6.1.1"
     "@astronautlabs/jsonpath" "^1.1.2"
@@ -650,7 +650,7 @@
     "@noble/curves" "^2.0.1"
     "@noble/hashes" "^2.0.1"
     "@owf/cose" "^0.4.1"
-    "@owf/mdoc" "^0.8.1"
+    "@owf/mdoc" ">=0.8.1 <0.8.3"
     "@owf/token-status-list" "^0.4.1"
     "@peculiar/asn1-ecc" "^2.6.0"
     "@peculiar/asn1-rsa" "^2.6.0"
@@ -684,33 +684,33 @@
     webcrypto-core "^1.8.1"
     zod "^4.6.5"
 
-"@credo-ts/didcomm@0.7.4":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@credo-ts/didcomm/-/didcomm-0.7.4.tgz#202633fd80ddebe4eac1fbd3a20ea3180dcf5e16"
-  integrity sha512-wTzzEo6moRt5xZnvkfEwPhANWfCiM9laLPmPfiY2Cir2ITiSMZB1fg2eGWJaDWZZC8rf1lUI8fKn2rBGCeKxsg==
+"@credo-ts/didcomm@0.7.5":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@credo-ts/didcomm/-/didcomm-0.7.5.tgz#aa9ff84f3f312cf243e6718d68744067a144c6df"
+  integrity sha512-7FZ4o6cWNEiqyjUtqS7q1LRltKnns+GojiL9MtSxVC6JOPbm91TUqUdn9CHHDfq5+IMpD7v3thKU69txRbAobQ==
   dependencies:
-    "@credo-ts/core" "0.7.4"
+    "@credo-ts/core" "0.7.5"
     class-transformer "0.5.1"
     class-validator "^0.14.3"
     luxon "^3.7.2"
     query-string "^9.3.1"
     rxjs "^7.8.2"
 
-"@credo-ts/indy-vdr@0.7.4":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@credo-ts/indy-vdr/-/indy-vdr-0.7.4.tgz#16850b322b91c669f5fb1346213ff8114f87d56f"
-  integrity sha512-jokZ4ERFyCMMJL4xxwVtNxjHYl/9Hjz9iG1hNNIROY/LpVZ+l6jCC8oEK4VptwD0c1+Z8wy2cKQhqPNc1bNDmQ==
+"@credo-ts/indy-vdr@0.7.5":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@credo-ts/indy-vdr/-/indy-vdr-0.7.5.tgz#1134c1276918eeb75deac69f5d4f1922acdef99d"
+  integrity sha512-n/2NSafNhncMMQpfAu8xs3m5UX2uckQmPQXTIrWwCRr9QUVfrdsda4gpKczN5iP5pQV465yyTc4Ish7yyLZfuA==
   dependencies:
-    "@credo-ts/anoncreds" "0.7.4"
-    "@credo-ts/core" "0.7.4"
+    "@credo-ts/anoncreds" "0.7.5"
+    "@credo-ts/core" "0.7.5"
 
-"@credo-ts/node@0.7.4":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@credo-ts/node/-/node-0.7.4.tgz#9c459df4b1152c75bf41ae0bfaabcaf308ede847"
-  integrity sha512-QpWkZnpP2XW4cUhWjFGzVdM615vXAzx8VX6eK3X/nRksbFfBuk3dRXQq6ivZgAsRK1qUmjcUkmwV8XFNvuiDHw==
+"@credo-ts/node@0.7.5":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@credo-ts/node/-/node-0.7.5.tgz#c491d2891ac05d86964b7d3833af673b2b89a723"
+  integrity sha512-F6/U26lN5E8Sg39sMPO2TcuVBMM5SO7cqb1ReOIbOlp6bVRTr+bkKD3OoQDzueIp3elOf/dVdZMnmZhYVv1TVw==
   dependencies:
-    "@credo-ts/core" "0.7.4"
-    "@credo-ts/didcomm" "0.7.4"
+    "@credo-ts/core" "0.7.5"
+    "@credo-ts/didcomm" "0.7.5"
     "@types/express" "^5.0.6"
     "@types/node" "^20.19.31"
     "@types/ws" "^8.18.1"
@@ -719,12 +719,12 @@
     rxjs "^7.8.2"
     ws "^8.19.0"
 
-"@credo-ts/openid4vc@0.7.4":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@credo-ts/openid4vc/-/openid4vc-0.7.4.tgz#a67e8db019586ae7b10d71d1a5b919a5a992053e"
-  integrity sha512-DDv+Ah5sCK2IX+B4dBDbd5RaFR0jOGUXJcqp7nZh/XnqmrWcK5H14dZ4bxzCGUcXOFIhLmL8eu+dos/Ge+Vziw==
+"@credo-ts/openid4vc@0.7.5":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@credo-ts/openid4vc/-/openid4vc-0.7.5.tgz#8f53e1e4ba7a077d17df24305e4d3eea1d3b6ce5"
+  integrity sha512-BtkDqgOzkFAENzdLvHbczwavLotWkOI2qgZVaYSqp3jjCIU3H9mqrOkh4ikrj/dnJtlbkKHexGWgqE5v+ZznzA==
   dependencies:
-    "@credo-ts/core" "0.7.4"
+    "@credo-ts/core" "0.7.5"
     "@openid4vc/oauth2" "^0.6.0"
     "@openid4vc/openid4vci" "^0.6.0"
     "@openid4vc/openid4vp" "^0.6.0"
@@ -744,24 +744,24 @@
     class-validator "0.14.1"
     tsyringe "^4.6.0"
 
-"@credo-ts/question-answer@0.7.4":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@credo-ts/question-answer/-/question-answer-0.7.4.tgz#f9aca7727b20226ec00e0e56c1dcc10e0fdac6a3"
-  integrity sha512-gc3o7QkY0XfNhTTuQpKUqXxQRUDxz0+KLijNjDXuz3ZLWKJ4LuJFt+/D7vEf9m7///wSagMhMfPI/4hBspnZUw==
+"@credo-ts/question-answer@0.7.5":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@credo-ts/question-answer/-/question-answer-0.7.5.tgz#fe24873d0ff597d32cbcb492dd17c43f8679cffa"
+  integrity sha512-GbehVYtCGti5H3L4uS0NtEXbzDJCdpiD1ZQFNwlKBbR/m9JHv8m8w08UGaXGCgACCGxMvSTGFC6Uthp7RDrlFA==
   dependencies:
-    "@credo-ts/core" "0.7.4"
-    "@credo-ts/didcomm" "0.7.4"
+    "@credo-ts/core" "0.7.5"
+    "@credo-ts/didcomm" "0.7.5"
     class-transformer "0.5.1"
     class-validator "^0.14.3"
     rxjs "^7.8.2"
 
-"@credo-ts/tenants@0.7.4":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@credo-ts/tenants/-/tenants-0.7.4.tgz#91a2e11876da5b5aa5d682020547ab6d385ed6b8"
-  integrity sha512-ObRyrj75AplDVqsjt3+qup+rqZ+Xm5jl7Kw8iX+4P62jfFo6SZH35JicjZiNuSoGsVyVrqDyIex649A3pSJAOA==
+"@credo-ts/tenants@0.7.5":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@credo-ts/tenants/-/tenants-0.7.5.tgz#dd6986fe875281f371c0d7fe021f62215d66f8e5"
+  integrity sha512-CTRopbPGEXgGgw98dYA49bSSdpOCGupqqsGWXjp9aD5oyiDotRgmi7EgvGhPDW/E7tOzmk6mWBb3Itkxm8+JBA==
   dependencies:
-    "@credo-ts/core" "0.7.4"
-    "@credo-ts/didcomm" "0.7.4"
+    "@credo-ts/core" "0.7.5"
+    "@credo-ts/didcomm" "0.7.5"
     async-mutex "^0.5.0"
 
 "@cspotcode/source-map-support@^0.8.0":
@@ -2340,7 +2340,7 @@
     buffer "^6.0.3"
     tar "^7.4.3"
 
-"@owf/cose@0.4.2", "@owf/cose@^0.4.1":
+"@owf/cose@0.4.2", "@owf/cose@^0.4.1", "@owf/cose@^0.4.2":
   version "0.4.2"
   resolved "https://registry.yarnpkg.com/@owf/cose/-/cose-0.4.2.tgz#246afc890534979e963d4d29946fd71565d91b85"
   integrity sha512-ISjH/NFxgI2p0jiCY462JdL5m2bHg850iehvYj8sL9dHra06sJy0RTO1dwx78xqpCkFc/4h9Oo8XXLQD1eyLMg==
@@ -2350,54 +2350,28 @@
     zod "^4.6.5"
     zod-validation-error "^5.0.0"
 
-"@owf/cose@0.5.0", "@owf/cose@^0.5.0":
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/@owf/cose/-/cose-0.5.0.tgz#a8e0c70d3362c2f1515668fb37b42e3ca87c805f"
-  integrity sha512-QYTZP1pHJzraX9GVx3MvRs0DWVnYDho5fWyyElBNvr0axG3xHOmaK1v3EFFABHkxRhD8xbFC/YwnWqw+1MQHZw==
-  dependencies:
-    "@owf/identity-common" "0.5.0"
-    cbor-x "^1.6.6"
-    zod "^4.6.5"
-    zod-validation-error "^5.0.0"
-
-"@owf/identity-common@0.4.2", "@owf/identity-common@^0.4.1":
+"@owf/identity-common@0.4.2", "@owf/identity-common@^0.4.1", "@owf/identity-common@^0.4.2":
   version "0.4.2"
   resolved "https://registry.yarnpkg.com/@owf/identity-common/-/identity-common-0.4.2.tgz#895125e0ad015a317caed869d0e4f088fa0c4595"
   integrity sha512-z+iFDpBYo2Z2uVnE5UytKlAHPaKHReijHaVXl45Yb9LbeR12hGg5CdfzfY0Tfm5m/Dr8iClfAiFizA9JYuUJ0Q==
 
-"@owf/identity-common@0.5.0", "@owf/identity-common@^0.5.0":
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/@owf/identity-common/-/identity-common-0.5.0.tgz#7ad851d870f9bbf00c6038a4203f75a23e29a715"
-  integrity sha512-h8lto+C1h6wYLe9HwF3C7NaZyB0wydstmdkgrGrpWhfCyyX+XfBZtIC494reAaj19pQTXIdEsNC91Gheo25T+Q==
-
-"@owf/mdoc@^0.8.1":
-  version "0.8.3"
-  resolved "https://registry.yarnpkg.com/@owf/mdoc/-/mdoc-0.8.3.tgz#e1dbfaa10d17f9eabfb0d0d7a84f15fa7c1e53c6"
-  integrity sha512-hNakQwZByOaEvrJL3/lv9ld64zcff34T+RpOsoFeFofzLZ1HLpakvIqsybZ4s9AYYEXpR7QkXPvzzNL0041MlA==
+"@owf/mdoc@>=0.8.1 <0.8.3":
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/@owf/mdoc/-/mdoc-0.8.2.tgz#a392714f2d3f8e19e16c411c94b8441f87db9aec"
+  integrity sha512-Mmn8a7Xy2duwoX5x3LeNkzOeOIjrjInygfPWi43Xy6DnNQprXSymB1KTwHWDGvBoTcopg7APDL41oTgSWri0ZA==
   dependencies:
-    "@owf/cose" "^0.5.0"
-    "@owf/identity-common" "^0.5.0"
-    "@owf/token-status-list" "^0.5.0"
+    "@owf/cose" "^0.4.2"
+    "@owf/identity-common" "^0.4.2"
+    "@owf/token-status-list" "^0.4.2"
     zod "^4.6.5"
 
-"@owf/token-status-list@^0.4.1":
+"@owf/token-status-list@^0.4.1", "@owf/token-status-list@^0.4.2":
   version "0.4.2"
   resolved "https://registry.yarnpkg.com/@owf/token-status-list/-/token-status-list-0.4.2.tgz#3ed693c15be2d502a90dc9dd137decfff9115d93"
   integrity sha512-vBIpSRvfgRTWq1pjs7ERafdEjKpkRRcPdMRpKM1BEsKp1mwB6p6cinf95oWOgXKWq8s3l0I4yTzZ1SdIM8/z0Q==
   dependencies:
     "@owf/cose" "0.4.2"
     "@owf/identity-common" "0.4.2"
-    cbor-x "^1.6.6"
-    pako "^3.0.2"
-    zod "^4.6.5"
-
-"@owf/token-status-list@^0.5.0":
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/@owf/token-status-list/-/token-status-list-0.5.0.tgz#c3efd4311646a91251c3915f4be7ebe779edea8a"
-  integrity sha512-sM3WsYsCdwlUUrRekCOwslIhS8QfBDON/WErUzqHRt0ubgX4IDgLdlJXxOAjmK6LOW4spOSLf02GJIJOrefb4A==
-  dependencies:
-    "@owf/cose" "0.5.0"
-    "@owf/identity-common" "0.5.0"
     cbor-x "^1.6.6"
     pako "^3.0.2"
     zod "^4.6.5"
