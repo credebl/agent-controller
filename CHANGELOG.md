@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.0
+
+### Minor Changes
+
+- [#512](https://github.com/credebl/agent-controller/pull/512) [`6de2a3d`](https://github.com/credebl/agent-controller/commit/6de2a3dc932747fe49461ef412736575be103ab1) Thanks [@ajile-in](https://github.com/ajile-in)! - Add holder-controlled OID4VC credential binding to the request-credential endpoint: fresh-key and existing-DID modes with DID method, proof algorithm, and policy selection, validated before token redemption. Fix fresh-key KMS selection so RSA/P-521 and OpenBao keys no longer force the Askar backend.
+
 ## [2.3.3](https://github.com/credebl/agent-controller/compare/v2.3.2...v2.3.3) (2026-11-23)
 
 Paired with CREDEBL platform `v2.3.0`.
