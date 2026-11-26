@@ -24,9 +24,15 @@ export interface RequestCredentialBody {
   /**
    * What to do when the issuer does not support `holderDidUrl` (DID method or key algorithm):
    * `require` fails the request, `prefer` binds to a new key instead. Ignored without `holderDidUrl`.
-   * @default "require"
+   * Defaults to `require` when omitted; no tsoa default is emitted here so a nested `binding.policy`
+   * can be used on its own without appearing to conflict with this field.
    */
   bindingPolicy?: CredentialBindingPolicy
+  /**
+   * Per-offer choice of how the credential is bound to the holder. The flat `holderDidUrl` and `bindingPolicy`
+   * fields remain valid; when both forms are supplied, their values must agree.
+   */
+  binding?: CredentialBindingOptions
   /**
    * Send OID4VCI notifications to the issuer: `credential_accepted` for each stored credential and
    * `credential_failure` for each one that could not be stored. Only for credentials with a
@@ -37,6 +43,23 @@ export interface RequestCredentialBody {
 }
 
 export type CredentialBindingPolicy = 'require' | 'prefer'
+
+/** `new-key` creates a fresh, unlinkable key; `existing-did` binds to a DID already in the wallet. */
+export type CredentialBindingMode = 'new-key' | 'existing-did'
+
+/**
+ * Holder-controlled binding selection for one credential offer. `holderDidUrl` is required for `existing-did` and
+ * forbidden for `new-key`. `didMethod` and `signatureAlgorithm` only apply to fresh keys.
+ */
+export interface CredentialBindingOptions {
+  mode: CredentialBindingMode
+  holderDidUrl?: string
+  policy?: CredentialBindingPolicy
+  /** DID method for a fresh key, e.g. `did:jwk` or `did:key`. */
+  didMethod?: string
+  /** JWA algorithm for the fresh key's proof of possession, e.g. `EdDSA`, `ES256` or `RS256`. */
+  signatureAlgorithm?: string
+}
 
 export type CredentialNotificationEvent = 'credential_accepted' | 'credential_failure'
 

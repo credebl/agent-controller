@@ -2625,6 +2625,41 @@
 					"prefer"
 				]
 			},
+			"CredentialBindingMode": {
+				"type": "string",
+				"enum": [
+					"new-key",
+					"existing-did"
+				],
+				"description": "`new-key` creates a fresh, unlinkable key; `existing-did` binds to a DID already in the wallet."
+			},
+			"CredentialBindingOptions": {
+				"description": "Holder-controlled binding selection for one credential offer. `holderDidUrl` is required for `existing-did` and\nforbidden for `new-key`. `didMethod` and `signatureAlgorithm` only apply to fresh keys.",
+				"properties": {
+					"mode": {
+						"$ref": "#/components/schemas/CredentialBindingMode"
+					},
+					"holderDidUrl": {
+						"type": "string"
+					},
+					"policy": {
+						"$ref": "#/components/schemas/CredentialBindingPolicy"
+					},
+					"didMethod": {
+						"type": "string",
+						"description": "DID method for a fresh key, e.g. `did:jwk` or `did:key`."
+					},
+					"signatureAlgorithm": {
+						"type": "string",
+						"description": "JWA algorithm for the fresh key's proof of possession, e.g. `EdDSA`, `ES256` or `RS256`."
+					}
+				},
+				"required": [
+					"mode"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"RequestCredentialBody": {
 				"properties": {
 					"credentialOfferUri": {
@@ -2656,7 +2691,11 @@
 					},
 					"bindingPolicy": {
 						"$ref": "#/components/schemas/CredentialBindingPolicy",
-						"description": "What to do when the issuer does not support `holderDidUrl` (DID method or key algorithm):\n`require` fails the request, `prefer` binds to a new key instead. Ignored without `holderDidUrl`."
+						"description": "What to do when the issuer does not support `holderDidUrl` (DID method or key algorithm):\n`require` fails the request, `prefer` binds to a new key instead. Ignored without `holderDidUrl`.\nDefaults to `require` when omitted; no tsoa default is emitted here so a nested `binding.policy`\ncan be used on its own without appearing to conflict with this field."
+					},
+					"binding": {
+						"$ref": "#/components/schemas/CredentialBindingOptions",
+						"description": "Per-offer choice of how the credential is bound to the holder. The flat `holderDidUrl` and `bindingPolicy`\nfields remain valid; when both forms are supplied, their values must agree."
 					},
 					"sendNotification": {
 						"type": "boolean",
@@ -6428,7 +6467,7 @@
 	},
 	"info": {
 		"title": "agent-controller",
-		"version": "2.3.2",
+		"version": "2.3.3",
 		"description": "Rest endpoint wrapper for using your agent over HTTP",
 		"license": {
 			"name": "Apache-2.0"

@@ -1059,6 +1059,23 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["require"]},{"dataType":"enum","enums":["prefer"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialBindingMode": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["new-key"]},{"dataType":"enum","enums":["existing-did"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CredentialBindingOptions": {
+        "dataType": "refObject",
+        "properties": {
+            "mode": {"ref":"CredentialBindingMode","required":true},
+            "holderDidUrl": {"dataType":"string"},
+            "policy": {"ref":"CredentialBindingPolicy"},
+            "didMethod": {"dataType":"string"},
+            "signatureAlgorithm": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "RequestCredentialBody": {
         "dataType": "refObject",
         "properties": {
@@ -1069,7 +1086,8 @@ const models: TsoaRoute.Models = {
             "txCode": {"dataType":"string"},
             "tags": {"ref":"CredentialTags"},
             "holderDidUrl": {"dataType":"string"},
-            "bindingPolicy": {"ref":"CredentialBindingPolicy","default":"require"},
+            "bindingPolicy": {"ref":"CredentialBindingPolicy"},
+            "binding": {"ref":"CredentialBindingOptions"},
             "sendNotification": {"dataType":"boolean","default":true},
         },
         "additionalProperties": false,

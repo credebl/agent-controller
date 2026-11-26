@@ -11,7 +11,7 @@ import type {
   ResolveCredentialOfferBody,
   ResolveProofRequest,
 } from '../types/holder.types'
-import type { BaseRecordAny } from '@credo-ts/core'
+import type { BaseRecordAny, Kms } from '@credo-ts/core'
 import type {
   OpenId4VcAuthorizationCodeTokenRequestOptions,
   OpenId4VciCredentialResponse,
@@ -43,8 +43,10 @@ import { StatusException } from '../../../errors/StatusException'
 import { BadRequestError } from '../../../errors/errors'
 import { CredentialType } from '../types/holder.types'
 
+import { normalizeCredentialBinding } from './credentialBindingOptions'
 import {
   assertOfferAcceptsHolderDid,
+  assertOfferAcceptsNewKeyBinding,
   assertW3cCredentialsBoundToHolderDid,
   getCredentialBindingResolver,
 } from './credentialBindingResolver'
@@ -401,19 +403,29 @@ export class HolderService {
     agentReq: Req,
     resolvedCredentialOffer: OpenId4VciResolvedCredentialOffer,
     options: OpenId4VciTokenRequestOptions,
-    { credentialsToRequest, tags, holderDidUrl, bindingPolicy, sendNotification = true }: RequestCredentialBody,
+    { credentialsToRequest, tags, sendNotification = true, ...bindingBody }: RequestCredentialBody,
   ) {
+    // Validate the caller's binding choice before the token request: a bad choice must not consume the offer or PIN.
+    const binding = normalizeCredentialBinding(bindingBody)
     const offeredIds = resolvedCredentialOffer.credentialOfferPayload.credential_configuration_ids
     const notOffered = credentialsToRequest?.filter((id) => !offeredIds.includes(id)) ?? []
     if (notOffered.length > 0) {
       throw new BadRequestError(`Credentials not in the offer: ${notOffered.join(', ')}`)
     }
+    if (credentialsToRequest?.length === 0) {
+      throw new BadRequestError('credentialsToRequest must not be empty')
+    }
 
     const credentialConfigurationIds = credentialsToRequest?.length ? credentialsToRequest : offeredIds
-    if (holderDidUrl) {
+    if (binding.mode === 'existing-did' && binding.holderDidUrl) {
       await assertOfferAcceptsHolderDid(agentReq.agent.context, resolvedCredentialOffer, credentialConfigurationIds, {
-        holderDidUrl,
-        bindingPolicy,
+        holderDidUrl: binding.holderDidUrl,
+        bindingPolicy: binding.policy,
+      })
+    } else {
+      assertOfferAcceptsNewKeyBinding(agentReq.agent.context, resolvedCredentialOffer, credentialConfigurationIds, {
+        didMethod: binding.didMethod,
+        signatureAlgorithm: binding.signatureAlgorithm,
       })
     }
 
@@ -423,9 +435,16 @@ export class HolderService {
       credentialConfigurationIds,
       credentialBindingResolver: getCredentialBindingResolver({
         requestBatch: false,
-        holderDidUrl,
-        bindingPolicy,
+        holderDidUrl: binding.holderDidUrl,
+        bindingPolicy: binding.policy,
+        didMethod: binding.didMethod,
+        signatureAlgorithm: binding.signatureAlgorithm,
       }),
+      ...(binding.signatureAlgorithm
+        ? {
+            allowedProofOfPossessionSignatureAlgorithms: [binding.signatureAlgorithm as Kms.KnownJwaSignatureAlgorithm],
+          }
+        : {}),
       ...tokenResponse,
     })
 
@@ -436,11 +455,11 @@ export class HolderService {
       dpop: credentialResponse.dpop,
     }
 
-    if (holderDidUrl && bindingPolicy !== 'prefer') {
+    if (binding.mode === 'existing-did' && binding.holderDidUrl && binding.policy !== 'prefer') {
       try {
         assertW3cCredentialsBoundToHolderDid(
           credentialResponse.credentials.map((response) => response.record),
-          holderDidUrl,
+          binding.holderDidUrl,
         )
       } catch (error) {
         // None of the credentials is stored, so tell the issuer that each of them failed

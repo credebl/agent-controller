@@ -3,12 +3,21 @@ import { ClaimFormat, DcqlError, SdJwtVcRecord } from '@credo-ts/core'
 import { BadRequestError } from '../../../../errors/errors'
 import {
   assertOfferAcceptsHolderDid,
+  assertOfferAcceptsNewKeyBinding,
   assertW3cCredentialsBoundToHolderDid,
   getCredentialBindingResolver,
 } from '../credentialBindingResolver'
 import { HolderService } from '../holder.service'
 
 // Avoid loading Credo's ESM/native dependencies in Jest; only the symbols the service touches are stubbed.
+jest.mock('../../../../utils/kms/backend', () => ({
+  ASKAR_KMS_BACKEND: 'askar',
+  NODE_KMS_BACKEND: 'node',
+  selectKmsBackendForCreate: (type: { kty: string; crv?: string }) =>
+    type.kty === 'RSA' || (type.kty === 'EC' && type.crv === 'P-521')
+      ? { backend: 'node', name: 'node' }
+      : { name: 'askar' },
+}))
 jest.mock('@credo-ts/core', () => ({
   ClaimFormat: {
     SdJwtDc: 'dc+sd-jwt',
@@ -31,6 +40,7 @@ jest.mock('@credo-ts/openid4vc', () => ({
 jest.mock('../credentialBindingResolver', () => ({
   getCredentialBindingResolver: jest.fn(),
   assertOfferAcceptsHolderDid: jest.fn(),
+  assertOfferAcceptsNewKeyBinding: jest.fn(),
   assertW3cCredentialsBoundToHolderDid: jest.fn(),
 }))
 
@@ -333,6 +343,7 @@ describe('HolderService requestCredential', () => {
   beforeEach(() => {
     jest.mocked(getCredentialBindingResolver).mockReset()
     jest.mocked(assertOfferAcceptsHolderDid).mockReset()
+    jest.mocked(assertOfferAcceptsNewKeyBinding).mockReset()
     jest.mocked(assertW3cCredentialsBoundToHolderDid).mockReset()
   })
 
@@ -399,7 +410,7 @@ describe('HolderService requestCredential', () => {
     ).rejects.toThrow('IecLdp: did:web not supported')
     expect(assertOfferAcceptsHolderDid).toHaveBeenCalledWith('agentContext', expect.anything(), offeredIds, {
       holderDidUrl: 'did:web:example.com#key-1',
-      bindingPolicy: undefined,
+      bindingPolicy: 'require',
     })
     expect(holder.requestToken).not.toHaveBeenCalled()
   })
@@ -410,6 +421,114 @@ describe('HolderService requestCredential', () => {
     await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'openid-credential-offer://x' })
 
     expect(assertOfferAcceptsHolderDid).not.toHaveBeenCalled()
+  })
+
+  it('forwards a nested new-key binding and the selected proof algorithm (P-FK-02, P-FK-05)', async () => {
+    const { agentReq, holder } = createAgentReq()
+
+    await new HolderService().requestCredential(agentReq, {
+      credentialOfferUri: 'openid-credential-offer://x',
+      binding: { mode: 'new-key', didMethod: 'did:jwk', signatureAlgorithm: 'RS256' },
+    })
+
+    expect(getCredentialBindingResolver).toHaveBeenCalledWith(
+      expect.objectContaining({ didMethod: 'did:jwk', signatureAlgorithm: 'RS256', holderDidUrl: undefined }),
+    )
+    expect(assertOfferAcceptsNewKeyBinding).toHaveBeenCalledWith('agentContext', expect.anything(), offeredIds, {
+      didMethod: 'did:jwk',
+      signatureAlgorithm: 'RS256',
+    })
+    expect(assertOfferAcceptsHolderDid).not.toHaveBeenCalled()
+    expect(holder.requestCredentials).toHaveBeenCalledWith(
+      expect.objectContaining({ allowedProofOfPossessionSignatureAlgorithms: ['RS256'] }),
+    )
+  })
+
+  it('does not restrict proof algorithms when no signature algorithm was selected', async () => {
+    const { agentReq, holder } = createAgentReq()
+
+    await new HolderService().requestCredential(agentReq, { credentialOfferUri: 'openid-credential-offer://x' })
+
+    expect(holder.requestCredentials).toHaveBeenCalledWith(
+      expect.not.objectContaining({ allowedProofOfPossessionSignatureAlgorithms: expect.anything() }),
+    )
+  })
+
+  it('forwards a nested existing-DID binding to the resolver and skips the W3C check with prefer (P-ED-02)', async () => {
+    const { agentReq } = createAgentReq()
+    const holderDidUrl = 'did:web:example.com#key-1'
+
+    await new HolderService().requestCredential(agentReq, {
+      credentialOfferUri: 'openid-credential-offer://x',
+      binding: { mode: 'existing-did', holderDidUrl, policy: 'prefer' },
+    })
+
+    expect(getCredentialBindingResolver).toHaveBeenCalledWith(
+      expect.objectContaining({ holderDidUrl, bindingPolicy: 'prefer' }),
+    )
+    expect(assertOfferAcceptsHolderDid).toHaveBeenCalledWith('agentContext', expect.anything(), offeredIds, {
+      holderDidUrl,
+      bindingPolicy: 'prefer',
+    })
+    expect(assertW3cCredentialsBoundToHolderDid).not.toHaveBeenCalled()
+  })
+
+  it('rejects conflicting binding selections before the token request (N-V-01, N-V-03)', async () => {
+    const { agentReq, holder } = createAgentReq()
+
+    await expect(
+      new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'openid-credential-offer://x',
+        binding: { mode: 'bogus' } as any,
+      }),
+    ).rejects.toThrow('INVALID_BINDING_MODE')
+    await expect(
+      new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'openid-credential-offer://x',
+        holderDidUrl: 'did:web:one.example.com#key-1',
+        binding: { mode: 'existing-did', holderDidUrl: 'did:web:two.example.com#key-1' },
+      }),
+    ).rejects.toThrow('CONFLICTING_HOLDER_DID_URL')
+    expect(holder.requestToken).not.toHaveBeenCalled()
+  })
+
+  it('rejects an empty credentialsToRequest before the token request (N-V-14)', async () => {
+    const { agentReq, holder } = createAgentReq()
+
+    await expect(
+      new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'openid-credential-offer://x',
+        credentialsToRequest: [],
+      }),
+    ).rejects.toThrow('credentialsToRequest must not be empty')
+    expect(holder.requestToken).not.toHaveBeenCalled()
+  })
+
+  it('rejects a binding the offer cannot accept before the token request (N-V-18)', async () => {
+    const { agentReq, holder } = createAgentReq()
+    jest.mocked(assertOfferAcceptsNewKeyBinding).mockImplementation(() => {
+      throw new Error('IecMdoc: DID_BINDING_NOT_SUPPORTED_FOR_FORMAT')
+    })
+
+    await expect(
+      new HolderService().requestCredential(agentReq, {
+        credentialOfferUri: 'openid-credential-offer://x',
+        binding: { mode: 'new-key', didMethod: 'did:jwk' },
+      }),
+    ).rejects.toThrow('DID_BINDING_NOT_SUPPORTED_FOR_FORMAT')
+    expect(holder.requestToken).not.toHaveBeenCalled()
+  })
+
+  it('stores no credential when proof signing fails after key creation (N-R-03)', async () => {
+    const { agentReq, holder } = createAgentReq()
+    holder.requestCredentials.mockRejectedValue(new Error('node KMS sign failed'))
+
+    await expect(
+      new HolderService().requestCredential(agentReq, { credentialOfferUri: 'openid-credential-offer://x' }),
+    ).rejects.toThrow('node KMS sign failed')
+    expect(agentReq.agent.sdJwtVc.store).not.toHaveBeenCalled()
+    expect(agentReq.agent.w3cCredentials.store).not.toHaveBeenCalled()
+    expect(agentReq.agent.mdoc.store).not.toHaveBeenCalled()
   })
 
   it('checks that W3C credentials are bound to the holder DID before storing them, with require', async () => {
