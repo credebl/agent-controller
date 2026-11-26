@@ -28,6 +28,7 @@ import {
   W3cCredentialsModule,
   W3cV2CredentialService,
   W3cV2CredentialsModule,
+  W3cV2DataIntegrityVerifiableCredential,
   W3cV2JwtVerifiableCredential,
 } from '@credo-ts/core'
 import { agentDependencies } from '@credo-ts/node'
@@ -38,14 +39,16 @@ import express from 'express'
 import { CustomDocumentLoader } from '../src/utils/customDocumentLoader'
 import { getMixedCredentialRequestToCredentialMapper } from '../src/utils/oid4vc-agent'
 import { transformPayloadForVersion } from '../src/utils/vcContext'
-import { verifyV2Credential } from '../src/vc-jsonld/verifyV2Credential'
 import { assert, uuid } from './smokeTestHelpers'
 
 let lastCredentialResponse: any
 const capturingFetch: typeof fetch = async (input: any, init?: any) => {
   const response = await fetch(input, init)
   if (String(typeof input === 'string' ? input : input.url).endsWith('/credential')) {
-    lastCredentialResponse = await response.clone().json().catch(() => undefined)
+    lastCredentialResponse = await response
+      .clone()
+      .json()
+      .catch(() => undefined)
   }
   return response
 }
@@ -84,7 +87,11 @@ function decodeJwt(compact: string): { header: Record<string, unknown>; payload:
 async function main(): Promise<void> {
   const app = express()
   const issuerAgent = new Agent({
-    config: { allowInsecureHttpUrls: true, label: 'smoke-issuer', logger: new ConsoleLogger(process.env.DEBUG ? LogLevel.error : LogLevel.off) },
+    config: {
+      allowInsecureHttpUrls: true,
+      label: 'smoke-issuer',
+      logger: new ConsoleLogger(process.env.DEBUG ? LogLevel.error : LogLevel.off),
+    },
     dependencies: agentDependencies,
     modules: {
       askar: new AskarModule({
@@ -109,7 +116,11 @@ async function main(): Promise<void> {
     },
   })
   const holderAgent = new Agent({
-    config: { allowInsecureHttpUrls: true, label: 'smoke-holder', logger: new ConsoleLogger(process.env.DEBUG ? LogLevel.error : LogLevel.off) },
+    config: {
+      allowInsecureHttpUrls: true,
+      label: 'smoke-holder',
+      logger: new ConsoleLogger(process.env.DEBUG ? LogLevel.error : LogLevel.off),
+    },
     dependencies: { ...agentDependencies, fetch: capturingFetch as any },
     modules: {
       askar: new AskarModule({
@@ -192,32 +203,34 @@ async function main(): Promise<void> {
         const resolved = await holder.resolveCredentialOffer(credentialOffer)
         const token = await holder.requestToken({ resolvedCredentialOffer: resolved })
         lastCredentialResponse = undefined
-        try {
-          await holder.requestCredentials({
-            resolvedCredentialOffer: resolved,
-            ...token,
-            credentialConfigurationIds: [supportedId],
-            credentialBindingResolver: async ({ supportedDidMethods, proofTypes, agentContext }) => {
-              const algorithm = proofTypes.jwt?.supportedSignatureAlgorithms?.[0] ?? 'EdDSA'
-              const kms = agentContext.resolve(Kms.KeyManagementApi)
-              const key = await kms.createKeyForSignatureAlgorithm({ algorithm, backend: 'askar' })
-              const publicJwk = Kms.PublicJwk.fromUnknown(key.publicJwk)
-              const method = supportedDidMethods?.includes('did:jwk') ? 'jwk' : 'key'
-              const dids = agentContext.dependencyManager.resolve(DidsApi)
-              const didResult = await dids.create({ method, options: { keyId: publicJwk.keyId } })
-              const did = didResult.didState.did as string
-              const vm =
-                method === 'jwk'
-                  ? DidJwk.fromDid(did).verificationMethodId
-                  : `${did}#${DidKey.fromDid(did).publicJwk.fingerprint}`
-              return { method: 'did', didUrls: [vm] }
-            },
-          })
-        } catch (error) {
-          // Credo 0.7.4's holder parses W3C credentials as VCDM 1.1 only, so it rejects a v2.0 credential
-          // after the issuer has already signed and returned it. The issuer's raw response is checked below.
-          if (testCase.version !== 'v2.0') throw error
-          console.log(`  (holder could not parse the v2.0 credential: ${error instanceof Error ? error.message.split('\n')[0] : error})`)
+        const issued = await holder.requestCredentials({
+          resolvedCredentialOffer: resolved,
+          ...token,
+          credentialConfigurationIds: [supportedId],
+          credentialBindingResolver: async ({ supportedDidMethods, proofTypes, agentContext }) => {
+            const algorithm = proofTypes.jwt?.supportedSignatureAlgorithms?.[0] ?? 'EdDSA'
+            const kms = agentContext.resolve(Kms.KeyManagementApi)
+            const key = await kms.createKeyForSignatureAlgorithm({ algorithm, backend: 'askar' })
+            const publicJwk = Kms.PublicJwk.fromUnknown(key.publicJwk)
+            const method = supportedDidMethods?.includes('did:jwk') ? 'jwk' : 'key'
+            const dids = agentContext.dependencyManager.resolve(DidsApi)
+            const didResult = await dids.create({ method, options: { keyId: publicJwk.keyId } })
+            const did = didResult.didState.did as string
+            const vm =
+              method === 'jwk'
+                ? DidJwk.fromDid(did).verificationMethodId
+                : `${did}#${DidKey.fromDid(did).publicJwk.fingerprint}`
+            return { method: 'did', didUrls: [vm] }
+          },
+        })
+        assert(issued.credentials.length === 1, 'the holder accepted the credential')
+        const claimFormat = (issued.credentials[0].record as any).firstCredential?.claimFormat
+        console.log(`  holder stored a ${String(claimFormat)} credential`)
+        if (testCase.version === 'v2.0') {
+          assert(
+            claimFormat === (testCase.format === 'ldp_vc' ? 'di_vc' : 'vc+jwt'),
+            'the holder stored a VCDM 2.0 credential',
+          )
         }
 
         const raw = lastCredentialResponse
@@ -229,7 +242,12 @@ async function main(): Promise<void> {
           if (testCase.version === 'v2.0') {
             assert(context.includes('credentials/v2'), 'ldp credential uses the credentials/v2 context')
             assert(rawCredential.validFrom, 'ldp credential has validFrom')
-            const verified = await verifyV2Credential(issuerAgent.context, { credential: rawCredential })
+            assert(rawCredential.proof?.type === 'DataIntegrityProof', 'the proof is a Data Integrity proof')
+            const verified = await issuerAgent.dependencyManager
+              .resolve(W3cV2CredentialService)
+              .verifyCredential(issuerAgent.context, {
+                credential: W3cV2DataIntegrityVerifiableCredential.fromObject(rawCredential),
+              })
             assert(verified.isValid, 'the v2.0 ldp credential signature verifies')
           } else {
             assert(context.includes('credentials/v1'), 'ldp credential uses the credentials/v1 context')
@@ -244,13 +262,18 @@ async function main(): Promise<void> {
           if (testCase.version === 'v2.0') {
             const verified = await issuerAgent.dependencyManager
               .resolve(W3cV2CredentialService)
-              .verifyCredential(issuerAgent.context, { credential: W3cV2JwtVerifiableCredential.fromCompact(rawCredential) })
+              .verifyCredential(issuerAgent.context, {
+                credential: W3cV2JwtVerifiableCredential.fromCompact(rawCredential),
+              })
             assert(verified.isValid, 'the v2.0 vc+jwt signature verifies')
           }
         }
         void issuanceSession
       } catch (error) {
-        const message = error instanceof Error ? `${error.message} | ${error.cause instanceof Error ? error.cause.message : ''}` : String(error)
+        const message =
+          error instanceof Error
+            ? `${error.message} | ${error.cause instanceof Error ? error.cause.message : ''}`
+            : String(error)
         console.log(`  FAILED: ${message}`)
         if (process.env.DEBUG && error instanceof Error) console.log(error.stack)
         failures.push(testCase.name)

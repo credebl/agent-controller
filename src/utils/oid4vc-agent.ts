@@ -28,16 +28,12 @@ import { container } from 'tsyringe'
 
 import { getStoredX509Chain } from '../controllers/x509/didX509.utils'
 import { SignerMethod } from '../enums/enum'
-import { registerOid4vciV2Signer } from '../vc-jsonld/registerOid4vciV2Signer'
 
 import { validateAuthConfig } from './auth'
 import { checkX509Certificates, processIsoImages } from './helpers'
 import { TsLogger } from './logger'
 import { buildMdocValidityInfo } from './mdocValidity'
 import { bindW3cCredentialSubject } from './w3cCredentialSubject'
-
-// Credo's OID4VCI issuer cannot sign a VCDM 2.0 ldp_vc itself; the patched issuer calls this signer.
-registerOid4vciV2Signer()
 
 const logger = new TsLogger(LogLevel.Info)
 
@@ -141,7 +137,8 @@ export function getMixedCredentialRequestToCredentialMapper(): OpenId4VciCredent
       credentialConfiguration.format === OpenId4VciCredentialFormatProfile.JwtVcJsonLd ||
       credentialConfiguration.format === OpenId4VciCredentialFormatProfile.LdpVc
     ) {
-      return handleW3cCredentialFormat(
+      return await handleW3cCredentialFormat(
+        agentContext,
         credentialConfiguration,
         credential,
         credentialPayload[0]?.payload,
@@ -450,7 +447,8 @@ async function getDidX509Certificates(agentContext: AgentContext, did: string): 
     )
 }
 
-function handleW3cCredentialFormat(
+async function handleW3cCredentialFormat(
+  agentContext: AgentContext,
   credentialConfiguration: any,
   credential: any,
   payload: any,
@@ -470,6 +468,32 @@ function handleW3cCredentialFormat(
   }
   const isV2 = contextArray.includes(CREDENTIALS_CONTEXT_V2_URL) || !!payload?.validFrom || !!payload?.validUntil
 
+  if (isV2) {
+    // VCDM 2.0 is secured as a vc+jwt, or with a Data Integrity proof for ldp_vc
+    const v2Format =
+      credentialConfiguration.format === OpenId4VciCredentialFormatProfile.LdpVc
+        ? ClaimFormat.DiVc
+        : ClaimFormat.JwtW3cVc
+    const v2Signing = await getV2SigningOptions(agentContext, issuerDidVerificationMethod, v2Format)
+
+    return {
+      format: v2Format,
+      credentials: holderBinding.keys.map((binding: any) =>
+        mapW3cCredentialBinding(
+          binding,
+          payload,
+          credential,
+          contextArray,
+          true,
+          issuerDidVerificationMethod,
+          credentialConfiguration,
+          v2Signing,
+        ),
+      ),
+      type: 'credentials',
+    }
+  }
+
   return {
     format:
       credentialConfiguration.format === OpenId4VciCredentialFormatProfile.LdpVc
@@ -481,13 +505,35 @@ function handleW3cCredentialFormat(
         payload,
         credential,
         contextArray,
-        isV2,
+        false,
         issuerDidVerificationMethod,
         credentialConfiguration,
       ),
     ),
     type: 'credentials',
   }
+}
+
+/**
+ * Signing options for a VCDM 2.0 credential: the JWS algorithm of the issuer key for a vc+jwt, and the
+ * Data Integrity cryptosuite for a di_vc. Credo 0.7.4 only ships the eddsa-jcs-2022 cryptosuite.
+ */
+async function getV2SigningOptions(
+  agentContext: AgentContext,
+  verificationMethod: string | undefined,
+  format: ClaimFormat.JwtW3cVc | ClaimFormat.DiVc,
+): Promise<{ alg: string } | { cryptosuite: string }> {
+  if (!verificationMethod) throw new Error('An issuer verification method is required to sign a VCDM 2.0 credential')
+  const dids = agentContext.dependencyManager.resolve(DidsApi)
+  const { publicJwk } = await dids.resolveVerificationMethodFromCreatedDidRecord(verificationMethod)
+
+  if (format === ClaimFormat.JwtW3cVc) return { alg: publicJwk.signatureAlgorithm }
+
+  const jwk = publicJwk.toJson() as { kty: string; crv?: string }
+  if (jwk.kty === 'OKP' && jwk.crv === 'Ed25519') return { cryptosuite: 'eddsa-jcs-2022' }
+  throw new Error(
+    `VCDM 2.0 ldp_vc credentials can only be signed with an Ed25519 issuer key, but the key is '${publicJwk.jwkTypeHumanDescription}'`,
+  )
 }
 
 function mapW3cCredentialBinding(
@@ -498,6 +544,7 @@ function mapW3cCredentialBinding(
   isV2: boolean,
   issuerDidVerificationMethod: string | undefined,
   credentialConfiguration: any,
+  v2Signing?: { alg: string } | { cryptosuite: string },
 ) {
   const bindingDidUrl = binding.method === 'did' ? (binding as any).didUrl : undefined
   const { credentialSubject: rawSubject, subjectId } = bindW3cCredentialSubject(
@@ -525,10 +572,7 @@ function mapW3cCredentialBinding(
     credentialJson.validFrom = payload.validFrom || payload.issuanceDate
     if (payload.validUntil || payload.expirationDate) {
       credentialJson.validUntil = payload.validUntil || payload.expirationDate
-      credentialJson.expirationDate = credentialJson.validUntil
     }
-    // Add issuanceDate for JWT signer compatibility
-    credentialJson.issuanceDate = credentialJson.validFrom
   } else {
     credentialJson.issuanceDate = payload.issuanceDate
     if (payload.expirationDate) {
@@ -550,6 +594,10 @@ function mapW3cCredentialBinding(
     } else {
       credInstance.credentialSubject.id = subjectId
     }
+  }
+
+  if (v2Signing) {
+    return { verificationMethod: issuerDidVerificationMethod, credential: credInstance, ...v2Signing }
   }
 
   return {
